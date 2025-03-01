@@ -322,7 +322,7 @@ class CrochetEditor {
                 }
                 this.ctx.stroke();
 
-                // Dibujar puntos negros en intersecciones disponibles
+                // Dibujar círculos negros en intersecciones disponibles
                 this.ctx.fillStyle = '#000';
                 for (let i = 0; i < segments; i++) {
                     const angle = i * angleStep;
