@@ -232,7 +232,7 @@ body {
 }
 
 .config-section input[type="range"] {
-    writing-mode: bt-lr; /* Vertical */
+    writing-mode: bt-lr;
     -webkit-appearance: slider-vertical;
     width: 8px;
     height: 100px;
