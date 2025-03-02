@@ -179,19 +179,17 @@ class CanvasRenderer {
     drawRings(state) {
         this.ctx.strokeStyle = '#ddd';
         this.ctx.lineWidth = 1 / state.scale;
-        state.rings.forEach((ring, r) => {
+        state.rings.forEach((_, r) => {
             const radius = (r + 1) * state.ringSpacing;
             this.ctx.beginPath();
             this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
             this.ctx.stroke();
-
-            this.drawGuideLines(state, r);
-            this.drawIntersectionPoints(state, r);
         });
+        this.drawGuideLines(state);
     }
 
-    drawGuideLines(state, ringIndex) {
-        const segments = state.rings[ringIndex].segments;
+    drawGuideLines(state) {
+        const segments = state.guideLines;
         const angleStep = Math.PI * 2 / segments;
         const maxRadius = state.rings.length * state.ringSpacing;
         this.ctx.strokeStyle = '#eee';
@@ -206,22 +204,6 @@ class CanvasRenderer {
         this.ctx.stroke();
     }
 
-    drawIntersectionPoints(state, ringIndex) {
-        const segments = state.rings[ringIndex].segments;
-        const angleStep = Math.PI * 2 / segments;
-        this.ctx.fillStyle = '#000';
-        for (let i = 0; i < segments; i++) {
-            if (!state.rings[ringIndex].points[i]) {
-                const angle = i * angleStep;
-                const x = Math.cos(angle) * (ringIndex + 1) * state.ringSpacing;
-                const y = Math.sin(angle) * (ringIndex + 1) * state.ringSpacing;
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, 2 / state.scale, 0, Math.PI * 2);
-                this.ctx.fill();
-            }
-        }
-    }
-
     drawStitches(state) {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
@@ -229,10 +211,11 @@ class CanvasRenderer {
         state.rings.forEach((ring, ringIndex) => {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
+            const radius = (ringIndex + 0.5) * state.ringSpacing; // Centro del "renglon"
             ring.points.forEach((type, segmentIndex) => {
-                const angle = segmentIndex * angleStep;
-                const x = Math.cos(angle) * (ringIndex + 1) * state.ringSpacing;
-                const y = Math.sin(angle) * (ringIndex + 1) * state.ringSpacing;
+                const angle = segmentIndex * angleStep + (angleStep / 2); // Desplazado al centro del segmento
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
                 let stitchType = type;
                 let isSpecial = false;
 
@@ -267,9 +250,10 @@ class CanvasRenderer {
         if (ring >= 0 && ring < state.rings.length) {
             const segments = state.rings[ring].segments;
             const angleStep = Math.PI * 2 / segments;
-            const angle = segment * angleStep;
-            const x = Math.cos(angle) * (ring + 1) * state.ringSpacing;
-            const y = Math.sin(angle) * (ring + 1) * state.ringSpacing;
+            const radius = (ring + 0.5) * state.ringSpacing;
+            const angle = segment * angleStep + (angleStep / 2);
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
             const stitch = STITCH_TYPES.get(state.selectedStitch);
             this.ctx.fillStyle = stitch.color + '80';
             this.ctx.fillText(stitch.symbol, x, y);
@@ -278,12 +262,12 @@ class CanvasRenderer {
 
     getRingAndSegment(state, x, y) {
         const distance = Math.sqrt(x * x + y * y);
-        const ring = Math.round(distance / state.ringSpacing) - 1;
+        const ring = Math.floor(distance / state.ringSpacing);
         if (ring < 0 || ring >= state.rings.length) return { ring: -1, segment: -1 };
         
         const segments = state.rings[ring].segments;
         const angle = Math.atan2(y, x) + Math.PI * 2;
-        const segment = Math.round((angle / (Math.PI * 2)) * segments) % segments;
+        const segment = Math.floor((angle / (Math.PI * 2)) * segments) % segments;
         return { ring, segment };
     }
 
@@ -317,18 +301,17 @@ class CanvasRenderer {
     drawRingsOnContext(ctx, state, scale) {
         ctx.strokeStyle = '#ddd';
         ctx.lineWidth = 1 / scale;
-        state.rings.forEach((ring, r) => {
+        state.rings.forEach((_, r) => {
             const radius = (r + 1) * state.ringSpacing;
             ctx.beginPath();
             ctx.arc(0, 0, radius, 0, Math.PI * 2);
             ctx.stroke();
-            this.drawGuideLinesOnContext(ctx, state, r, scale);
-            this.drawIntersectionPointsOnContext(ctx, state, r, scale);
         });
+        this.drawGuideLinesOnContext(ctx, state, scale);
     }
 
-    drawGuideLinesOnContext(ctx, state, ringIndex, scale) {
-        const segments = state.rings[ringIndex].segments;
+    drawGuideLinesOnContext(ctx, state, scale) {
+        const segments = state.guideLines;
         const angleStep = Math.PI * 2 / segments;
         const maxRadius = state.rings.length * state.ringSpacing;
         ctx.strokeStyle = '#eee';
@@ -343,22 +326,6 @@ class CanvasRenderer {
         ctx.stroke();
     }
 
-    drawIntersectionPointsOnContext(ctx, state, ringIndex, scale) {
-        const segments = state.rings[ringIndex].segments;
-        const angleStep = Math.PI * 2 / segments;
-        ctx.fillStyle = '#000';
-        for (let i = 0; i < segments; i++) {
-            if (!state.rings[ringIndex].points[i]) {
-                const angle = i * angleStep;
-                const x = Math.cos(angle) * (ringIndex + 1) * state.ringSpacing;
-                const y = Math.sin(angle) * (ringIndex + 1) * state.ringSpacing;
-                ctx.beginPath();
-                ctx.arc(x, y, 2 / scale, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-    }
-
     drawStitchesOnContext(ctx, state, scale) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -366,10 +333,11 @@ class CanvasRenderer {
         state.rings.forEach((ring, ringIndex) => {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
+            const radius = (ringIndex + 0.5) * state.ringSpacing;
             ring.points.forEach((type, segmentIndex) => {
-                const angle = segmentIndex * angleStep;
-                const x = Math.cos(angle) * (ringIndex + 1) * state.ringSpacing;
-                const y = Math.sin(angle) * (ringIndex + 1) * state.ringSpacing;
+                const angle = segmentIndex * angleStep + (angleStep / 2);
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
                 let stitchType = type;
                 let isSpecial = false;
 
@@ -533,7 +501,7 @@ class InputHandler {
         if (e.ctrlKey) {
             if (e.key === 'z' && this.state.undo()) this.renderer.render(this.state.state);
             else if (e.key === 'y' && this.state.redo()) this.renderer.render(this.state.state);
-            else if (e.key === 's') e.preventDefault(); // Guardar se maneja en UI
+            else if (e.key === 's') e.preventDefault();
         } else if (e.key === '+') this.adjustZoom(0.2);
         else if (e.key === '-') this.adjustZoom(-0.2);
     }
@@ -660,7 +628,7 @@ class UIController {
         if (saved) {
             this.state.setRings(JSON.parse(saved));
             this.currentProjectName = null;
-            this.renderer.resize(); // Asegurar que el canvas se ajuste
+            this.renderer.resize();
             this.renderer.render(this.state.state);
             this.updateUI();
         }
@@ -689,7 +657,7 @@ class UIController {
             if (select.value) {
                 this.state.setRings(JSON.parse(JSON.stringify(projects[select.value])));
                 this.currentProjectName = select.value;
-                this.renderer.resize(); // Asegurar que el canvas se ajuste al cargar
+                this.renderer.resize();
                 this.renderer.render(this.state.state);
                 this.updateUI();
 
@@ -800,10 +768,11 @@ class UIController {
 
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
+            const stitchRadius = (ringIndex + 0.5) * this.state.state.ringSpacing * scale * 0.0353;
             ring.points.forEach((type, segmentIndex) => {
-                const angle = segmentIndex * angleStep;
-                const x = centerX + Math.cos(angle) * radius;
-                const y = centerY + Math.sin(angle) * radius;
+                const angle = segmentIndex * angleStep + (angleStep / 2);
+                const x = centerX + Math.cos(angle) * stitchRadius;
+                const y = centerY + Math.sin(angle) * stitchRadius;
                 let stitchType = type;
                 let symbol = STITCH_TYPES.get(stitchType).symbol;
 
