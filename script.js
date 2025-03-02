@@ -416,22 +416,30 @@ class CrochetEditor {
         }
     }
 
-    newProject() {
-        this.state.rings = [{ segments: this.state.guideLines, points: Array(this.state.guideLines).fill('cadeneta') }];
-        this.state.history = [JSON.parse(JSON.stringify(this.state.rings))];
-        this.state.historyIndex = 0;
-        this.resetView();
-    }
-
     saveProject() {
-        localStorage.setItem('crochetPattern', JSON.stringify(this.state.rings));
-        alert('Proyecto guardado!');
+        // Generar un nombre por defecto si no existe un nombre actual
+        const defaultName = `Patrón ${new Date().toLocaleDateString()}`;
+        const projects = JSON.parse(localStorage.getItem('crochetProjects') || '{}');
+        
+        // Si no hay un nombre actual, usar el por defecto
+        if (!this.currentProjectName) {
+            this.currentProjectName = defaultName;
+        }
+        
+        // Guardar en el objeto de proyectos
+        projects[this.currentProjectName] = this.state.rings;
+        localStorage.setItem('crochetProjects', JSON.stringify(projects));
+        
+        // Actualizar la lista de proyectos
+        this.loadProjects();
+        alert(`Proyecto "${this.currentProjectName}" guardado!`);
     }
 
     saveProjectAs() {
-        const name = prompt('Nombre del proyecto:', `Patrón ${new Date().toLocaleDateString()}`);
+        const name = prompt('Nombre del proyecto:', this.currentProjectName || `Patrón ${new Date().toLocaleDateString()}`);
         if (name) {
             const projects = JSON.parse(localStorage.getItem('crochetProjects') || '{}');
+            this.currentProjectName = name; // Actualizar el nombre actual
             projects[name] = this.state.rings;
             localStorage.setItem('crochetProjects', JSON.stringify(projects));
             this.loadProjects();
@@ -440,11 +448,14 @@ class CrochetEditor {
     }
 
     loadFromLocalStorage() {
+        // Este método ya no es necesario para cargar un solo patrón,
+        // pero lo mantenemos por compatibilidad con datos antiguos
         const saved = localStorage.getItem('crochetPattern');
         if (saved) {
             this.state.rings = JSON.parse(saved);
             this.state.history = [JSON.parse(saved)];
             this.state.historyIndex = 0;
+            this.currentProjectName = null; // No asignamos nombre hasta que se guarde
             this.render();
         }
     }
@@ -452,14 +463,17 @@ class CrochetEditor {
     loadProjects() {
         const projects = JSON.parse(localStorage.getItem('crochetProjects') || '{}');
         const select = document.getElementById('loadProjects');
-        const controls = document.querySelector('.project-controls');
-        
+        const controls = document.querySelector('.project-controls') || select.parentElement;
+
+        // Limpiar botón de eliminar existente
         const existingDeleteBtn = controls.querySelector('.delete-btn');
         if (existingDeleteBtn) existingDeleteBtn.remove();
 
-        select.innerHTML = '<option value="">Cargar...</option>' + 
-            Object.keys(projects).map(name => `<option value="${name}">${name}</option>`).join('');
+        // Rellenar el select con todos los proyectos
+        select.innerHTML = '<option value="">Cargar...</option>' +
+            Object.keys(projects).map(name => `<option value="${name}" ${name === this.currentProjectName ? 'selected' : ''}>${name}</option>`).join('');
 
+        // Evento para cargar el proyecto seleccionado
         select.addEventListener('change', () => {
             const deleteBtn = controls.querySelector('.delete-btn');
             if (deleteBtn) deleteBtn.remove();
@@ -468,16 +482,31 @@ class CrochetEditor {
                 this.state.rings = JSON.parse(JSON.stringify(projects[select.value]));
                 this.state.history = [JSON.parse(JSON.stringify(projects[select.value]))];
                 this.state.historyIndex = 0;
+                this.currentProjectName = select.value; // Actualizar el nombre actual
                 this.render();
 
+                // Añadir botón de eliminar
                 const btn = document.createElement('button');
                 btn.className = 'delete-btn';
                 btn.innerHTML = '<i class="fas fa-trash"></i>';
                 btn.title = 'Eliminar proyecto';
                 btn.addEventListener('click', () => this.deleteProject(select.value));
-                controls.insertBefore(btn, select);
+                controls.insertBefore(btn, select.nextSibling);
             }
         });
+    }
+
+    newProject() {
+        this.state.rings = [{ segments: this.state.guideLines, points: Array(this.state.guideLines).fill('cadeneta') }];
+        this.state.history = [JSON.parse(JSON.stringify(this.state.rings))];
+        this.state.historyIndex = 0;
+        this.currentProjectName = null; // Resetear el nombre al crear un nuevo proyecto
+        this.resetView();
+    }
+
+    initState() {
+        this.state = { ...this.DEFAULT_STATE };
+        this.currentProjectName = null; // Añadir propiedad para rastrear el nombre actual
     }
 
     deleteProject(projectName) {
