@@ -92,20 +92,28 @@ class PatternState {
     increasePoints(ringIndex, segmentIndex, stitch) {
         const nextRingIndex = ringIndex + 1;
         const currentRing = this.state.rings[ringIndex];
-        
+
         if (nextRingIndex >= this.state.rings.length) {
+            // Crear el siguiente anillo con el doble de puntos
             this.state.rings.push({
-                segments: currentRing.segments,
-                points: currentRing.points.map(() => stitch)
+                segments: currentRing.segments * 2,
+                points: Array(currentRing.segments * 2).fill(stitch)
             });
+        } else {
+            // Si ya existe el siguiente anillo, duplicar sus puntos
+            const nextRing = this.state.rings[nextRingIndex];
+            const newPoints = [];
+            nextRing.points.forEach((point, idx) => {
+                newPoints.push(point);
+                if (idx === segmentIndex) {
+                    newPoints.push(`${stitch}_increase`); // Marcar el aumento
+                }
+            });
+            nextRing.segments = newPoints.length;
+            nextRing.points = newPoints;
         }
 
-        const nextRing = this.state.rings[nextRingIndex];
-        nextRing.segments += 1;
-        const newPoint = `${stitch}_increase`;
-        nextRing.points.splice(segmentIndex + 1, 0, newPoint);
-
-        this.propagateSegmentChange(nextRingIndex);
+        this.saveState();
     }
 
     decreasePoints(ringIndex, segmentIndex, stitch) {
@@ -115,27 +123,20 @@ class PatternState {
         }
 
         const nextRing = this.state.rings[nextRingIndex];
-        nextRing.segments -= 1;
-        const combinedPoint = `${stitch}_decrease`;
-        nextRing.points.splice(segmentIndex, 2, combinedPoint);
+        if (nextRing.segments % 2 !== 0) return; // Solo disminuir si es par
 
-        this.propagateSegmentChange(nextRingIndex);
-    }
-
-    propagateSegmentChange(startIndex) {
-        const targetSegments = this.state.rings[startIndex].segments;
-        for (let i = startIndex + 1; i < this.state.rings.length; i++) {
-            const ring = this.state.rings[i];
-            const diff = ring.segments - targetSegments;
-            if (diff > 0) {
-                ring.segments = targetSegments;
-                ring.points.splice(targetSegments);
-            } else if (diff < 0) {
-                ring.segments = targetSegments;
-                const pointsToAdd = targetSegments - ring.points.length;
-                ring.points.push(...Array(pointsToAdd).fill(this.state.selectedStitch));
+        const newPoints = [];
+        for (let i = 0; i < nextRing.points.length; i += 2) {
+            if (i === segmentIndex) {
+                newPoints.push(`${stitch}_decrease`); // Marcar la disminución
+            } else {
+                newPoints.push(nextRing.points[i]);
             }
         }
+        nextRing.segments = newPoints.length;
+        nextRing.points = newPoints;
+
+        this.saveState();
     }
 }
 
@@ -211,28 +212,27 @@ class CanvasRenderer {
         state.rings.forEach((ring, ringIndex) => {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
-            const radius = (ringIndex + 0.5) * state.ringSpacing; // Centro del "renglon"
+            const radius = (ringIndex + 0.5) * state.ringSpacing;
             ring.points.forEach((type, segmentIndex) => {
-                const angle = segmentIndex * angleStep + (angleStep / 2); // Desplazado al centro del segmento
+                const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
                 let stitchType = type;
                 let isSpecial = false;
+                let symbol = STITCH_TYPES.get(stitchType).symbol;
 
                 if (type.includes('_increase')) {
                     stitchType = type.replace('_increase', '');
                     isSpecial = true;
-                    this.ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                    this.ctx.fillText(STITCH_TYPES.get(stitchType).symbol + '+', x, y);
+                    symbol = '▿';
                 } else if (type.includes('_decrease')) {
                     stitchType = type.replace('_decrease', '');
                     isSpecial = true;
-                    this.ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                    this.ctx.fillText(STITCH_TYPES.get(stitchType).symbol + '-', x, y);
-                } else {
-                    this.ctx.fillStyle = STITCH_TYPES.get(type).color;
-                    this.ctx.fillText(STITCH_TYPES.get(type).symbol, x, y);
+                    symbol = '▵';
                 }
+
+                this.ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
+                this.ctx.fillText(symbol, x, y);
 
                 if (isSpecial) {
                     this.ctx.beginPath();
@@ -340,21 +340,20 @@ class CanvasRenderer {
                 const y = Math.sin(angle) * radius;
                 let stitchType = type;
                 let isSpecial = false;
+                let symbol = STITCH_TYPES.get(stitchType).symbol;
 
                 if (type.includes('_increase')) {
                     stitchType = type.replace('_increase', '');
                     isSpecial = true;
-                    ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                    ctx.fillText(STITCH_TYPES.get(stitchType).symbol + '+', x, y);
+                    symbol = '▿';
                 } else if (type.includes('_decrease')) {
                     stitchType = type.replace('_decrease', '');
                     isSpecial = true;
-                    ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                    ctx.fillText(STITCH_TYPES.get(stitchType).symbol + '-', x, y);
-                } else {
-                    ctx.fillStyle = STITCH_TYPES.get(type).color;
-                    ctx.fillText(STITCH_TYPES.get(type).symbol, x, y);
+                    symbol = '▵';
                 }
+
+                ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
+                ctx.fillText(symbol, x, y);
 
                 if (isSpecial) {
                     ctx.beginPath();
@@ -378,6 +377,10 @@ class CanvasRenderer {
             ctx.fillText(`${stitch.symbol} - ${stitch.desc}`, x, y);
             y += 20;
         }
+        ctx.fillStyle = '#000000';
+        ctx.fillText('▿ - Aumento', x, y);
+        y += 20;
+        ctx.fillText('▵ - Disminución', x, y);
     }
 }
 
@@ -750,7 +753,10 @@ class UIController {
             y += 8;
         }
         doc.setTextColor('#000000');
-        return y;
+        doc.text('▿ - Aumento', margin + 5, y);
+        y += 8;
+        doc.text('▵ - Disminución', margin + 5, y);
+        return y + 10;
     }
 
     addPDFPattern(doc, pageWidth, pageHeight, margin, contentWidth, legendHeight) {
@@ -778,10 +784,10 @@ class UIController {
 
                 if (type.includes('_increase')) {
                     stitchType = type.replace('_increase', '');
-                    symbol = STITCH_TYPES.get(stitchType).symbol + '+';
+                    symbol = '▿';
                 } else if (type.includes('_decrease')) {
                     stitchType = type.replace('_decrease', '');
-                    symbol = STITCH_TYPES.get(stitchType).symbol + '-';
+                    symbol = '▵';
                 }
 
                 doc.setTextColor(STITCH_TYPES.get(stitchType).color);
@@ -832,7 +838,7 @@ class UIController {
         if (this.tooltip.classList.contains('hidden')) {
             const content = Array.from(STITCH_TYPES)
                 .map(([, stitch]) => `<span style="color: ${stitch.color}">${stitch.symbol}</span> - ${stitch.desc}`)
-                .join('<br>');
+                .join('<br>') + '<br><span>▿</span> - Aumento<br><span>▵</span> - Disminución';
             this.tooltip.innerHTML = content;
 
             const rect = e.target.getBoundingClientRect();
