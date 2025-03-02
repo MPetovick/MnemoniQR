@@ -157,19 +157,52 @@ class CrochetEditor {
 
     increasePoints(ringIndex, segmentIndex) {
         const nextRingIndex = ringIndex + 1;
+        const currentRing = this.state.rings[ringIndex];
+        
         if (nextRingIndex >= this.state.rings.length) {
-            this.state.rings.push({ segments: this.state.rings[ringIndex].segments, points: [] });
+            this.state.rings.push({
+                segments: currentRing.segments,
+                points: currentRing.points.map(() => this.state.selectedStitch)
+            });
         }
+
         const nextRing = this.state.rings[nextRingIndex];
         nextRing.segments += 1;
-        nextRing.points.splice(segmentIndex + 1, 0, this.state.selectedStitch);
+        const newPoint = `${this.state.selectedStitch}_increase`;
+        nextRing.points.splice(segmentIndex + 1, 0, newPoint);
+
+        this.propagateSegmentChange(nextRingIndex);
+        this.saveState();
     }
 
     decreasePoints(ringIndex, segmentIndex) {
-        if (ringIndex > 0 && this.state.rings[ringIndex].segments > this.state.guideLines) {
-            const ring = this.state.rings[ringIndex];
-            ring.segments -= 1;
-            ring.points.splice(segmentIndex, 1);
+        const nextRingIndex = ringIndex + 1;
+        if (nextRingIndex >= this.state.rings.length || this.state.rings[nextRingIndex].segments <= this.state.guideLines) {
+            return;
+        }
+
+        const nextRing = this.state.rings[nextRingIndex];
+        nextRing.segments -= 1;
+        const combinedPoint = `${this.state.selectedStitch}_decrease`;
+        nextRing.points.splice(segmentIndex, 2, combinedPoint);
+
+        this.propagateSegmentChange(nextRingIndex);
+        this.saveState();
+    }
+
+    propagateSegmentChange(startIndex) {
+        const targetSegments = this.state.rings[startIndex].segments;
+        for (let i = startIndex + 1; i < this.state.rings.length; i++) {
+            const ring = this.state.rings[i];
+            const diff = ring.segments - targetSegments;
+            if (diff > 0) {
+                ring.segments = targetSegments;
+                ring.points.splice(targetSegments);
+            } else if (diff < 0) {
+                ring.segments = targetSegments;
+                const pointsToAdd = targetSegments - ring.points.length;
+                ring.points.push(...Array(pointsToAdd).fill(this.state.selectedStitch));
+            }
         }
     }
 
@@ -341,9 +374,31 @@ class CrochetEditor {
                 const angle = segmentIndex * angleStep;
                 const x = Math.cos(angle) * (ringIndex + 1) * this.state.ringSpacing;
                 const y = Math.sin(angle) * (ringIndex + 1) * this.state.ringSpacing;
-                const stitch = this.STITCH_TYPES.get(type);
-                this.ctx.fillStyle = stitch.color;
-                this.ctx.fillText(stitch.symbol, x, y);
+                let stitchType = type;
+                let isSpecial = false;
+
+                if (type.includes('_increase')) {
+                    stitchType = type.replace('_increase', '');
+                    isSpecial = true;
+                    this.ctx.fillStyle = this.STITCH_TYPES.get(stitchType).color;
+                    this.ctx.fillText(this.STITCH_TYPES.get(stitchType).symbol + '+', x, y);
+                } else if (type.includes('_decrease')) {
+                    stitchType = type.replace('_decrease', '');
+                    isSpecial = true;
+                    this.ctx.fillStyle = this.STITCH_TYPES.get(stitchType).color;
+                    this.ctx.fillText(this.STITCH_TYPES.get(stitchType).symbol + '-', x, y);
+                } else {
+                    this.ctx.fillStyle = this.STITCH_TYPES.get(type).color;
+                    this.ctx.fillText(this.STITCH_TYPES.get(type).symbol, x, y);
+                }
+
+                if (isSpecial) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 5 / this.state.scale, 0, Math.PI * 2);
+                    this.ctx.strokeStyle = '#ff0000';
+                    this.ctx.lineWidth = 1 / this.state.scale;
+                    this.ctx.stroke();
+                }
             });
         });
     }
@@ -522,9 +577,12 @@ class CrochetEditor {
     updateExportPreview() {
         const text = this.state.rings
             .map((ring, ringIndex) => 
-                ring.points.map((type, segmentIndex) => 
-                    `Anillo ${ringIndex + 1}, Segmento ${segmentIndex}: ${this.STITCH_TYPES.get(type).desc}`
-                ).join('\n')
+                ring.points.map((type, segmentIndex) => {
+                    let desc = this.STITCH_TYPES.get(type.replace(/(_increase|_decrease)/, '')).desc;
+                    if (type.includes('_increase')) desc += ' (Aumento)';
+                    else if (type.includes('_decrease')) desc += ' (Disminución)';
+                    return `Anillo ${ringIndex + 1}, Segmento ${segmentIndex}: ${desc}`;
+                }).join('\n')
             )
             .join('\n') || 'Patrón vacío';
         document.getElementById('exportText').value = text;
@@ -623,10 +681,22 @@ class CrochetEditor {
                 const angle = segmentIndex * angleStep;
                 const x = centerX + Math.cos(angle) * radius;
                 const y = centerY + Math.sin(angle) * radius;
-                const stitch = this.STITCH_TYPES.get(type);
-                doc.setTextColor(stitch.color);
+                let stitchType = type;
+                let symbol = this.STITCH_TYPES.get(stitchType).symbol;
+
+                if (type.includes('_increase')) {
+                    stitchType = type.replace('_increase', '');
+                    symbol = this.STITCH_TYPES.get(stitchType).symbol + '+';
+                } else if (type.includes('_decrease')) {
+                    stitchType = type.replace('_decrease', '');
+                    symbol = this.STITCH_TYPES.get(stitchType).symbol + '-';
+                } else {
+                    symbol = this.STITCH_TYPES.get(stitchType).symbol;
+                }
+
+                doc.setTextColor(this.STITCH_TYPES.get(stitchType).color);
                 doc.setFontSize(12 * scale);
-                doc.text(stitch.symbol, x, y, { align: 'center', baseline: 'middle' });
+                doc.text(symbol, x, y, { aline: 'center', baseline: 'middle' });
             });
         });
 
@@ -701,9 +771,31 @@ class CrochetEditor {
                 const angle = segmentIndex * angleStep;
                 const x = Math.cos(angle) * (ringIndex + 1) * this.state.ringSpacing;
                 const y = Math.sin(angle) * (ringIndex + 1) * this.state.ringSpacing;
-                const stitch = this.STITCH_TYPES.get(type);
-                ctx.fillStyle = stitch.color;
-                ctx.fillText(stitch.symbol, x, y);
+                let stitchType = type;
+                let isSpecial = false;
+
+                if (type.includes('_increase')) {
+                    stitchType = type.replace('_increase', '');
+                    isSpecial = true;
+                    ctx.fillStyle = this.STITCH_TYPES.get(stitchType).color;
+                    ctx.fillText(this.STITCH_TYPES.get(stitchType).symbol + '+', x, y);
+                } else if (type.includes('_decrease')) {
+                    stitchType = type.replace('_decrease', '');
+                    isSpecial = true;
+                    ctx.fillStyle = this.STITCH_TYPES.get(stitchType).color;
+                    ctx.fillText(this.STITCH_TYPES.get(stitchType).symbol + '-', x, y);
+                } else {
+                    ctx.fillStyle = this.STITCH_TYPES.get(type).color;
+                    ctx.fillText(this.STITCH_TYPES.get(type).symbol, x, y);
+                }
+
+                if (isSpecial) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5 / scale, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 1 / scale;
+                    ctx.stroke();
+                }
             });
         });
     }
