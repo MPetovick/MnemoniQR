@@ -531,9 +531,10 @@ class InputHandler {
 
 // Clase para la interfaz de usuario
 class UIController {
-    constructor(state, renderer) {
+    constructor(state, renderer, inputHandler) { // Añadimos inputHandler como parámetro
         this.state = state;
         this.renderer = renderer;
+        this.inputHandler = inputHandler; // Usamos la instancia existente
         this.currentProjectName = null;
         this.tooltip = null;
         this.setupListeners();
@@ -548,9 +549,9 @@ class UIController {
             { id: 'saveAsBtn', fn: this.saveProjectAs.bind(this) },
             { id: 'undoBtn', fn: () => this.state.undo() && this.renderer.render(this.state.state) },
             { id: 'redoBtn', fn: () => this.state.redo() && this.renderer.render(this.state.state) },
-            { id: 'zoomIn', fn: () => new InputHandler(null, this.state, this.renderer).adjustZoom(0.2) },
-            { id: 'zoomOut', fn: () => new InputHandler(null, this.state, this.renderer).adjustZoom(-0.2) },
-            { id: 'resetView', fn: () => new InputHandler(null, this.state, this.renderer).resetView() },
+            { id: 'zoomIn', fn: () => this.inputHandler.adjustZoom(0.2) }, // Usamos la instancia existente
+            { id: 'zoomOut', fn: () => this.inputHandler.adjustZoom(-0.2) },
+            { id: 'resetView', fn: () => this.inputHandler.resetView() },
             { id: 'stitchHelpBtn', fn: this.toggleStitchTooltip.bind(this) },
             { id: 'exportTxt', fn: this.exportAsText.bind(this) },
             { id: 'exportPng', fn: this.exportAsImage.bind(this) },
@@ -858,7 +859,7 @@ class CrochetEditor {
         this.state = new PatternState();
         this.renderer = new CanvasRenderer(document.getElementById('patternCanvas'));
         this.inputHandler = new InputHandler(this.renderer.canvas, this.state, this.renderer);
-        this.uiController = new UIController(this.state, this.renderer);
+        this.uiController = new UIController(this.state, this.renderer, this.inputHandler); // Pasamos inputHandler
         this.initialize();
     }
 
