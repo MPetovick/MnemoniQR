@@ -206,6 +206,7 @@ body {
     color: white;
 }
 
+
 .config-bar {
     position: fixed;
     top: 60px;
@@ -213,92 +214,107 @@ body {
     width: 80px;
     height: calc(100vh - 60px);
     background-color: var(--config-bar-bg);
-    padding: 1rem 0.5rem;
+    padding: 1.5rem 0.5rem;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 2rem;
     z-index: 900;
-    gap: 1.5rem;
 }
 
 .config-section {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
     width: 100%;
 }
 
-.config-section label {
-    font-size: 0.9rem;
-    color: var(--config-control-color);
-    text-align: center;
-}
-
-.config-section input[type="range"] {
-    writing-mode: bt-lr;
-    -webkit-appearance: slider-vertical;
-    width: 6px;
-    height: 80px;
-    padding: 0 5px;
-}
-
-.config-section span {
-    font-size: 0.7em;
-    font-weight: 500;
-    color: var(--config-control-color);
-}
-
-#addRingBtn {
-    background-color: var(--secondary-color);
-    color: white;
-    border: none;
-    padding: 0.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    width: 60px;
-    height: 60px;
+.config-control {
+    position: relative;
+    width: var(--control-width);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 0.3rem;
-    box-shadow: var(--shadow);
-    margin-top: auto;
+    gap: 0.5rem;
+}
+
+.config-control label {
+    font-size: 0.7rem;
+    color: var(--config-control-color);
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    margin: 1rem 0;
+}
+
+input[type="range"].vertical {
+    -webkit-appearance: slider-vertical;
+    width: 6px;
+    height: 120px;
+    padding: 0 15px;
+    background: transparent;
+}
+
+/* Estilo para el botón de agregar anillos como barra vertical */
+#addRingBtn {
+    position: relative;
+    width: var(--control-width);
+    height: 120px;
+    background: var(--toolbar-bg);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding-bottom: 1rem;
+}
+
+#addRingBtn::before {
+    content: "+";
+    position: absolute;
+    bottom: 10px;
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: var(--primary-color);
+    transition: inherit;
+}
+
+#addRingBtn::after {
+    content: "Anillos";
+    position: absolute;
+    top: -25px;
+    font-size: 0.7rem;
+    color: var(--config-control-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
 }
 
 #addRingBtn:hover {
-    background-color: #2980b9;
-    transform: scale(1.05);
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    transform: scale(1.02);
 }
 
-#addRingBtn i {
-    font-size: 1.4rem;
+#addRingBtn:hover::before {
+    color: white;
+    transform: rotate(90deg) scale(1.2);
 }
 
-#addRingBtn span {
-    font-size: 0.7rem;
-    text-align: center;
-    line-height: 1.1;
-    display: block;
-}
-
-.tooltip {
+.ring-counter {
     position: absolute;
-    background: var(--toolbar-bg);
-    color: var(--text-color);
-    padding: 0.5rem;
+    top: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
     border-radius: 4px;
-    box-shadow: var(--shadow);
-    max-width: 200px;
-    z-index: 1000;
-    font-size: 0.8rem;
-    line-height: 1.2;
-}
-
-.tooltip.hidden {
-    display: none;
 }
