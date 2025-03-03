@@ -84,9 +84,19 @@ body {
 .tool-section { display: flex; align-items: center; gap: 0.5rem; }
 .stitch-section { display: flex; align-items: center; gap: 0.5rem; }
 .tool-label { font-size: 0.9em; color: var(--primary-color); margin-right: 0.5rem; }
-.tool-btn { padding: inherit; background: inherit; border: inherit; border-radius: inherit; cursor: inherit; transition: inherit; }
-.tool-btn:hover { background-color: inherit; color: inherit; transform: inherit; }
-.tool-btn:disabled { opacity: inherit; cursor: inherit; transform: inherit; }
+.tool-btn {
+    padding: 0.5rem;
+    background: var(--background-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.tool-btn:hover { background-color: var(--secondary-color); color: white; transform: translateY(-1px); }
+.tool-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .help-btn { background: none; border: none; color: var(--primary-color); font-size: 1rem; cursor: pointer; padding: 0; }
 .help-btn:hover { color: var(--secondary-color); }
 .stitch-palette { display: flex; gap: 0.3rem; }
@@ -123,132 +133,142 @@ body {
 }
 .export-panel { background: var(--toolbar-bg); padding: 0.5rem 1rem; border-top: 1px solid #ddd; }
 .export-options { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
-.export-btn { padding: inherit; background: inherit; border: inherit; border-radius: inherit; cursor: inherit; transition: inherit; }
-.export-btn:hover { background-color: inherit; color: inherit; }
+.export-btn { padding: 0.5rem; background: var(--background-color); border: 1px solid var(--primary-color); border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+.export-btn:hover { background-color: var(--secondary-color); color: white; }
 
-/* Config Bar */
+/* Config Bar Mejorada Visualmente */
 .config-bar {
     position: fixed;
     top: 60px;
     right: 0;
     width: 80px;
     height: calc(100vh - 60px);
-    background-color: var(--config-bar-bg);
-    padding: 1rem 0.5rem;
-    box-shadow: var(--shadow);
+    background: linear-gradient(to bottom, var(--config-bar-bg), #e9ecef); /* Gradiente sutil */
+    padding: 1.5rem 0.5rem;
+    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1); /* Sombra más pronunciada a la izquierda */
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
+    gap: 2.5rem;
     z-index: 900;
+    border-left: 1px solid rgba(44, 62, 80, 0.1); /* Borde suave */
 }
 
-.config-section { display: flex; flex-direction: column; align-items: center; gap: 2rem; width: 100%; }
+.config-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5rem;
+    width: 100%;
+}
 
-.config-control { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.config-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.8); /* Fondo blanco translúcido */
+    padding: 0.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Sombra suave */
+    transition: transform 0.2s ease;
+}
+
+.config-control:hover {
+    transform: scale(1.05); /* Efecto sutil al pasar el mouse */
+}
 
 .config-control label {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: var(--config-control-color);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     writing-mode: vertical-lr;
     transform: rotate(180deg);
     margin-bottom: 0.5rem;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1); /* Sombra ligera para legibilidad */
 }
 
 input[type="range"].vertical {
     -webkit-appearance: slider-vertical;
     appearance: slider-vertical;
-    width: 8px;
-    height: 140px;
-    background: var(--primary-color);
-    border-radius: 4px;
+    width: 10px; /* Un poco más ancho para mejor visibilidad */
+    height: 150px; /* Ligeramente más alto */
+    background: linear-gradient(to top, var(--primary-color), var(--secondary-color)); /* Gradiente en la barra */
+    border-radius: 5px;
     outline: none;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2); /* Sombra interna */
 }
 
 input[type="range"].vertical::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     background: var(--secondary-color);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 2px var(--primary-color); /* Sombra y borde */
+    transition: transform 0.2s ease;
 }
 
 input[type="range"].vertical::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     background: var(--secondary-color);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 2px var(--primary-color);
+    transition: transform 0.2s ease;
 }
 
-input[type="range"].vertical:hover { opacity: 0.8; }
+input[type="range"].vertical:hover { opacity: 0.9; }
+input[type="range"].vertical::-webkit-slider-thumb:hover,
+input[type="range"].vertical::-moz-range-thumb:hover {
+    transform: scale(1.1); /* Aumento sutil al interactuar */
+}
 
-.config-control span { font-size: 0.9rem; color: var(--primary-color); margin-top: 0.5rem; }
+.config-control span {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    margin-top: 0.5rem;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 2px 6px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
 
+/* Botón Agregar Anillo */
 #addRingBtn {
-    width: 50px;
-    height: 140px;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    border: none;
-    border-radius: 8px;
+    padding: 0.5rem;
+    background: var(--background-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
     cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.2s ease;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    box-shadow: var(--shadow);
+    gap: 0.3rem;
+    width: 100%; /* Ocupa todo el ancho del contenedor */
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-#addRingBtn::before {
-    content: "+";
-    font-size: 2rem;
+#addRingBtn:hover {
+    background-color: var(--secondary-color);
     color: white;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    transition: transform 0.3s ease;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
-
-#addRingBtn::after {
-    content: "Anillos";
-    font-size: 0.8rem;
-    color: white;
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    writing-mode: vertical-lr;
-    transform: rotate(180deg) translateX(50%);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-#addRingBtn:hover { transform: scale(1.05); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); }
-#addRingBtn:hover::before { transform: translate(-50%, -50%) scale(1.2); }
-#addRingBtn:active { transform: scale(0.98); }
 
 #addRingBtn .ring-counter {
-    position: absolute;
-    top: 10px;
-    font-size: 1rem;
+    font-size: 0.8rem;
     font-weight: 600;
-    color: white;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 2px 8px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
 }
 
 /* Tooltip */
