@@ -5,6 +5,7 @@
     --text-color: #2c3e50;
     --toolbar-bg: #ffffff;
     --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --success-color: #27ae60; /* Color verde para el botón "Agregar Anillo" */
 }
 
 * {
@@ -242,6 +243,31 @@ body {
 .config-section span {
     font-size: 0.8em;
     color: var(--text-color);
+}
+
+/* Estilos para el botón "Agregar Anillo" */
+#addRingBtn {
+    background-color: var(--success-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem; /* Espacio superior */
+}
+
+#addRingBtn:hover {
+    background-color: #219653; /* Color verde más oscuro al pasar el cursor */
+    transform: translateY(-1px);
+}
+
+#addRingBtn i {
+    font-size: 1rem;
 }
 
 .tooltip {
