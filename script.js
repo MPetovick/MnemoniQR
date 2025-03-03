@@ -1,4 +1,14 @@
-// Constantes globales
+// Utilidades
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+};
+
+// Constantes
 const STITCH_TYPES = new Map([
     ['cadeneta', { symbol: '#', color: '#e74c3c', desc: 'Cadena base' }],
     ['punt_baix', { symbol: '•', color: '#2ecc71', desc: 'Punto bajo' }],
@@ -28,12 +38,12 @@ const DEFAULT_STATE = {
 // Clase para manejar el estado del patrón
 class PatternState {
     constructor() {
-        this.state = { ...DEFAULT_STATE };
+        this.state = structuredClone(DEFAULT_STATE);
         this.state.history = [this.cloneRings()];
     }
 
     reset() {
-        this.state = { ...DEFAULT_STATE };
+        this.state = structuredClone(DEFAULT_STATE);
         this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
         this.state.history = [this.cloneRings()];
         this.state.historyIndex = 0;
@@ -45,115 +55,87 @@ class PatternState {
         }
         this.state.history.push(this.cloneRings());
         this.state.historyIndex++;
-        if (this.state.history.length > 100) {
-            this.state.history.shift();
-            this.state.historyIndex--;
-        }
+        this.state.history = this.state.history.slice(-100);
     }
 
     undo() {
-        if (this.state.historyIndex > 0) {
-            this.state.historyIndex--;
-            this.state.rings = this.cloneRings(this.state.history[this.state.historyIndex]);
-            return true;
-        }
-        return false;
+        if (this.state.historyIndex <= 0) return false;
+        this.state.historyIndex--;
+        this.state.rings = this.cloneRings(this.state.history[this.state.historyIndex]);
+        return true;
     }
 
     redo() {
-        if (this.state.historyIndex < this.state.history.length - 1) {
-            this.state.historyIndex++;
-            this.state.rings = this.cloneRings(this.state.history[this.state.historyIndex]);
-            return true;
-        }
-        return false;
+        if (this.state.historyIndex >= this.state.history.length - 1) return false;
+        this.state.historyIndex++;
+        this.state.rings = this.cloneRings(this.state.history[this.state.historyIndex]);
+        return true;
     }
 
     cloneRings(rings = this.state.rings) {
-        return JSON.parse(JSON.stringify(rings));
+        return structuredClone(rings);
     }
 
     setRings(rings) {
-        this.state.rings = rings;
+        this.state.rings = this.cloneRings(rings);
         this.state.history = [this.cloneRings()];
         this.state.historyIndex = 0;
     }
 
     updateGuideLines(value) {
-        this.state.guideLines = value;
-        this.state.rings[0].segments = value;
-        this.state.rings[0].points = Array(value).fill('cadeneta');
+        this.state.guideLines = clamp(value, 4, 24);
+        this.state.rings[0].segments = this.state.guideLines;
+        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
     }
 
     updateRingSpacing(value) {
-        this.state.ringSpacing = value;
+        this.state.ringSpacing = clamp(value, 30, 80);
     }
 
     addRing() {
-        const lastRing = this.state.rings[this.state.rings.length - 1];
-        if (!lastRing) return; // Validación para evitar errores
-
-        const newRing = {
+        const lastRing = this.state.rings.at(-1);
+        if (!lastRing) throw new Error('No rings available');
+        this.state.rings.push({
             segments: lastRing.segments,
-            points: Array(lastRing.segments).fill('cadeneta') // Rellenar con cadeneta por defecto
-        };
-
-        this.state.rings.push(newRing);
+            points: Array(lastRing.segments).fill('cadeneta')
+        });
         this.saveState();
     }
 
     increasePoints(ringIndex, segmentIndex, stitch) {
         const nextRingIndex = ringIndex + 1;
         const currentRing = this.state.rings[ringIndex];
-
         if (nextRingIndex >= this.state.rings.length) {
-            // Crear el siguiente anillo con el doble de puntos
             this.state.rings.push({
                 segments: currentRing.segments * 2,
                 points: Array(currentRing.segments * 2).fill(stitch)
             });
         } else {
-            // Si ya existe el siguiente anillo, duplicar sus puntos
             const nextRing = this.state.rings[nextRingIndex];
-            const newPoints = [];
-            nextRing.points.forEach((point, idx) => {
-                newPoints.push(point);
-                if (idx === segmentIndex) {
-                    newPoints.push(`${stitch}_increase`); // Marcar el aumento
-                }
-            });
+            const newPoints = nextRing.points.flatMap((point, idx) =>
+                idx === segmentIndex ? [point, `${stitch}_increase`] : point
+            );
             nextRing.segments = newPoints.length;
             nextRing.points = newPoints;
         }
-
         this.saveState();
     }
 
     decreasePoints(ringIndex, segmentIndex, stitch) {
         const nextRingIndex = ringIndex + 1;
-        if (nextRingIndex >= this.state.rings.length || this.state.rings[nextRingIndex].segments <= this.state.guideLines) {
-            return;
-        }
-
+        if (nextRingIndex >= this.state.rings.length || this.state.rings[nextRingIndex].segments <= this.state.guideLines) return;
         const nextRing = this.state.rings[nextRingIndex];
-        if (nextRing.segments % 2 !== 0) return; // Solo disminuir si es par
-
-        const newPoints = [];
-        for (let i = 0; i < nextRing.points.length; i += 2) {
-            if (i === segmentIndex) {
-                newPoints.push(`${stitch}_decrease`); // Marcar la disminución
-            } else {
-                newPoints.push(nextRing.points[i]);
-            }
-        }
-        nextRing.segments = newPoints.length;
-        nextRing.points = newPoints;
-
+        if (nextRing.segments % 2 !== 0) return;
+        nextRing.points = nextRing.points.reduce((acc, point, i) => {
+            if (i % 2 === 0) acc.push(i === segmentIndex ? `${stitch}_decrease` : point);
+            return acc;
+        }, []);
+        nextRing.segments = nextRing.points.length;
         this.saveState();
     }
 }
 
-// Clase para manejar el renderizado en el canvas
+// Clase para renderizar en el canvas
 class CanvasRenderer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -162,8 +144,9 @@ class CanvasRenderer {
     }
 
     resize() {
-        this.canvas.width = this.canvas.parentElement.clientWidth;
-        this.canvas.height = this.canvas.parentElement.clientHeight;
+        const { clientWidth: w, clientHeight: h } = this.canvas.parentElement;
+        this.canvas.width = w;
+        this.canvas.height = h;
     }
 
     render(state, mouseX = null, mouseY = null) {
@@ -277,7 +260,6 @@ class CanvasRenderer {
         const distance = Math.sqrt(x * x + y * y);
         const ring = Math.floor(distance / state.ringSpacing);
         if (ring < 0 || ring >= state.rings.length) return { ring: -1, segment: -1 };
-
         const segments = state.rings[ring].segments;
         const angle = Math.atan2(y, x) + Math.PI * 2;
         const segment = Math.floor((angle / (Math.PI * 2)) * segments) % segments;
@@ -397,7 +379,7 @@ class CanvasRenderer {
     }
 }
 
-// Clase para manejar la interacción del usuario
+// Clase para manejar entradas del usuario
 class InputHandler {
     constructor(canvas, state, renderer) {
         this.canvas = canvas;
@@ -407,21 +389,20 @@ class InputHandler {
     }
 
     setupListeners() {
-        const events = [
-            { el: this.canvas, ev: 'click', fn: this.handleClick.bind(this) },
-            { el: this.canvas, ev: 'mousemove', fn: this.handleMouseMove.bind(this) },
-            { el: this.canvas, ev: 'wheel', fn: this.handleWheel.bind(this), opts: { passive: false } },
-            { el: this.canvas, ev: 'mousedown', fn: this.startDrag.bind(this) },
-            { el: document, ev: 'mousemove', fn: this.debounce(this.handleDrag.bind(this), 16) },
-            { el: document, ev: 'mouseup', fn: this.endDrag.bind(this) },
-            { el: this.canvas, ev: 'touchstart', fn: this.handleTouchStart.bind(this), opts: { passive: false } },
-            { el: this.canvas, ev: 'touchmove', fn: this.debounce(this.handleTouchMove.bind(this), 16), opts: { passive: false } },
-            { el: this.canvas, ev: 'touchend', fn: this.handleTouchEnd.bind(this) },
-            { el: document, ev: 'keydown', fn: this.handleKeyDown.bind(this) },
-            { el: window, ev: 'resize', fn: this.renderer.resize.bind(this.renderer) }
+        const eventMap = [
+            ['click', this.handleClick],
+            ['mousemove', this.handleMouseMove],
+            ['wheel', this.handleWheel, { passive: false }],
+            ['mousedown', this.startDrag],
+            ['touchstart', this.handleTouchStart, { passive: false }],
+            ['touchmove', debounce(this.handleTouchMove, 16), { passive: false }],
+            ['touchend', this.handleTouchEnd]
         ];
-
-        events.forEach(({ el, ev, fn, opts }) => el.addEventListener(ev, fn, opts));
+        eventMap.forEach(([ev, fn, opts]) => this.canvas.addEventListener(ev, fn.bind(this), opts));
+        document.addEventListener('mousemove', debounce(this.handleDrag.bind(this), 16));
+        document.addEventListener('mouseup', this.endDrag.bind(this));
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+        window.addEventListener('resize', this.renderer.resize.bind(this.renderer));
     }
 
     handleClick(e) {
@@ -523,7 +504,7 @@ class InputHandler {
     }
 
     adjustZoom(amount) {
-        this.state.state.targetScale = Math.max(0.3, Math.min(3, this.state.state.targetScale + amount));
+        this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3);
         this.animate();
     }
 
@@ -546,17 +527,9 @@ class InputHandler {
             Math.abs(this.state.state.offset.y - this.state.state.targetOffset.y) > 1
         );
     }
-
-    debounce(func, wait) {
-        let timeout;
-        return (...args) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-    }
 }
 
-// Clase para manejar la interfaz de usuario
+// Clase para la interfaz de usuario
 class UIController {
     constructor(state, renderer) {
         this.state = state;
@@ -565,6 +538,7 @@ class UIController {
         this.tooltip = null;
         this.setupListeners();
         this.setupStitchPalette();
+        this.updateRingCounter();
     }
 
     setupListeners() {
@@ -581,7 +555,7 @@ class UIController {
             { id: 'exportTxt', fn: this.exportAsText.bind(this) },
             { id: 'exportPng', fn: this.exportAsImage.bind(this) },
             { id: 'exportPdf', fn: this.generatePDF.bind(this) },
-            { id: 'addRingBtn', fn: () => this.state.addRing() && this.renderer.render(this.state.state) }
+            { id: 'addRingBtn', fn: () => { this.state.addRing(); this.updateRingCounter(); this.renderer.render(this.state.state); } }
         ];
 
         buttons.forEach(({ id, fn }) => {
@@ -615,6 +589,7 @@ class UIController {
         this.currentProjectName = null;
         this.renderer.render(this.state.state);
         this.updateUI();
+        this.updateRingCounter();
     }
 
     saveProject() {
@@ -663,7 +638,7 @@ class UIController {
         if (existingDeleteBtn) existingDeleteBtn.remove();
 
         select.innerHTML = '<option value="">Cargar...</option>' +
-            Object.keys(projects).map(name => 
+            Object.keys(projects).map(name =>
                 `<option value="${name}" ${name === this.currentProjectName ? 'selected' : ''}>${name}</option>`
             ).join('');
 
@@ -703,11 +678,12 @@ class UIController {
         document.getElementById('undoBtn').disabled = this.state.state.historyIndex === 0;
         document.getElementById('redoBtn').disabled = this.state.state.historyIndex === this.state.history.length - 1;
         this.updateExportPreview();
+        this.updateRingCounter();
     }
 
     updateExportPreview() {
         const text = this.state.state.rings
-            .map((ring, ringIndex) => 
+            .map((ring, ringIndex) =>
                 ring.points.map((type, segmentIndex) => {
                     let desc = STITCH_TYPES.get(type.replace(/(_increase|_decrease)/, '')).desc;
                     if (type.includes('_increase')) desc += ' (Aumento)';
@@ -863,9 +839,20 @@ class UIController {
             this.tooltip.classList.add('hidden');
         }
     }
+
+    updateRingCounter() {
+        const addRingBtn = document.getElementById('addRingBtn');
+        let counter = addRingBtn.querySelector('.ring-counter');
+        if (!counter) {
+            counter = document.createElement('span');
+            counter.className = 'ring-counter';
+            addRingBtn.appendChild(counter);
+        }
+        counter.textContent = this.state.state.rings.length;
+    }
 }
 
-// Clase principal que coordina las subclases
+// Clase principal
 class CrochetEditor {
     constructor() {
         this.state = new PatternState();
@@ -876,9 +863,13 @@ class CrochetEditor {
     }
 
     initialize() {
-        this.uiController.loadProjects();
-        this.uiController.loadFromLocalStorage();
-        this.renderer.render(this.state.state);
+        try {
+            this.uiController.loadProjects();
+            this.uiController.loadFromLocalStorage();
+            this.renderer.render(this.state.state);
+        } catch (error) {
+            console.error('Error initializing editor:', error);
+        }
     }
 }
 
