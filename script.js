@@ -89,6 +89,19 @@ class PatternState {
         this.state.ringSpacing = value;
     }
 
+    addRing() {
+        const lastRing = this.state.rings[this.state.rings.length - 1];
+        if (!lastRing) return; // Validación para evitar errores
+
+        const newRing = {
+            segments: lastRing.segments,
+            points: Array(lastRing.segments).fill('cadeneta') // Rellenar con cadeneta por defecto
+        };
+
+        this.state.rings.push(newRing);
+        this.saveState();
+    }
+
     increasePoints(ringIndex, segmentIndex, stitch) {
         const nextRingIndex = ringIndex + 1;
         const currentRing = this.state.rings[ringIndex];
@@ -264,7 +277,7 @@ class CanvasRenderer {
         const distance = Math.sqrt(x * x + y * y);
         const ring = Math.floor(distance / state.ringSpacing);
         if (ring < 0 || ring >= state.rings.length) return { ring: -1, segment: -1 };
-        
+
         const segments = state.rings[ring].segments;
         const angle = Math.atan2(y, x) + Math.PI * 2;
         const segment = Math.floor((angle / (Math.PI * 2)) * segments) % segments;
@@ -567,7 +580,8 @@ class UIController {
             { id: 'stitchHelpBtn', fn: this.toggleStitchTooltip.bind(this) },
             { id: 'exportTxt', fn: this.exportAsText.bind(this) },
             { id: 'exportPng', fn: this.exportAsImage.bind(this) },
-            { id: 'exportPdf', fn: this.generatePDF.bind(this) }
+            { id: 'exportPdf', fn: this.generatePDF.bind(this) },
+            { id: 'addRingBtn', fn: () => this.state.addRing() && this.renderer.render(this.state.state) }
         ];
 
         buttons.forEach(({ id, fn }) => {
