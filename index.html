@@ -19,33 +19,19 @@
     <main class="editor-container">
         <div class="top-toolbar">
             <div class="tool-section">
-                <button class="tool-btn" id="newBtn" title="Nuevo proyecto (N)">
-                    <i class="fas fa-file"></i>
-                </button>
-                <button class="tool-btn" id="saveBtn" title="Guardar proyecto (Ctrl+S)">
-                    <i class="fas fa-save"></i>
-                </button>
-                <button class="tool-btn" id="saveAsBtn" title="Guardar como...">
-                    <i class="fas fa-save"></i> +
-                </button>
-                <button class="tool-btn" id="undoBtn" title="Deshacer (Ctrl+Z)">
-                    <i class="fas fa-undo"></i>
-                </button>
-                <button class="tool-btn" id="redoBtn" title="Rehacer (Ctrl+Y)">
-                    <i class="fas fa-redo"></i>
-                </button>
+                <button class="tool-btn" id="newBtn" title="Nuevo proyecto (N)"><i class="fas fa-file"></i></button>
+                <button class="tool-btn" id="saveBtn" title="Guardar proyecto (Ctrl+S)"><i class="fas fa-save"></i></button>
+                <button class="tool-btn" id="saveAsBtn" title="Guardar como..."><i class="fas fa-save"></i> +</button>
+                <button class="tool-btn" id="undoBtn" title="Deshacer (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+                <button class="tool-btn" id="redoBtn" title="Rehacer (Ctrl+Y)"><i class="fas fa-redo"></i></button>
                 <select id="loadProjects" title="Cargar proyecto guardado">
                     <option value="">Cargar...</option>
                 </select>
             </div>
             <div class="tool-section stitch-section">
                 <span class="tool-label">Puntadas</span>
-                <button id="stitchHelpBtn" class="help-btn" title="Guía de símbolos">
-                    <i class="fas fa-question-circle"></i>
-                </button>
-                <div class="stitch-palette" id="stitchPalette">
-                    <!-- Los botones se generan dinámicamente en JS -->
-                </div>
+                <button id="stitchHelpBtn" class="help-btn" title="Guía de símbolos"><i class="fas fa-question-circle"></i></button>
+                <div class="stitch-palette" id="stitchPalette"></div>
             </div>
         </div>
 
@@ -70,20 +56,21 @@
 
         <div class="config-bar">
             <div class="config-section">
-                <label for="guideLines" title="Divisiones Iniciales"><i class="fas fa-drafting-compass"></i></label>
-                <input type="range" id="guideLines" min="4" max="24" value="8">
-                <span id="guideLinesValue">8</span>
-                <label for="ringSpacing" title="Espaciado de Anillos"><i class="fas fa-circle-notch"></i></label>
-                <input type="range" id="ringSpacing" min="30" max="80" value="50">
-                <span id="ringSpacingValue">50px</span>
-                <button class="tool-btn" id="addRingBtn" title="Agregar un nuevo anillo">
-                    <i class="fas fa-plus-circle"></i> Agregar Anillo
-                </button>
+                <div class="config-control">
+                    <label for="guideLines" title="Divisiones Iniciales"><i class="fas fa-drafting-compass"></i></label>
+                    <input type="range" id="guideLines" class="vertical" min="4" max="24" value="8">
+                    <span id="guideLinesValue">8</span>
+                </div>
+                <div class="config-control">
+                    <label for="ringSpacing" title="Espaciado de Anillos"><i class="fas fa-circle-notch"></i></label>
+                    <input type="range" id="ringSpacing" class="vertical" min="30" max="80" value="50">
+                    <span id="ringSpacingValue">50px</span>
+                </div>
+                <button class="tool-btn" id="addRingBtn" title="Agregar un nuevo anillo"></button>
             </div>
         </div>
     </main>
 
-    <!-- Tooltip flotante -->
     <div id="stitchTooltip" class="tooltip hidden"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
