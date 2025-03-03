@@ -5,7 +5,8 @@
     --text-color: #2c3e50;
     --toolbar-bg: #ffffff;
     --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --success-color: #27ae60; /* Color verde para el botón "Agregar Anillo" */
+    --config-bar-bg: #f5f6fa;
+    --config-control-color: #2c3e50;
 }
 
 * {
@@ -46,7 +47,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    padding-top: 60px; /* Espacio para la navbar fija */
+    padding-top: 60px;
 }
 
 .top-toolbar {
@@ -57,9 +58,9 @@ body {
     padding: 0.5rem 1rem;
     box-shadow: var(--shadow);
     position: fixed;
-    top: 60px; /* Debajo de la navbar */
+    top: 60px;
     left: 0;
-    right: 80px; /* Espacio para la barra de configuración */
+    right: 80px;
     z-index: 900;
 }
 
@@ -150,8 +151,8 @@ body {
     display: flex;
     flex-direction: column;
     flex: 1;
-    margin-top: 100px; /* Espacio para la barra superior */
-    margin-right: 80px; /* Espacio para la barra de configuración */
+    margin-top: 100px;
+    margin-right: 80px;
 }
 
 .grid-view {
@@ -207,17 +208,18 @@ body {
 
 .config-bar {
     position: fixed;
-    top: 60px; /* Debajo de la navbar */
+    top: 60px;
     right: 0;
     width: 80px;
     height: calc(100vh - 60px);
-    background-color: var(--toolbar-bg);
+    background-color: var(--config-bar-bg);
     padding: 1rem 0.5rem;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     align-items: center;
     z-index: 900;
+    gap: 1.5rem;
 }
 
 .config-section {
@@ -225,49 +227,63 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 1rem;
+    width: 100%;
 }
 
 .config-section label {
-    font-size: 1rem;
-    color: var(--primary-color);
+    font-size: 0.9rem;
+    color: var(--config-control-color);
+    text-align: center;
 }
 
 .config-section input[type="range"] {
-    writing-mode: bt-lr; /* Vertical */
+    writing-mode: bt-lr;
     -webkit-appearance: slider-vertical;
-    width: 8px;
-    height: 100px;
+    width: 6px;
+    height: 80px;
     padding: 0 5px;
 }
 
 .config-section span {
-    font-size: 0.8em;
-    color: var(--text-color);
+    font-size: 0.7em;
+    font-weight: 500;
+    color: var(--config-control-color);
 }
 
-/* Estilos para el botón "Agregar Anillo" */
 #addRingBtn {
-    background-color: var(--success-color);
+    background-color: var(--secondary-color);
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 0.9rem;
     transition: all 0.2s ease;
+    width: 60px;
+    height: 60px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    margin-top: 1rem; /* Espacio superior */
+    justify-content: center;
+    gap: 0.3rem;
+    box-shadow: var(--shadow);
+    margin-top: auto;
+    text-transform: uppercase;
 }
 
 #addRingBtn:hover {
-    background-color: #219653; /* Color verde más oscuro al pasar el cursor */
-    transform: translateY(-1px);
+    background-color: #2980b9;
+    transform: scale(1.05);
 }
 
 #addRingBtn i {
-    font-size: 1rem;
+    font-size: 1.4rem;
+}
+
+#addRingBtn span {
+    font-size: 0.7rem;
+    text-align: center;
+    line-height: 1.1;
+    display: block;
 }
 
 .tooltip {
