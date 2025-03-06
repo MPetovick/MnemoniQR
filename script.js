@@ -24,6 +24,7 @@ const ringSpacingValue = document.getElementById("ringSpacingValue");
 const zoomIn = document.getElementById("zoomIn");
 const zoomOut = document.getElementById("zoomOut");
 const resetView = document.getElementById("resetView");
+const patternLog = document.getElementById("patternLog");
 
 // Variables de estado
 let selectedStitch = null;
@@ -32,6 +33,7 @@ let offsetX = 0;
 let offsetY = 0;
 let isDragging = false;
 let startX, startY;
+let patternSequence = []; // Almacenar la secuencia de puntos
 
 // Generar botones de la paleta de puntadas
 function createStitchButtons() {
@@ -46,11 +48,24 @@ function createStitchButtons() {
     });
 }
 
-// Seleccionar un punto
+// Seleccionar un punto y añadirlo a la secuencia
 function selectStitch(stitch, button) {
     selectedStitch = stitch;
     document.querySelectorAll(".stitch-btn").forEach(btn => btn.classList.remove("active"));
     button.classList.add("active");
+    
+    // Añadir a la secuencia
+    const stitchCount = patternSequence.length + 1;
+    patternSequence.push({ ...stitch, position: stitchCount });
+    updatePatternLog();
+    drawPattern();
+}
+
+// Actualizar el log de la secuencia
+function updatePatternLog() {
+    const logText = patternSequence.map(s => `${s.position}: ${s.name} (${s.symbol})`).join("\n");
+    patternLog.value = logText;
+    patternLog.scrollTop = patternLog.scrollHeight; // Auto-scroll al final
 }
 
 // Mostrar tooltip al pasar el mouse o tocar
@@ -72,7 +87,7 @@ stitchHelpBtn.addEventListener("click", () => {
     stitchTooltip.style.top = "50%";
     stitchTooltip.style.transform = "translate(-50%, -50%)";
     stitchTooltip.classList.remove("hidden");
-    setTimeout(hideTooltip, 5000); // Ocultar después de 5 segundos
+    setTimeout(hideTooltip, 5000);
 });
 
 // Funciones de tooltip
@@ -124,13 +139,28 @@ function drawPattern() {
         ctx.stroke();
     }
 
+    // Dibujar puntos de crochet en el patrón
+    patternSequence.forEach((stitch, index) => {
+        const ring = Math.floor(index / divisions) + 1; // Anillo basado en la cantidad de puntos por división
+        const positionInRing = index % divisions; // Posición dentro del anillo
+        const angle = (positionInRing / divisions) * Math.PI * 2;
+        const x = centerX + Math.cos(angle) * (ring * spacing);
+        const y = centerY + Math.sin(angle) * (ring * spacing);
+
+        ctx.font = `${20 / zoomLevel}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#2c3e50";
+        ctx.fillText(stitch.symbol, x, y);
+    });
+
     ctx.restore();
 }
 
 // Interacción con el canvas
 canvas.addEventListener("mousedown", (e) => {
     if (selectedStitch) {
-        // Aquí podrías añadir lógica para colocar puntos
+        // Aquí podrías añadir lógica más avanzada para colocar puntos en posiciones específicas
     } else {
         isDragging = true;
         startX = e.clientX - offsetX;
