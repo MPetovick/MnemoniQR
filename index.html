@@ -24,6 +24,14 @@
                     <button id="zoomIn" title="Zoom In (+)"><i class="fas fa-search-plus"></i></button>
                     <button id="zoomOut" title="Zoom Out (-)"><i class="fas fa-search-minus"></i></button>
                     <button id="resetView"><i class="fas fa-expand-arrows-alt"></i></button>
+                    <div class="config-section">
+                        <label for="guideLines" title="Divisiones Iniciales"><i class="fas fa-drafting-compass"></i></label>
+                        <input type="range" id="guideLines" min="4" max="24" value="8">
+                        <span id="guideLinesValue">8</span>
+                        <label for="ringSpacing" title="Espaciado de Anillos"><i class="fas fa-circle-notch"></i></label>
+                        <input type="range" id="ringSpacing" min="30" max="80" value="50">
+                        <span id="ringSpacingValue">50px</span>
+                    </div>
                 </div>
             </div>
             <div class="log-panel">
@@ -38,17 +46,6 @@
             <button id="stitchHelpBtn" class="help-btn" title="Guía de símbolos">
                 <i class="fas fa-question-circle"></i>
             </button>
-        </div>
-
-        <div class="config-bar">
-            <div class="config-section">
-                <label for="guideLines" title="Divisiones Iniciales"><i class="fas fa-drafting-compass"></i></label>
-                <input type="range" id="guideLines" min="4" max="24" value="8">
-                <span id="guideLinesValue">8</span>
-                <label for="ringSpacing" title="Espaciado de Anillos"><i class="fas fa-circle-notch"></i></label>
-                <input type="range" id="ringSpacing" min="30" max="80" value="50">
-                <span id="ringSpacingValue">50px</span>
-            </div>
         </div>
     </main>
 
