@@ -1,26 +1,16 @@
-// Utilidades
-const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-const debounce = (fn, wait) => {
-    let timeout;
-    return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => fn(...args), wait); };
+// Constantes globales
+const STITCH_TYPES = {
+    cadeneta: { symbol: '#', color: '#e74c3c', desc: 'Cadena base' },
+    punt_baix: { symbol: '•', color: '#2ecc71', desc: 'Punto bajo' },
+    punt_pla: { symbol: '-', color: '#3498db', desc: 'Punto plano' },
+    punt_mitja: { symbol: '●', color: '#f1c40f', desc: 'Punto medio' },
+    punt_alt: { symbol: '↑', color: '#9b59b6', desc: 'Punto alto' },
+    punt_doble_alt: { symbol: '⇑', color: '#e67e22', desc: 'Punto doble alto' },
+    picot: { symbol: '¤', color: '#1abc9c', desc: 'Picot decorativo' }
 };
 
-// Constantes
-const STITCH_TYPES = new Map([
-    ['cadeneta', { symbol: '#', color: '#e74c3c', desc: 'Cadena base' }],
-    ['punt_baix', { symbol: '•', color: '#2ecc71', desc: 'Punto bajo' }],
-    ['punt_pla', { symbol: '-', color: '#3498db', desc: 'Punto plano' }],
-    ['punt_mitja', { symbol: '●', color: '#f1c40f', desc: 'Punto medio' }],
-    ['punt_alt', { symbol: '↑', color: '#9b59b6', desc: 'Punto alto' }],
-    ['punt_doble_alt', { symbol: '⇑', color: '#e67e22', desc: 'Punto doble alto' }],
-    ['picot', { symbol: '¤', color: '#1abc9c', desc: 'Picot decorativo' }]
-]);
-
 const DEFAULT_STATE = {
-    rings: [
-        { segments: 8, points: Array(8).fill('cadeneta') },
-        { segments: 8, points: [] }
-    ],
+    rings: [{ segments: 8, points: Array(8).fill('cadeneta') }],
     history: [],
     historyIndex: 0,
     scale: 1,
@@ -35,295 +25,480 @@ const DEFAULT_STATE = {
     pinchDistance: null
 };
 
-// Clase Estado con optimizaciones
+// Clase para manejar el estado del patrón
 class PatternState {
-    constructor() { this.state = structuredClone(DEFAULT_STATE); this.saveState(); }
-    reset() { 
-        this.state = structuredClone(DEFAULT_STATE); 
-        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
-        this.saveState(); 
+    constructor() {
+        this.state = { ...DEFAULT_STATE };
+        this.state.history = [this.cloneRings()];
     }
-    saveState() {
-        const current = this.state.rings;
-        const prev = this.state.history[this.state.historyIndex] || [];
-        if (this.areRingsEqual(current, prev)) return;
 
-        this.state.history.push(this.deepCloneRings(current));
+    reset() {
+        this.state = { ...DEFAULT_STATE };
+        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
+        this.state.history = [this.cloneRings()];
+        this.state.historyIndex = 0;
+    }
+
+    saveState() {
+        if (this.state.historyIndex < this.state.history.length - 1) {
+            this.state.history = this.state.history.slice(0, this.state.historyIndex + 1);
+        }
+        this.state.history.push(this.cloneRings());
         this.state.historyIndex++;
         if (this.state.history.length > 100) {
-            this.state.history = [this.state.history[0], ...this.state.history.slice(-98)];
-            this.state.historyIndex = this.state.history.length - 1;
+            this.state.history.shift();
+            this.state.historyIndex--;
         }
     }
-    undo() { if (this.state.historyIndex <= 0) return false; this.state.rings = structuredClone(this.state.history[--this.state.historyIndex]); return true; }
-    redo() { if (this.state.historyIndex >= this.state.history.length - 1) return false; this.state.rings = structuredClone(this.state.history[++this.state.historyIndex]); return true; }
-    setRings(rings) { this.state.rings = structuredClone(rings); this.saveState(); }
-    updateGuideLines(v) { 
-        this.state.guideLines = clamp(v, 4, 24); 
-        this.state.rings[0].segments = this.state.guideLines; 
-        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
-        if (this.state.rings.length > 1) this.state.rings[1].segments = this.state.guideLines; 
-        this.saveState(); 
+
+    undo() {
+        if (this.state.historyIndex > 0) {
+            this.state.historyIndex--;
+            this.state.rings = this.cloneRings(this.state.history[this.state.historyIndex]);
+            return true;
+        }
+        return false;
     }
-    updateRingSpacing(v) { this.state.ringSpacing = clamp(v, 30, 80); }
-    addRing() { this.state.rings.push({ segments: this.state.rings.at(-1)?.segments || this.state.guideLines, points: [] }); this.saveState(); }
-    increasePoints(ringIdx, segIdx) { if (ringIdx + 1 < this.state.rings.length) this.state.rings[ringIdx + 1].segments++; this.saveState(); }
-    decreasePoints(ringIdx, segIdx) { if (ringIdx + 1 < this.state.rings.length && this.state.rings[ringIdx + 1].segments > this.state.guideLines) this.state.rings[ringIdx + 1].segments--; this.saveState(); }
-    deepCloneRings(rings) { return rings.map(ring => ({ segments: ring.segments, points: [...ring.points] })); }
-    areRingsEqual(a, b) {
-        if (a.length !== b.length) return false;
-        return a.every((ring, i) => 
-            ring.segments === b[i].segments &&
-            ring.points.length === b[i].points.length &&
-            ring.points.every((p, j) => p === b[i].points[j])
-        );
+
+    redo() {
+        if (this.state.historyIndex < this.state.history.length - 1) {
+            this.state.historyIndex++;
+            this.state.rings = this.cloneRings(this.state.history[this.state.historyIndex]);
+            return true;
+        }
+        return false;
+    }
+
+    cloneRings(rings = this.state.rings) {
+        return JSON.parse(JSON.stringify(rings));
+    }
+
+    setRings(rings) {
+        this.state.rings = rings;
+        this.state.history = [this.cloneRings()];
+        this.state.historyIndex = 0;
+    }
+
+    updateGuideLines(value) {
+        this.state.guideLines = value;
+        this.state.rings[0].segments = value;
+        this.state.rings[0].points = Array(value).fill('cadeneta');
+    }
+
+    updateRingSpacing(value) {
+        this.state.ringSpacing = value;
+    }
+
+    increasePoints(ringIndex, segmentIndex, stitch) {
+        const nextRingIndex = ringIndex + 1;
+        const currentRing = this.state.rings[ringIndex];
+
+        if (nextRingIndex >= this.state.rings.length) {
+            this.state.rings.push({
+                segments: currentRing.segments * 2,
+                points: Array(currentRing.segments * 2).fill(stitch)
+            });
+        } else {
+            const nextRing = this.state.rings[nextRingIndex];
+            const newPoints = [];
+            nextRing.points.forEach((point, idx) => {
+                newPoints.push(point);
+                if (idx === segmentIndex) {
+                    newPoints.push(`${stitch}_increase`);
+                }
+            });
+            nextRing.segments = newPoints.length;
+            nextRing.points = newPoints;
+        }
+
+        this.saveState();
+    }
+
+    decreasePoints(ringIndex, segmentIndex, stitch) {
+        const nextRingIndex = ringIndex + 1;
+        if (nextRingIndex >= this.state.rings.length || this.state.rings[nextRingIndex].segments <= this.state.guideLines) {
+            return;
+        }
+
+        const nextRing = this.state.rings[nextRingIndex];
+        if (nextRing.segments % 2 !== 0) return;
+
+        const newPoints = [];
+        for (let i = 0; i < nextRing.points.length; i += 2) {
+            if (i === segmentIndex) {
+                newPoints.push(`${stitch}_decrease`);
+            } else {
+                newPoints.push(nextRing.points[i]);
+            }
+        }
+        nextRing.segments = newPoints.length;
+        nextRing.points = newPoints;
+
+        this.saveState();
     }
 }
 
-// Clase Renderizado optimizada
+// Clase para manejar el renderizado en el canvas
 class CanvasRenderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.offscreenCanvas = document.createElement('canvas');
-        this.offscreenCtx = this.offscreenCanvas.getContext('2d');
-        this.staticCache = null;
-        this.staticDirty = true;
-        this.cachedFont = '';
         this.resize();
     }
+
     resize() {
-        const { clientWidth: w, clientHeight: h } = this.canvas.parentElement;
-        const dpr = devicePixelRatio;
-        [this.canvas, this.offscreenCanvas].forEach(c => {
-            c.width = w * dpr;
-            c.height = h * dpr;
-            c.style.width = `${w}px`;
-            c.style.height = `${h}px`;
-        });
-        this.ctx.scale(dpr, dpr);
-        this.offscreenCtx.scale(dpr, dpr);
-        this.staticDirty = true; // Invalidar cache al redimensionar
+        this.canvas.width = this.canvas.parentElement.clientWidth;
+        this.canvas.height = this.canvas.parentElement.clientHeight;
     }
+
     render(state, mouseX = null, mouseY = null) {
-        this.updateTransform(state);
-        this.drawToOffscreen(state, mouseX, mouseY);
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.drawImage(this.offscreenCanvas, 0, 0);
-    }
-    updateTransform(state) {
-        state.scale += (state.targetScale - state.scale) * 0.2;
-        state.offset.x += (state.targetOffset.x - state.offset.x) * 0.2;
-        state.offset.y += (state.targetOffset.y - state.offset.y) * 0.2;
-        const maxOffset = Math.max(this.canvas.width, this.canvas.height) / (2 * state.scale) - state.rings.length * state.ringSpacing;
-        state.targetOffset.x = clamp(state.targetOffset.x, -maxOffset, maxOffset);
-        state.targetOffset.y = clamp(state.targetOffset.y, -maxOffset, maxOffset);
-    }
-    drawToOffscreen(state, mouseX, mouseY) {
-        const ctx = this.offscreenCtx;
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        ctx.save();
-        ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-        ctx.scale(state.scale, state.scale);
-        ctx.translate(state.offset.x, state.offset.y);
-        this.drawStaticElements(ctx, state);
-        this.drawStitches(ctx, state);
-        if (mouseX !== null && mouseY !== null) this.drawHover(ctx, state, mouseX, mouseY);
-        ctx.restore();
-    }
-    drawStaticElements(ctx, state) {
-        if (!this.staticCache || this.staticDirty) {
-            this.staticCache = document.createElement('canvas');
-            this.staticCache.width = this.canvas.width;
-            this.staticCache.height = this.canvas.height;
-            const staticCtx = this.staticCache.getContext('2d');
-            staticCtx.save();
-            staticCtx.translate(this.canvas.width / 2, this.canvas.height / 2);
-            this.drawRings(staticCtx, state);
-            staticCtx.restore();
-            this.staticDirty = false;
-        }
-        ctx.drawImage(this.staticCache, -this.canvas.width / 2, -this.canvas.height / 2);
-    }
-    drawRings(ctx, state) {
-        ctx.lineWidth = 1 / state.scale;
-        ctx.strokeStyle = '#ddd';
-        state.rings.forEach((_, r) => { 
-            ctx.beginPath(); 
-            ctx.arc(0, 0, (r + 1) * state.ringSpacing, 0, Math.PI * 2); 
-            ctx.stroke(); 
+        requestAnimationFrame(() => {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.updateTransform(state);
+            this.applyTransform(state);
+            this.drawRings(state);
+            this.drawStitches(state);
+            if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
+            this.ctx.restore();
         });
-        ctx.strokeStyle = '#eee';
-        const segments = state.guideLines, angleStep = Math.PI * 2 / segments, maxRadius = state.rings.length * state.ringSpacing;
-        ctx.beginPath();
-        for (let i = 0; i < segments; i++) {
-            const angle = i * angleStep, x = Math.cos(angle) * maxRadius, y = Math.sin(angle) * maxRadius;
-            ctx.moveTo(0, 0); ctx.lineTo(x, y);
-        }
-        ctx.stroke();
     }
-    drawStitches(ctx, state) {
-        const font = `${20 / state.scale}px Arial`;
-        if (this.cachedFont !== font) {
-            ctx.font = font;
-            this.cachedFont = font;
+
+    updateTransform(state) {
+        state.offset.x += (state.targetOffset.x - state.offset.x) * 0.1;
+        state.offset.y += (state.targetOffset.y - state.offset.y) * 0.1;
+        state.scale += (state.targetScale - state.scale) * 0.1;
+    }
+
+    applyTransform(state) {
+        this.ctx.save();
+        this.ctx.translate(this.canvas.width / 2 + state.offset.x, this.canvas.height / 2 + state.offset.y);
+        this.ctx.scale(state.scale, state.scale);
+    }
+
+    drawRings(state) {
+        this.ctx.strokeStyle = '#ddd';
+        this.ctx.lineWidth = 1 / state.scale;
+        state.rings.forEach((_, r) => {
+            const radius = (r + 1) * state.ringSpacing;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            this.ctx.stroke();
+        });
+        this.drawGuideLines(state);
+    }
+
+    drawGuideLines(state) {
+        const segments = state.guideLines;
+        const angleStep = Math.PI * 2 / segments;
+        const maxRadius = state.rings.length * state.ringSpacing;
+        this.ctx.strokeStyle = '#eee';
+        this.ctx.beginPath();
+        for (let i = 0; i < segments; i++) {
+            const angle = i * angleStep;
+            const x = Math.cos(angle) * maxRadius;
+            const y = Math.sin(angle) * maxRadius;
+            this.ctx.moveTo(0, 0);
+            this.ctx.lineTo(x, y);
         }
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        state.rings.forEach((ring, rIdx) => {
-            const segments = ring.segments, angleStep = Math.PI * 2 / segments, radius = (rIdx + 0.5) * state.ringSpacing;
-            ring.points.forEach((type, sIdx) => {
-                if (sIdx >= segments) return;
-                const angle = sIdx * angleStep + (angleStep / 2), x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
-                const { stitchType, symbol, isSpecial } = this.parseStitch(type);
-                if (STITCH_TYPES.has(stitchType)) {
-                    ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                    ctx.fillText(symbol, x, y);
-                    if (isSpecial) {
-                        ctx.beginPath();
-                        ctx.arc(x, y, 5 / state.scale, 0, Math.PI * 2);
-                        ctx.strokeStyle = '#ff0000';
-                        ctx.stroke();
-                    }
+        this.ctx.stroke();
+    }
+
+    drawStitches(state) {
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.font = `${20 / state.scale}px Arial`;
+        state.rings.forEach((ring, ringIndex) => {
+            const segments = ring.segments;
+            const angleStep = Math.PI * 2 / segments;
+            const radius = (ringIndex + 0.5) * state.ringSpacing;
+            ring.points.forEach((type, segmentIndex) => {
+                const angle = segmentIndex * angleStep + (angleStep / 2);
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                let stitchType = type;
+                let isSpecial = false;
+                let symbol = STITCH_TYPES[stitchType].symbol;
+
+                if (type.includes('_increase')) {
+                    stitchType = type.replace('_increase', '');
+                    isSpecial = true;
+                    symbol = '▿';
+                } else if (type.includes('_decrease')) {
+                    stitchType = type.replace('_decrease', '');
+                    isSpecial = true;
+                    symbol = '▵';
+                }
+
+                this.ctx.fillStyle = STITCH_TYPES[stitchType].color;
+                this.ctx.fillText(symbol, x, y);
+
+                if (isSpecial) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 5 / state.scale, 0, Math.PI * 2);
+                    this.ctx.strokeStyle = '#ff0000';
+                    this.ctx.lineWidth = 1 / state.scale;
+                    this.ctx.stroke();
                 }
             });
         });
     }
-    drawHover(ctx, state, mouseX, mouseY) {
-        const { ring, segment } = this.getRingSegment(state, mouseX, mouseY);
+
+    drawHoverEffect(state, mouseX, mouseY) {
+        const { ring, segment } = this.getRingAndSegment(state, mouseX, mouseY);
         if (ring >= 0 && ring < state.rings.length) {
-            const segments = state.rings[ring].segments, angleStep = Math.PI * 2 / segments, radius = (ring + 0.5) * state.ringSpacing;
-            const angle = segment * angleStep + (angleStep / 2), x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
-            const stitch = STITCH_TYPES.get(state.selectedStitch);
-            ctx.fillStyle = stitch.color + '80';
-            ctx.fillText(stitch.symbol, x, y);
+            const segments = state.rings[ring].segments;
+            const angleStep = Math.PI * 2 / segments;
+            const radius = (ring + 0.5) * state.ringSpacing;
+            const angle = segment * angleStep + (angleStep / 2);
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            const stitch = STITCH_TYPES[state.selectedStitch];
+            this.ctx.fillStyle = stitch.color + '80';
+            this.ctx.fillText(stitch.symbol, x, y);
         }
     }
-    getRingSegment(state, x, y) {
-        const distance = Math.sqrt(x * x + y * y), ring = Math.floor(distance / state.ringSpacing);
+
+    getRingAndSegment(state, x, y) {
+        const distance = Math.sqrt(x * x + y * y);
+        const ring = Math.floor(distance / state.ringSpacing);
         if (ring < 0 || ring >= state.rings.length) return { ring: -1, segment: -1 };
-        const segments = state.rings[ring].segments, angle = (Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2);
-        return { ring, segment: Math.floor((angle / (Math.PI * 2)) * segments) % segments };
+
+        const segments = state.rings[ring].segments;
+        const angle = Math.atan2(y, x) + Math.PI * 2;
+        const segment = Math.floor((angle / (Math.PI * 2)) * segments) % segments;
+        return { ring, segment };
     }
-    parseStitch(type) {
-        let stitchType = type, symbol = STITCH_TYPES.get(type)?.symbol || '', isSpecial = false;
-        if (type.includes('_increase')) { stitchType = type.replace('_increase', ''); symbol = '▿'; isSpecial = true; }
-        else if (type.includes('_decrease')) { stitchType = type.replace('_decrease', ''); symbol = '▵'; isSpecial = true; }
-        return { stitchType, symbol, isSpecial };
-    }
-    exportAsImage(state, name) {
-        const exportCanvas = document.createElement('canvas'), ctx = exportCanvas.getContext('2d');
-        const maxRadius = state.rings.length * state.ringSpacing, padding = 100, size = Math.max(800, maxRadius * 2 + padding * 2);
-        exportCanvas.width = size; exportCanvas.height = size + 200;
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size + 200);
-        ctx.save(); ctx.translate(size / 2, size / 2);
-        this.drawRings(ctx, state); this.drawStitches(ctx, state);
-        ctx.restore(); this.drawLegend(ctx, padding, size + 20);
+
+    exportAsImage(state, projectName) {
+        const exportCanvas = document.createElement('canvas');
+        const exportCtx = exportCanvas.getContext('2d');
+        const maxRadius = state.rings.length * state.ringSpacing;
+        const padding = 100;
+        const canvasSize = Math.max(800, (maxRadius * 2) + padding * 2);
+
+        exportCanvas.width = canvasSize;
+        exportCanvas.height = canvasSize + 200;
+        exportCtx.fillStyle = '#ffffff';
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        exportCtx.save();
+        exportCtx.translate(canvasSize / 2, canvasSize / 2);
+        this.drawRingsOnContext(exportCtx, state, 1);
+        this.drawStitchesOnContext(exportCtx, state, 1);
+        exportCtx.restore();
+
+        this.drawLegendOnCanvas(exportCtx, padding, canvasSize + 20);
+
+        const dataUrl = exportCanvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.download = `${name || 'patron_crochet'}.png`;
-        link.href = exportCanvas.toDataURL('image/png');
+        link.download = `${projectName || 'patron_crochet'}.png`;
+        link.href = dataUrl;
         link.click();
     }
-    drawLegend(ctx, x, y) {
-        ctx.font = '16px Arial'; ctx.fillStyle = '#000'; ctx.textAlign = 'left';
-        ctx.fillText('Leyenda:', x, y); y += 20;
-        for (const [, s] of STITCH_TYPES) { ctx.fillStyle = s.color; ctx.fillText(`${s.symbol} - ${s.desc}`, x, y); y += 20; }
-        ctx.fillStyle = '#000'; ctx.fillText('▿ - Aumento', x, y); y += 20; ctx.fillText('▵ - Disminución', x, y);
+
+    drawRingsOnContext(ctx, state, scale) {
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1 / scale;
+        state.rings.forEach((_, r) => {
+            const radius = (r + 1) * state.ringSpacing;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+        this.drawGuideLinesOnContext(ctx, state, scale);
+    }
+
+    drawGuideLinesOnContext(ctx, state, scale) {
+        const segments = state.guideLines;
+        const angleStep = Math.PI * 2 / segments;
+        const maxRadius = state.rings.length * state.ringSpacing;
+        ctx.strokeStyle = '#eee';
+        ctx.beginPath();
+        for (let i = 0; i < segments; i++) {
+            const angle = i * angleStep;
+            const x = Math.cos(angle) * maxRadius;
+            const y = Math.sin(angle) * maxRadius;
+            ctx.moveTo(0, 0);
+            ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    }
+
+    drawStitchesOnContext(ctx, state, scale) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `${20 / scale}px Arial`;
+        state.rings.forEach((ring, ringIndex) => {
+            const segments = ring.segments;
+            const angleStep = Math.PI * 2 / segments;
+            const radius = (ringIndex + 0.5) * state.ringSpacing;
+            ring.points.forEach((type, segmentIndex) => {
+                const angle = segmentIndex * angleStep + (angleStep / 2);
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                let stitchType = type;
+                let isSpecial = false;
+                let symbol = STITCH_TYPES[stitchType].symbol;
+
+                if (type.includes('_increase')) {
+                    stitchType = type.replace('_increase', '');
+                    isSpecial = true;
+                    symbol = '▿';
+                } else if (type.includes('_decrease')) {
+                    stitchType = type.replace('_decrease', '');
+                    isSpecial = true;
+                    symbol = '▵';
+                }
+
+                ctx.fillStyle = STITCH_TYPES[stitchType].color;
+                ctx.fillText(symbol, x, y);
+
+                if (isSpecial) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5 / scale, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 1 / scale;
+                    ctx.stroke();
+                }
+            });
+        });
+    }
+
+    drawLegendOnCanvas(ctx, x, y) {
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'left';
+        ctx.fillText('Leyenda de puntadas:', x, y);
+        y += 20;
+        for (const key in STITCH_TYPES) {
+            const stitch = STITCH_TYPES[key];
+            ctx.fillStyle = stitch.color;
+            ctx.fillText(`${stitch.symbol} - ${stitch.desc}`, x, y);
+            y += 20;
+        }
+        ctx.fillStyle = '#000000';
+        ctx.fillText('▿ - Aumento', x, y);
+        y += 20;
+        ctx.fillText('▵ - Disminución', x, y);
     }
 }
 
-// Clase Entrada optimizada
+// Clase para manejar la interacción del usuario
 class InputHandler {
     constructor(canvas, state, renderer) {
         this.canvas = canvas;
         this.state = state;
         this.renderer = renderer;
-        this.isAnimating = false;
-        this.lastRender = 0;
-        this.renderThrottle = 16; // ~60fps
-        this.cachedRect = null;
-        this.rectCacheTime = 0;
-        this.lastFrame = 0;
-        this.bindEvents();
+        this.setupListeners();
     }
-    bindEvents() {
+
+    setupListeners() {
         const events = [
-            ['click', e => this.handleClick(e)],
-            ['mousemove', e => this.handleMouseMove(e)],
-            ['wheel', e => { e.preventDefault(); this.adjustZoom(e.deltaY > 0 ? -0.1 : 0.1); }, { passive: false }],
-            ['mousedown', e => this.startDrag(e)],
-            ['touchstart', e => this.handleTouchStart(e), { passive: false }],
-            ['touchmove', debounce(e => this.handleTouchMove(e), 16), { passive: false }],
-            ['touchend', e => this.handleTouchEnd(e)]
+            { el: this.canvas, ev: 'click', fn: this.handleClick.bind(this) },
+            { el: this.canvas, ev: 'mousemove', fn: this.handleMouseMove.bind(this) },
+            { el: this.canvas, ev: 'wheel', fn: this.handleWheel.bind(this), opts: { passive: false } },
+            { el: this.canvas, ev: 'mousedown', fn: this.startDrag.bind(this) },
+            { el: document, ev: 'mousemove', fn: this.debounce(this.handleDrag.bind(this), 16) },
+            { el: document, ev: 'mouseup', fn: this.endDrag.bind(this) },
+            { el: this.canvas, ev: 'touchstart', fn: this.handleTouchStart.bind(this), opts: { passive: false } },
+            { el: this.canvas, ev: 'touchmove', fn: this.debounce(this.handleTouchMove.bind(this), 16), opts: { passive: false } },
+            { el: this.canvas, ev: 'touchend', fn: this.handleTouchEnd.bind(this) },
+            { el: document, ev: 'keydown', fn: this.handleKeyDown.bind(this) },
+            { el: window, ev: 'resize', fn: this.renderer.resize.bind(this.renderer) }
         ];
-        events.forEach(([ev, fn, opts]) => this.canvas.addEventListener(ev, fn, opts));
-        document.addEventListener('mousemove', debounce(e => this.handleDrag(e), 16));
-        document.addEventListener('mouseup', () => this.endDrag());
-        document.addEventListener('keydown', e => this.handleKeyDown(e));
-        window.addEventListener('resize', debounce(() => this.renderer.resize(), 100));
+
+        events.forEach(({ el, ev, fn, opts }) => el.addEventListener(ev, fn, opts));
     }
+
     handleClick(e) {
-        const [x, y] = this.getCoords(e);
-        const { ring, segment } = this.renderer.getRingSegment(this.state.state, x, y);
-        if (ring >= 0 && ring < this.state.state.rings.length && segment < this.state.state.rings[ring].segments) {
-            const ringData = this.state.state.rings[ring];
-            if (e.shiftKey && ring < this.state.state.rings.length - 1) this.state.increasePoints(ring, segment);
-            else if (e.ctrlKey && ring < this.state.state.rings.length - 1) this.state.decreasePoints(ring, segment);
-            else ringData.points[segment] = this.state.state.selectedStitch;
+        const { x, y } = this.getCanvasCoordinates(e);
+        const { ring, segment } = this.renderer.getRingAndSegment(this.state.state, x, y);
+        if (ring >= 0 && ring < this.state.state.rings.length) {
+            if (e.shiftKey) {
+                this.state.increasePoints(ring, segment, this.state.state.selectedStitch);
+            } else if (e.ctrlKey) {
+                this.state.decreasePoints(ring, segment, this.state.state.selectedStitch);
+            } else {
+                this.state.state.rings[ring].points[segment] = this.state.state.selectedStitch;
+            }
             this.state.saveState();
-            this.renderer.staticDirty = true; // Invalidar cache al cambiar estado
             this.renderer.render(this.state.state);
         }
     }
+
     handleMouseMove(e) {
-        const now = performance.now();
-        if (now - this.lastRender >= this.renderThrottle) {
-            this.renderer.render(this.state.state, ...this.getCoords(e));
-            this.lastRender = now;
-        }
+        const { x, y } = this.getCanvasCoordinates(e);
+        this.renderer.render(this.state.state, x, y);
     }
+
+    handleWheel(e) {
+        e.preventDefault();
+        this.adjustZoom(e.deltaY > 0 ? -0.1 : 0.1);
+    }
+
     startDrag(e) {
         this.state.state.isDragging = true;
         this.state.state.lastPos = { x: e.clientX, y: e.clientY };
-        this.animate();
     }
+
     handleDrag(e) {
         if (!this.state.state.isDragging) return;
-        const deltaX = (e.clientX - this.state.state.lastPos.x) / this.state.state.scale;
-        const deltaY = (e.clientY - this.state.state.lastPos.y) / this.state.state.scale;
+        const deltaX = e.clientX - this.state.state.lastPos.x;
+        const deltaY = e.clientY - this.state.state.lastPos.y;
         this.state.state.targetOffset.x += deltaX;
         this.state.state.targetOffset.y += deltaY;
         this.state.state.lastPos = { x: e.clientX, y: e.clientY };
+        this.animate();
     }
-    endDrag() { this.state.state.isDragging = false; this.isAnimating = false; }
+
+    endDrag() {
+        this.state.state.isDragging = false;
+        this.state.state.offset.x = this.state.state.targetOffset.x;
+        this.state.state.offset.y = this.state.state.targetOffset.y;
+    }
+
     handleTouchStart(e) {
         e.preventDefault();
         const touches = e.touches;
         if (touches.length === 1) this.startDrag(touches[0]);
-        else if (touches.length === 2) this.state.state.pinchDistance = this.getPinchDistance(touches);
+        else if (touches.length === 2) {
+            this.state.state.pinchDistance = this.getPinchDistance(touches);
+            this.state.state.isDragging = false;
+        }
     }
+
     handleTouchMove(e) {
         e.preventDefault();
         const touches = e.touches;
         if (touches.length === 1 && this.state.state.isDragging) this.handleDrag(touches[0]);
         else if (touches.length === 2) {
-            const newDist = this.getPinchDistance(touches);
-            if (this.state.state.pinchDistance) this.adjustZoom((newDist - this.state.state.pinchDistance) * 0.005);
-            this.state.state.pinchDistance = newDist;
+            const newDistance = this.getPinchDistance(touches);
+            if (this.state.state.pinchDistance) this.adjustZoom((newDistance - this.state.state.pinchDistance) * 0.005);
+            this.state.state.pinchDistance = newDistance;
         }
     }
-    handleTouchEnd(e) { if (e.touches.length === 0) { this.endDrag(); this.state.state.pinchDistance = null; } }
-    getPinchDistance(touches) { const dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
-    getCoords(e) {
-        if (!this.cachedRect || Date.now() - this.rectCacheTime > 1000) {
-            this.cachedRect = this.canvas.getBoundingClientRect();
-            this.rectCacheTime = Date.now();
+
+    handleTouchEnd(e) {
+        if (e.touches.length === 0) {
+            this.endDrag();
+            this.state.state.pinchDistance = null;
         }
-        return [
-            (e.clientX - this.cachedRect.left - this.canvas.width / 2) / this.state.state.scale - this.state.state.offset.x,
-            (e.clientY - this.cachedRect.top - this.canvas.height / 2) / this.state.state.scale - this.state.state.offset.y
-        ];
     }
+
+    getPinchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    getCanvasCoordinates(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left - this.state.state.offset.x - this.canvas.width / 2) / this.state.state.scale,
+            y: (e.clientY - rect.top - this.state.state.offset.y - this.canvas.height / 2) / this.state.state.scale
+        };
+    }
+
     handleKeyDown(e) {
         if (e.ctrlKey) {
             if (e.key === 'z' && this.state.undo()) this.renderer.render(this.state.state);
@@ -332,241 +507,364 @@ class InputHandler {
         } else if (e.key === '+') this.adjustZoom(0.2);
         else if (e.key === '-') this.adjustZoom(-0.2);
     }
-    adjustZoom(amount) { 
-        this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3); 
-        this.animate(); 
+
+    adjustZoom(amount) {
+        this.state.state.targetScale = Math.max(0.3, Math.min(3, this.state.state.targetScale + amount));
+        this.animate();
     }
-    resetView() { 
-        this.state.state.targetScale = 1; 
-        this.state.state.targetOffset = { x: 0, y: 0 }; 
-        this.state.state.offset = { x: 0, y: 0 }; 
-        this.renderer.render(this.state.state); 
+
+    resetView() {
+        this.state.state.targetScale = 1;
+        this.state.state.targetOffset = { x: 0, y: 0 };
+        this.state.state.offset = { x: 0, y: 0 };
+        this.animate();
     }
+
     animate() {
-        if (!this.isAnimating) {
-            this.isAnimating = true;
-            const animateFrame = (timestamp) => {
-                const elapsed = timestamp - (this.lastFrame || timestamp);
-                if (elapsed > this.renderThrottle) {
-                    this.renderer.render(this.state.state);
-                    this.lastFrame = timestamp;
-                }
-                if (this.needsAnimation()) {
-                    requestAnimationFrame(animateFrame);
-                } else {
-                    this.isAnimating = false;
-                }
-            };
-            requestAnimationFrame(animateFrame);
-        }
+        this.renderer.render(this.state.state);
+        if (this.needsAnimation()) requestAnimationFrame(this.animate.bind(this));
     }
+
     needsAnimation() {
-        return this.state.state.isDragging || Math.abs(this.state.state.scale - this.state.state.targetScale) > 0.01;
+        return (
+            Math.abs(this.state.state.scale - this.state.state.targetScale) > 0.01 ||
+            Math.abs(this.state.state.offset.x - this.state.state.targetOffset.x) > 1 ||
+            Math.abs(this.state.state.offset.y - this.state.state.targetOffset.y) > 1
+        );
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
     }
 }
 
-// Clase UI optimizada
+// Clase para manejar la interfaz de usuario
 class UIController {
-    constructor(state, renderer, inputHandler) {
+    constructor(state, renderer) {
         this.state = state;
         this.renderer = renderer;
-        this.inputHandler = inputHandler;
         this.currentProjectName = null;
-        this.logoContainer = document.getElementById('logoContainer');
-        this.canvas = document.getElementById('patternCanvas');
-        this.logoContainer.style.display = 'block';
-        this.canvas.style.display = 'none';
-        this.setupUI();
-    }
-    setupUI() {
-        this.bindButtons([
-            ['newBtn', () => this.newProject()],
-            ['saveBtn', () => this.saveProject()],
-            ['saveAsBtn', () => this.saveProjectAs()],
-            ['undoBtn', () => this.state.undo() && this.renderer.render(this.state.state)],
-            ['redoBtn', () => this.state.redo() && this.renderer.render(this.state.state)],
-            ['zoomIn', () => this.inputHandler.adjustZoom(0.2)],
-            ['zoomOut', () => this.inputHandler.adjustZoom(-0.2)],
-            ['resetView', () => this.inputHandler.resetView()],
-            ['stitchHelpBtn', e => this.toggleTooltip(e)],
-            ['exportTxt', () => this.exportText()],
-            ['exportPng', () => this.renderer.exportAsImage(this.state.state, this.currentProjectName)],
-            ['exportPdf', () => this.exportPDF()],
-            ['addRingBtn', () => { this.state.addRing(); this.updateRingCounter(); this.renderer.staticDirty = true; this.renderer.render(this.state.state); }]
-        ]);
-        this.bindRange('guideLines', v => { this.state.updateGuideLines(v); this.renderer.staticDirty = true; }, 'guideLinesValue', v => v);
-        this.bindRange('ringSpacing', v => this.state.updateRingSpacing(v), 'ringSpacingValue', v => `${v}px`);
+        this.tooltip = null;
+        this.setupListeners();
         this.setupStitchPalette();
-        this.updateRingCounter();
     }
-    bindButtons(buttons) { buttons.forEach(([id, fn]) => document.getElementById(id)?.addEventListener('click', fn)); }
-    bindRange(id, fn, valueId, format) {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', () => {
-            const v = parseInt(el.value);
-            fn(v);
-            document.getElementById(valueId).textContent = format(v);
-            this.renderer.render(this.state.state);
+
+    setupListeners() {
+        const buttons = [
+            { id: 'newBtn', fn: this.newProject.bind(this) },
+            { id: 'saveBtn', fn: this.saveProject.bind(this) },
+            { id: 'saveAsBtn', fn: this.saveProjectAs.bind(this) },
+            { id: 'undoBtn', fn: () => this.state.undo() && this.renderer.render(this.state.state) },
+            { id: 'redoBtn', fn: () => this.state.redo() && this.renderer.render(this.state.state) },
+            { id: 'zoomIn', fn: () => new InputHandler(null, this.state, this.renderer).adjustZoom(0.2) },
+            { id: 'zoomOut', fn: () => new InputHandler(null, this.state, this.renderer).adjustZoom(-0.2) },
+            { id: 'resetView', fn: () => new InputHandler(null, this.state, this.renderer).resetView() },
+            { id: 'stitchHelpBtn', fn: this.toggleStitchTooltip.bind(this) },
+            { id: 'exportTxt', fn: this.exportAsText.bind(this) },
+            { id: 'exportPng', fn: this.exportAsImage.bind(this) },
+            { id: 'exportPdf', fn: this.generatePDF.bind(this) }
+        ];
+
+        buttons.forEach(({ id, fn }) => {
+            const btn = document.getElementById(id);
+            if (btn) btn.addEventListener('click', fn);
         });
+
+        const guideLines = document.getElementById('guideLines');
+        if (guideLines) {
+            guideLines.addEventListener('input', () => {
+                const value = parseInt(guideLines.value);
+                this.state.updateGuideLines(value);
+                document.getElementById('guideLinesValue').textContent = value;
+                this.renderer.render(this.state.state);
+            });
+        }
+
+        const ringSpacing = document.getElementById('ringSpacing');
+        if (ringSpacing) {
+            ringSpacing.addEventListener('input', () => {
+                const value = parseInt(ringSpacing.value);
+                this.state.updateRingSpacing(value);
+                document.getElementById('ringSpacingValue').textContent = `${value}px`;
+                this.renderer.render(this.state.state);
+            });
+        }
     }
-    newProject() { 
-        this.state.reset(); 
-        this.currentProjectName = null; 
-        this.logoContainer.style.display = 'none'; 
-        this.canvas.style.display = 'block'; 
-        this.renderer.resize();
-        this.renderer.staticDirty = true;
-        this.renderer.render(this.state.state); 
-        this.updateUI(); 
+
+    newProject() {
+        this.state.reset();
+        this.currentProjectName = null;
+        this.renderer.render(this.state.state);
+        this.updateUI();
     }
+
     saveProject() {
-        this.currentProjectName = this.currentProjectName || `Patrón ${new Date().toLocaleDateString()}`;
+        const defaultName = `Patrón ${new Date().toLocaleDateString()}`;
+        this.currentProjectName = this.currentProjectName || defaultName;
         const projects = this.getProjects();
         projects[this.currentProjectName] = this.state.state.rings;
         localStorage.setItem('crochetProjects', JSON.stringify(projects));
         this.loadProjects();
-        alert(`Guardado: "${this.currentProjectName}"`);
+        alert(`Proyecto "${this.currentProjectName}" guardado!`);
     }
+
     saveProjectAs() {
-        const name = prompt('Nombre:', this.currentProjectName || `Patrón ${new Date().toLocaleDateString()}`);
-        if (name) { this.currentProjectName = name; this.saveProject(); }
-    }
-    loadFromLocalStorage() {
-        const saved = localStorage.getItem('crochetPattern');
-        if (saved) { 
-            this.state.setRings(JSON.parse(saved)); 
-            this.logoContainer.style.display = 'none'; 
-            this.canvas.style.display = 'block'; 
-            this.renderer.staticDirty = true;
-            this.renderer.render(this.state.state); 
-            this.updateUI(); 
-        } else {
-            this.logoContainer.style.display = 'block';
-            this.canvas.style.display = 'none';
+        const suggestedName = this.currentProjectName || `Patrón ${new Date().toLocaleDateString()}`;
+        const name = prompt('Nombre del proyecto:', suggestedName);
+        if (name) {
+            this.currentProjectName = name;
+            const projects = this.getProjects();
+            projects[name] = this.state.state.rings;
+            localStorage.setItem('crochetProjects', JSON.stringify(projects));
+            this.loadProjects();
+            alert(`Proyecto "${name}" guardado!`);
         }
     }
-    getProjects() { return JSON.parse(localStorage.getItem('crochetProjects') || '{}'); }
+
+    loadFromLocalStorage() {
+        const saved = localStorage.getItem('crochetPattern');
+        if (saved) {
+            this.state.setRings(JSON.parse(saved));
+            this.currentProjectName = null;
+            this.renderer.resize();
+            this.renderer.render(this.state.state);
+            this.updateUI();
+        }
+    }
+
+    getProjects() {
+        return JSON.parse(localStorage.getItem('crochetProjects') || '{}');
+    }
+
     loadProjects() {
-        const projects = this.getProjects(), select = document.getElementById('loadProjects');
-        const fragment = document.createDocumentFragment();
-        fragment.appendChild(new Option('Cargar...', ''));
-        Object.keys(projects).forEach(n => {
-            const option = new Option(n, n);
-            if (n === this.currentProjectName) option.selected = true;
-            fragment.appendChild(option);
-        });
-        select.replaceChildren(fragment);
+        const projects = this.getProjects();
+        const select = document.getElementById('loadProjects');
+        const controls = select.parentElement;
+        const existingDeleteBtn = controls.querySelector('.delete-btn');
+        if (existingDeleteBtn) existingDeleteBtn.remove();
+
+        select.innerHTML = '<option value="">Cargar...</option>' +
+            Object.keys(projects).map(name => 
+                `<option value="${name}" ${name === this.currentProjectName ? 'selected' : ''}>${name}</option>`
+            ).join('');
+
         select.onchange = () => {
+            const deleteBtn = controls.querySelector('.delete-btn');
+            if (deleteBtn) deleteBtn.remove();
+
             if (select.value) {
-                this.state.setRings(structuredClone(projects[select.value]));
+                this.state.setRings(JSON.parse(JSON.stringify(projects[select.value])));
                 this.currentProjectName = select.value;
-                this.logoContainer.style.display = 'none'; 
-                this.canvas.style.display = 'block'; 
                 this.renderer.resize();
-                this.renderer.staticDirty = true;
                 this.renderer.render(this.state.state);
                 this.updateUI();
-            } else {
-                this.state.reset();
-                this.currentProjectName = null;
-                this.logoContainer.style.display = 'block';
-                this.canvas.style.display = 'none';
+
+                const btn = document.createElement('button');
+                btn.className = 'delete-btn';
+                btn.innerHTML = '<i class="fas fa-trash"></i>';
+                btn.title = 'Eliminar proyecto';
+                btn.onclick = () => this.deleteProject(select.value);
+                controls.insertBefore(btn, select.nextSibling);
             }
         };
     }
-    exportText() {
-        const text = this.state.state.rings.map((r, ri) => r.points.map((t, si) => {
-            let desc = STITCH_TYPES.get(t.replace(/(_increase|_decrease)/, ''))?.desc || 'Desconocido';
-            if (t.includes('_increase')) desc += ' (Aumento)';
-            else if (t.includes('_decrease')) desc += ' (Disminución)';
-            return `Anillo ${ri + 1}, Segmento ${si}: ${desc}`;
-        }).join('\n')).join('\n') || 'Patrón vacío';
+
+    deleteProject(projectName) {
+        if (confirm(`¿Seguro que quieres eliminar el proyecto "${projectName}"?`)) {
+            const projects = this.getProjects();
+            delete projects[projectName];
+            localStorage.setItem('crochetProjects', JSON.stringify(projects));
+            this.loadProjects();
+            this.newProject();
+            alert(`Proyecto "${projectName}" eliminado.`);
+        }
+    }
+
+    updateUI() {
+        document.getElementById('undoBtn').disabled = this.state.state.historyIndex === 0;
+        document.getElementById('redoBtn').disabled = this.state.state.historyIndex === this.state.history.length - 1;
+        this.updateExportPreview();
+    }
+
+    updateExportPreview() {
+        const text = this.state.state.rings
+            .map((ring, ringIndex) => 
+                ring.points.map((type, segmentIndex) => {
+                    let desc = STITCH_TYPES[type.replace(/(_increase|_decrease)/, '')].desc;
+                    if (type.includes('_increase')) desc += ' (Aumento)';
+                    else if (type.includes('_decrease')) desc += ' (Disminución)';
+                    return `Anillo ${ringIndex + 1}, Segmento ${segmentIndex}: ${desc}`;
+                }).join('\n')
+            )
+            .join('\n') || 'Patrón vacío';
         document.getElementById('exportText').value = text;
-        const blob = new Blob([text], { type: 'text/plain' }), link = document.createElement('a');
+    }
+
+    exportAsText() {
+        this.updateExportPreview();
+        const text = document.getElementById('exportText').value;
+        const blob = new Blob([text], { type: 'text/plain' });
+        const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `${this.currentProjectName || 'patron_crochet'}.txt`;
         link.click();
     }
-    exportPDF() {
-        const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: 'mm', format: 'a4' });
-        const w = doc.internal.pageSize.width, h = doc.internal.pageSize.height, m = 15;
-        doc.setFontSize(18); doc.setTextColor('#2c3e50');
-        doc.text(this.currentProjectName || 'Patrón de Crochet', w / 2, m + 10, { align: 'center' });
-        let y = m + 25; doc.setFontSize(12); doc.setTextColor('#000');
-        doc.text('Leyenda:', m, y); y += 10;
-        for (const [, s] of STITCH_TYPES) { doc.setTextColor(s.color); doc.text(`${s.symbol} - ${s.desc}`, m + 5, y); y += 8; }
-        doc.setTextColor('#000'); doc.text('▿ - Aumento', m + 5, y); y += 8; doc.text('▵ - Disminución', m + 5, y); y += 10;
-        const maxR = this.state.state.rings.length * this.state.state.ringSpacing, scale = Math.min((w - 2 * m) / (maxR * 2), (h - y - m) / (maxR * 2));
-        doc.setDrawColor('#ddd'); doc.setLineWidth(0.2);
-        this.state.state.rings.forEach((r, ri) => {
-            const rMM = (ri + 1) * this.state.state.ringSpacing * scale * 0.0353;
-            doc.circle(w / 2, y + (h - y) / 2, rMM);
-            const s = r.segments, aStep = Math.PI * 2 / s, sR = (ri + 0.5) * this.state.state.ringSpacing * scale * 0.0353;
-            r.points.forEach((t, si) => {
-                if (si >= s) return;
-                const a = si * aStep + aStep / 2, x = w / 2 + Math.cos(a) * sR, yPos = y + (h - y) / 2 + Math.sin(a) * sR;
-                const { stitchType, symbol } = this.renderer.parseStitch(t);
-                if (STITCH_TYPES.has(stitchType)) { doc.setTextColor(STITCH_TYPES.get(stitchType).color); doc.setFontSize(12 * scale); doc.text(symbol, x, yPos, { align: 'center', baseline: 'middle' }); }
-            });
-        });
+
+    exportAsImage() {
+        this.renderer.exportAsImage(this.state.state, this.currentProjectName);
+    }
+
+    generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 15;
+        const contentWidth = pageWidth - 2 * margin;
+
+        this.addPDFTitle(doc, pageWidth, margin);
+        const legendHeight = this.addPDFLegend(doc, margin);
+        this.addPDFPattern(doc, pageWidth, pageHeight, margin, contentWidth, legendHeight);
+
         doc.save(`${this.currentProjectName || 'patron_crochet'}.pdf`);
     }
+
+    addPDFTitle(doc, pageWidth, margin) {
+        doc.setFontSize(18);
+        doc.setTextColor('#2c3e50');
+        doc.text(this.currentProjectName || 'Patrón de Crochet Radial', pageWidth / 2, margin + 10, { align: 'center' });
+    }
+
+    addPDFLegend(doc, margin) {
+        doc.setFontSize(12);
+        doc.setTextColor('#000000');
+        let y = margin + 25;
+        doc.text('Leyenda de puntadas:', margin, y);
+        y += 10;
+        for (const key in STITCH_TYPES) {
+            const stitch = STITCH_TYPES[key];
+            doc.setTextColor(stitch.color);
+            doc.text(`${stitch.symbol} - ${stitch.desc}`, margin + 5, y);
+            y += 8;
+        }
+        doc.setTextColor('#000000');
+        doc.text('▿ - Aumento', margin + 5, y);
+        y += 8;
+        doc.text('▵ - Disminución', margin + 5, y);
+        return y + 10;
+    }
+
+    addPDFPattern(doc, pageWidth, pageHeight, margin, contentWidth, legendHeight) {
+        const maxRadius = this.state.state.rings.length * this.state.state.ringSpacing;
+        const availableHeight = pageHeight - legendHeight - margin;
+        const scale = Math.min(contentWidth / (maxRadius * 2), availableHeight / (maxRadius * 2));
+        const centerX = pageWidth / 2;
+        const centerY = legendHeight + (availableHeight / 2);
+
+        doc.setDrawColor('#ddd');
+        doc.setLineWidth(0.2);
+        this.state.state.rings.forEach((ring, ringIndex) => {
+            const radius = (ringIndex + 1) * this.state.state.ringSpacing * scale * 0.0353;
+            doc.circle(centerX, centerY, radius);
+
+            const segments = ring.segments;
+            const angleStep = Math.PI * 2 / segments;
+            const stitchRadius = (ringIndex + 0.5) * this.state.state.ringSpacing * scale * 0.0353;
+            ring.points.forEach((type, segmentIndex) => {
+                const angle = segmentIndex * angleStep + (angleStep / 2);
+                const x = centerX + Math.cos(angle) * stitchRadius;
+                const y = centerY + Math.sin(angle) * stitchRadius;
+                let stitchType = type;
+                let symbol = STITCH_TYPES[stitchType].symbol;
+
+                if (type.includes('_increase')) {
+                    stitchType = type.replace('_increase', '');
+                    symbol = '▿';
+                } else if (type.includes('_decrease')) {
+                    stitchType = type.replace('_decrease', '');
+                    symbol = '▵';
+                }
+
+                doc.setTextColor(STITCH_TYPES[stitchType].color);
+                doc.setFontSize(12 * scale);
+                doc.text(symbol, x, y, { align: 'center', baseline: 'middle' });
+            });
+        });
+
+        doc.setDrawColor('#eee');
+        const maxRadiusMM = maxRadius * scale * 0.0353;
+        const angleStep = Math.PI * 2 / this.state.state.guideLines;
+        for (let i = 0; i < this.state.state.guideLines; i++) {
+            const angle = i * angleStep;
+            const xEnd = centerX + Math.cos(angle) * maxRadiusMM;
+            const yEnd = centerY + Math.sin(angle) * maxRadiusMM;
+            doc.line(centerX, centerY, xEnd, yEnd);
+        }
+    }
+
     setupStitchPalette() {
         const palette = document.getElementById('stitchPalette');
-        const fragment = document.createDocumentFragment();
-        STITCH_TYPES.forEach(([k, s], i) => {
+        if (!palette) return console.error('El elemento #stitchPalette no se encontró');
+
+        palette.innerHTML = '';
+        let isFirst = true;
+        for (const key in STITCH_TYPES) {
+            const stitch = STITCH_TYPES[key];
             const btn = document.createElement('button');
-            btn.className = `stitch-btn ${i === 0 ? 'active' : ''}`;
-            btn.style.color = s.color;
-            btn.title = s.desc;
-            btn.dataset.key = k;
-            btn.textContent = s.symbol;
+            btn.className = 'stitch-btn';
+            btn.innerHTML = stitch.symbol;
+            btn.style.color = stitch.color;
+            btn.title = stitch.desc;
             btn.onclick = () => {
-                this.state.state.selectedStitch = k;
+                this.state.state.selectedStitch = key;
                 palette.querySelectorAll('.stitch-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.renderer.render(this.state.state);
             };
-            fragment.appendChild(btn);
-        });
-        palette.appendChild(fragment);
+            if (isFirst) {
+                btn.classList.add('active');
+                isFirst = false;
+            }
+            palette.appendChild(btn);
+        }
     }
-    toggleTooltip(e) {
-        const tooltip = document.getElementById('stitchTooltip');
-        if (tooltip.classList.contains('hidden')) {
-            tooltip.innerHTML = [...STITCH_TYPES].map(([, s]) => `<span style="color:${s.color}">${s.symbol}</span> - ${s.desc}`).join('<br>') + '<br><span>▿</span> - Aumento<br><span>▵</span> - Disminución';
+
+    toggleStitchTooltip(e) {
+        this.tooltip = this.tooltip || document.getElementById('stitchTooltip');
+        if (this.tooltip.classList.contains('hidden')) {
+            const content = Object.entries(STITCH_TYPES)
+                .map(([key, stitch]) => `<span style="color: ${stitch.color}">${stitch.symbol}</span> - ${stitch.desc}`)
+                .join('<br>') + '<br><span>▿</span> - Aumento<br><span>▵</span> - Disminución';
+            this.tooltip.innerHTML = content;
+
             const rect = e.target.getBoundingClientRect();
-            tooltip.style.left = `${rect.right + 5}px`;
-            tooltip.style.top = `${rect.top - 5}px`;
-            tooltip.classList.remove('hidden');
-        } else tooltip.classList.add('hidden');
-    }
-    updateRingCounter() {
-        const btn = document.getElementById('addRingBtn');
-        btn.innerHTML = `<span class="ring-counter">${this.state.state.rings.length}</span>`;
-    }
-    updateUI() {
-        document.getElementById('undoBtn').disabled = this.state.state.historyIndex === 0;
-        document.getElementById('redoBtn').disabled = this.state.state.historyIndex === this.state.history.length - 1;
-        this.updateRingCounter();
-        document.getElementById('exportText').value = this.state.state.rings.map((r, ri) => r.points.map((t, si) => {
-            let desc = STITCH_TYPES.get(t.replace(/(_increase|_decrease)/, ''))?.desc || 'Desconocido';
-            if (t.includes('_increase')) desc += ' (Aumento)';
-            else if (t.includes('_decrease')) desc += ' (Disminución)';
-            return `Anillo ${ri + 1}, Segmento ${si}: ${desc}`;
-        }).join('\n')).join('\n') || 'Patrón vacío';
+            this.tooltip.style.left = `${rect.right + 5}px`;
+            this.tooltip.style.top = `${rect.top - 5}px`;
+            this.tooltip.classList.remove('hidden');
+        } else {
+            this.tooltip.classList.add('hidden');
+        }
     }
 }
 
-// Clase Principal
+// Clase principal que coordina las subclases
 class CrochetEditor {
     constructor() {
         this.state = new PatternState();
         this.renderer = new CanvasRenderer(document.getElementById('patternCanvas'));
         this.inputHandler = new InputHandler(this.renderer.canvas, this.state, this.renderer);
-        this.ui = new UIController(this.state, this.renderer, this.inputHandler);
-        this.ui.loadProjects();
-        this.ui.loadFromLocalStorage();
+        this.uiController = new UIController(this.state, this.renderer);
+        this.initialize();
+    }
+
+    initialize() {
+        this.uiController.loadProjects();
+        this.uiController.loadFromLocalStorage();
+        this.renderer.render(this.state.state);
     }
 }
 
