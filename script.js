@@ -1,4 +1,3 @@
-// Constantes globales
 const STITCH_TYPES = new Map([
     ['cadeneta', { symbol: '#', color: '#e74c3c', desc: 'Cadena base' }],
     ['punt_baix', { symbol: '•', color: '#2ecc71', desc: 'Punto bajo' }],
@@ -42,11 +41,13 @@ class CanvasRenderer {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.resize();
+        window.addEventListener('resize', () => this.resize());
     }
 
     resize() {
         this.canvas.width = this.canvas.offsetWidth;
         this.canvas.height = this.canvas.offsetHeight;
+        this.render(this.state);
     }
 
     render(state) {
@@ -166,8 +167,7 @@ class UIController {
 
     initControls() {
         const palette = document.querySelector('.stitch-palette');
-        palette.innerHTML = '';
-
+        
         // Generar botones dinámicamente
         STITCH_TYPES.forEach((stitch, key) => {
             const btn = document.createElement('button');
@@ -188,6 +188,10 @@ class UIController {
             palette.appendChild(btn);
         });
 
+        // Activar primer botón
+        palette.firstElementChild.classList.add('active');
+
+        // Evento para reiniciar
         document.getElementById('reset').addEventListener('click', () => {
             this.state.reset();
             this.renderer.render(this.state);
