@@ -297,6 +297,9 @@ class UIController {
         this.currentProjectName = null;
         this.logoContainer = document.getElementById('logoContainer');
         this.canvas = document.getElementById('patternCanvas');
+        // Estado inicial: logo visible, canvas oculto
+        this.logoContainer.style.display = 'block';
+        this.canvas.style.display = 'none';
         this.setupUI();
     }
     setupUI() {
@@ -333,6 +336,7 @@ class UIController {
     newProject() { 
         this.state.reset(); 
         this.currentProjectName = null; 
+        // Ocultar logo y mostrar canvas
         this.logoContainer.style.display = 'none'; 
         this.canvas.style.display = 'block'; 
         this.renderer.resize();
@@ -355,10 +359,15 @@ class UIController {
         const saved = localStorage.getItem('crochetPattern');
         if (saved) { 
             this.state.setRings(JSON.parse(saved)); 
+            // Solo ocultar logo si hay datos guardados
             this.logoContainer.style.display = 'none'; 
             this.canvas.style.display = 'block'; 
             this.renderer.render(this.state.state); 
             this.updateUI(); 
+        } else {
+            // Mostrar logo si no hay datos
+            this.logoContainer.style.display = 'block';
+            this.canvas.style.display = 'none';
         }
     }
     getProjects() { return JSON.parse(localStorage.getItem('crochetProjects') || '{}'); }
@@ -371,8 +380,15 @@ class UIController {
                 this.currentProjectName = select.value;
                 this.logoContainer.style.display = 'none'; 
                 this.canvas.style.display = 'block'; 
+                this.renderer.resize(); // Añadido para consistencia
                 this.renderer.render(this.state.state);
                 this.updateUI();
+            } else {
+                // Si se selecciona "Cargar..." (valor vacío), volver al logo
+                this.state.reset();
+                this.currentProjectName = null;
+                this.logoContainer.style.display = 'block';
+                this.canvas.style.display = 'none';
             }
         };
     }
