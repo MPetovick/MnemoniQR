@@ -10,7 +10,7 @@ const STITCH_TYPES = new Map([
 ]);
 
 const DEFAULT_STATE = {
-    rings: [{ segments: 8, points: Array(8) }], // Array vacío con longitud fija, sin fill
+    rings: [{ segments: 8, points: Array(8).fill('cadeneta') }],
     history: [],
     historyIndex: 0,
     scale: 1,
@@ -34,7 +34,7 @@ class PatternState {
 
     reset() {
         this.state = { ...DEFAULT_STATE };
-        this.state.rings[0].points = Array(this.state.guideLines); // Longitud fija, sin fill
+        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
         this.state.history = [this.cloneRings()];
         this.state.historyIndex = 0;
     }
@@ -82,12 +82,7 @@ class PatternState {
     updateGuideLines(value) {
         this.state.guideLines = value;
         this.state.rings[0].segments = value;
-        const currentPoints = this.state.rings[0].points || [];
-        const newPoints = Array(value); // Longitud fija, sin fill
-        for (let i = 0; i < value; i++) {
-            newPoints[i] = i < currentPoints.length ? currentPoints[i] : undefined;
-        }
-        this.state.rings[0].points = newPoints;
+        this.state.rings[0].points = Array(value).fill('cadeneta');
     }
 
     updateRingSpacing(value) {
@@ -99,25 +94,21 @@ class PatternState {
         const currentRing = this.state.rings[ringIndex];
 
         if (nextRingIndex >= this.state.rings.length) {
-            // Crear el siguiente anillo con longitud fija pero sin puntos automáticos
-            const newSegments = currentRing.segments * 2;
-            const newPoints = Array(newSegments); // Longitud fija, sin fill
-            newPoints[segmentIndex * 2] = `${stitch}_increase`; // Solo añadimos el aumento
+            // Crear el siguiente anillo con el doble de puntos
             this.state.rings.push({
-                segments: newSegments,
-                points: newPoints
+                segments: currentRing.segments * 2,
+                points: Array(currentRing.segments * 2).fill(stitch)
             });
         } else {
             // Si ya existe el siguiente anillo, duplicar sus puntos
             const nextRing = this.state.rings[nextRingIndex];
-            const newPoints = Array(nextRing.segments * 2); // Nueva longitud fija
-            let newIdx = 0;
-            for (let idx = 0; idx < nextRing.points.length; idx++) {
-                newPoints[newIdx++] = nextRing.points[idx];
+            const newPoints = [];
+            nextRing.points.forEach((point, idx) => {
+                newPoints.push(point);
                 if (idx === segmentIndex) {
-                    newPoints[newIdx++] = `${stitch}_increase`; // Marcar el aumento
+                    newPoints.push(`${stitch}_increase`); // Marcar el aumento
                 }
-            }
+            });
             nextRing.segments = newPoints.length;
             nextRing.points = newPoints;
         }
@@ -134,12 +125,12 @@ class PatternState {
         const nextRing = this.state.rings[nextRingIndex];
         if (nextRing.segments % 2 !== 0) return; // Solo disminuir si es par
 
-        const newPoints = Array(nextRing.segments / 2); // Nueva longitud fija
-        for (let i = 0, j = 0; i < nextRing.points.length; i += 2, j++) {
+        const newPoints = [];
+        for (let i = 0; i < nextRing.points.length; i += 2) {
             if (i === segmentIndex) {
-                newPoints[j] = `${stitch}_decrease`; // Marcar la disminución
+                newPoints.push(`${stitch}_decrease`); // Marcar la disminución
             } else {
-                newPoints[j] = nextRing.points[i];
+                newPoints.push(nextRing.points[i]);
             }
         }
         nextRing.segments = newPoints.length;
@@ -163,13 +154,15 @@ class CanvasRenderer {
     }
 
     render(state, mouseX = null, mouseY = null) {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.updateTransform(state);
-        this.applyTransform(state);
-        this.drawRings(state);
-        this.drawStitches(state);
-        if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
-        this.ctx.restore();
+        requestAnimationFrame(() => {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.updateTransform(state);
+            this.applyTransform(state);
+            this.drawRings(state);
+            this.drawStitches(state);
+            if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
+            this.ctx.restore();
+        });
     }
 
     updateTransform(state) {
@@ -220,9 +213,7 @@ class CanvasRenderer {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
             const radius = (ringIndex + 0.5) * state.ringSpacing;
-            for (let segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
-                const type = ring.points[segmentIndex];
-                if (!type) continue; // No dibujar si no hay punto
+            ring.points.forEach((type, segmentIndex) => {
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
@@ -250,13 +241,13 @@ class CanvasRenderer {
                     this.ctx.lineWidth = 1 / state.scale;
                     this.ctx.stroke();
                 }
-            }
+            });
         });
     }
 
     drawHoverEffect(state, mouseX, mouseY) {
         const { ring, segment } = this.getRingAndSegment(state, mouseX, mouseY);
-        if (ring >= 0 && ring < state.rings.length && !state.rings[ring].points[segment]) {
+        if (ring >= 0 && ring < state.rings.length) {
             const segments = state.rings[ring].segments;
             const angleStep = Math.PI * 2 / segments;
             const radius = (ring + 0.5) * state.ringSpacing;
@@ -343,9 +334,7 @@ class CanvasRenderer {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
             const radius = (ringIndex + 0.5) * state.ringSpacing;
-            for (let segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
-                const type = ring.points[segmentIndex];
-                if (!type) continue;
+            ring.points.forEach((type, segmentIndex) => {
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
@@ -373,7 +362,7 @@ class CanvasRenderer {
                     ctx.lineWidth = 1 / scale;
                     ctx.stroke();
                 }
-            }
+            });
         });
     }
 
@@ -381,6 +370,7 @@ class CanvasRenderer {
         ctx.font = '16px Arial';
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'left';
+        ctx.fillText(""); // Corregido
         ctx.fillText('Leyenda de puntadas:', x, y);
         y += 20;
         for (const [, stitch] of STITCH_TYPES) {
@@ -389,8 +379,10 @@ class CanvasRenderer {
             y += 20;
         }
         ctx.fillStyle = '#000000';
+        ctx.fillText(""); // Corregido
         ctx.fillText('▿ - Aumento', x, y);
         y += 20;
+        ctx.fillText(""); // Corregido
         ctx.fillText('▵ - Disminución', x, y);
     }
 }
@@ -706,12 +698,11 @@ class UIController {
         const text = this.state.state.rings
             .map((ring, ringIndex) => 
                 ring.points.map((type, segmentIndex) => {
-                    if (!type) return '';
                     let desc = STITCH_TYPES.get(type.replace(/(_increase|_decrease)/, '')).desc;
                     if (type.includes('_increase')) desc += ' (Aumento)';
                     else if (type.includes('_decrease')) desc += ' (Disminución)';
                     return `Anillo ${ringIndex + 1}, Segmento ${segmentIndex}: ${desc}`;
-                }).filter(Boolean).join('\n')
+                }).join('\n')
             )
             .join('\n') || 'Patrón vacío';
         document.getElementById('exportText').value = text;
@@ -749,6 +740,7 @@ class UIController {
     addPDFTitle(doc, pageWidth, margin) {
         doc.setFontSize(18);
         doc.setTextColor('#2c3e50');
+        doc.text(""); // Corregido
         doc.text(this.currentProjectName || 'Patrón de Crochet Radial', pageWidth / 2, margin + 10, { align: 'center' });
     }
 
@@ -756,17 +748,21 @@ class UIController {
         doc.setFontSize(12);
         doc.setTextColor('#000000');
         let y = margin + 25;
+        doc.text(""); // Corregido
         doc.text('Leyenda de puntadas:', margin, y);
         y += 10;
 
         for (const [, stitch] of STITCH_TYPES) {
             doc.setTextColor(stitch.color);
+            doc.text(""); // Corregido
             doc.text(`${stitch.symbol} - ${stitch.desc}`, margin + 5, y);
             y += 8;
         }
         doc.setTextColor('#000000');
+        doc.text(""); // Corregido
         doc.text('▿ - Aumento', margin + 5, y);
         y += 8;
+        doc.text(""); // Corregido
         doc.text('▵ - Disminución', margin + 5, y);
         return y + 10;
     }
@@ -787,9 +783,7 @@ class UIController {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
             const stitchRadius = (ringIndex + 0.5) * this.state.state.ringSpacing * scale * 0.0353;
-            for (let segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
-                const type = ring.points[segmentIndex];
-                if (!type) continue;
+            ring.points.forEach((type, segmentIndex) => {
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = centerX + Math.cos(angle) * stitchRadius;
                 const y = centerY + Math.sin(angle) * stitchRadius;
@@ -806,8 +800,9 @@ class UIController {
 
                 doc.setTextColor(STITCH_TYPES.get(stitchType).color);
                 doc.setFontSize(12 * scale);
+                doc.text(""); // Corregido
                 doc.text(symbol, x, y, { align: 'center', baseline: 'middle' });
-            }
+            });
         });
 
         doc.setDrawColor('#eee');
