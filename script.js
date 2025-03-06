@@ -33,7 +33,7 @@ let offsetX = 0;
 let offsetY = 0;
 let isDragging = false;
 let startX, startY;
-let patternSequence = []; // Almacenar la secuencia de puntos
+let patternSequence = [];
 
 // Generar botones de la paleta de puntadas
 function createStitchButtons() {
@@ -54,7 +54,6 @@ function selectStitch(stitch, button) {
     document.querySelectorAll(".stitch-btn").forEach(btn => btn.classList.remove("active"));
     button.classList.add("active");
     
-    // Añadir a la secuencia
     const stitchCount = patternSequence.length + 1;
     patternSequence.push({ ...stitch, position: stitchCount });
     updatePatternLog();
@@ -64,7 +63,7 @@ function selectStitch(stitch, button) {
 // Actualizar el log de la secuencia por anillos
 function updatePatternLog() {
     const divisions = parseInt(guideLines.value);
-    const rings = Math.ceil(patternSequence.length / divisions); // Número de anillos necesarios
+    const rings = Math.ceil(patternSequence.length / divisions);
     let logText = "";
 
     for (let ring = 0; ring < rings; ring++) {
@@ -72,11 +71,11 @@ function updatePatternLog() {
         const endIdx = Math.min(startIdx + divisions, patternSequence.length);
         const ringStitches = patternSequence.slice(startIdx, endIdx);
         const ringText = ringStitches.map(s => `${s.symbol}`).join(" ");
-        logText += `Linea ${ring + 1}: ${ringText || "Vacío"}\n`;
+        logText += `Anillo ${ring + 1}: ${ringText || "Vacío"}\n`;
     }
 
     patternLog.value = logText.trim();
-    patternLog.scrollTop = patternLog.scrollHeight; // Auto-scroll al final
+    patternLog.scrollTop = patternLog.scrollHeight;
 }
 
 // Mostrar tooltip al pasar el mouse o tocar
@@ -86,9 +85,17 @@ stitchPalette.addEventListener("mouseover", (e) => {
     }
 });
 
-stitchPalette.addEventListener("mouseout", () => {
-    hideTooltip();
-});
+stitchPalette.addEventListener("mouseout", hideTooltip);
+
+stitchPalette.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    const target = e.target.closest(".stitch-btn");
+    if (target) {
+        const stitch = stitches.find(s => s.symbol === target.textContent);
+        if (stitch) selectStitch(stitch, target);
+        showTooltip(target, e.touches[0]);
+    }
+}, { passive: false });
 
 // Mostrar tooltip al hacer clic en el botón de ayuda
 stitchHelpBtn.addEventListener("click", () => {
@@ -152,8 +159,8 @@ function drawPattern() {
 
     // Dibujar puntos de crochet en el patrón
     patternSequence.forEach((stitch, index) => {
-        const ring = Math.floor(index / divisions) + 1; // Anillo basado en la cantidad de puntos por división
-        const positionInRing = index % divisions; // Posición dentro del anillo
+        const ring = Math.floor(index / divisions) + 1;
+        const positionInRing = index % divisions;
         const angle = (positionInRing / divisions) * Math.PI * 2;
         const x = centerX + Math.cos(angle) * (ring * spacing);
         const y = centerY + Math.sin(angle) * (ring * spacing);
@@ -169,50 +176,76 @@ function drawPattern() {
 }
 
 // Interacción con el canvas
-canvas.addEventListener("mousedown", (e) => {
-    if (selectedStitch) {
-        // Aquí podrías añadir lógica más avanzada para colocar puntos en posiciones específicas
+canvas.addEventListener("mousedown", startDragging);
+canvas.addEventListener("mousemove", drag);
+canvas.addEventListener("mouseup", stopDragging);
+canvas.addEventListener("mouseleave", stopDragging);
+
+canvas.addEventListener("touchstart", startDragging, { passive: false });
+canvas.addEventListener("touchmove", drag, { passive: false });
+canvas.addEventListener("touchend", stopDragging);
+canvas.addEventListener("touchcancel", stopDragging);
+
+function startDragging(e) {
+    e.preventDefault();
+    if (e.type === "touchstart") {
+        const touch = e.touches[0];
+        startX = touch.clientX - offsetX;
+        startY = touch.clientY - offsetY;
     } else {
-        isDragging = true;
         startX = e.clientX - offsetX;
         startY = e.clientY - offsetY;
     }
-});
+    isDragging = true;
+}
 
-canvas.addEventListener("mousemove", (e) => {
-    if (isDragging) {
+function drag(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    if (e.type === "touchmove") {
+        const touch = e.touches[0];
+        offsetX = touch.clientX - startX;
+        offsetY = touch.clientY - startY;
+    } else {
         offsetX = e.clientX - startX;
         offsetY = e.clientY - startY;
-        drawPattern();
     }
-});
+    drawPattern();
+}
 
-canvas.addEventListener("mouseup", () => {
+function stopDragging() {
     isDragging = false;
-});
+}
 
 // Controles de zoom
-zoomIn.addEventListener("click", () => {
+zoomIn.addEventListener("click", zoomInHandler);
+zoomOut.addEventListener("click", zoomOutHandler);
+resetView.addEventListener("click", resetViewHandler);
+
+function zoomInHandler(e) {
+    e.preventDefault();
     zoomLevel = Math.min(zoomLevel + 0.2, 3);
     drawPattern();
-});
+}
 
-zoomOut.addEventListener("click", () => {
+function zoomOutHandler(e) {
+    e.preventDefault();
     zoomLevel = Math.max(zoomLevel - 0.2, 0.5);
     drawPattern();
-});
+}
 
-resetView.addEventListener("click", () => {
+function resetViewHandler(e) {
+    e.preventDefault();
     zoomLevel = 1;
     offsetX = 0;
     offsetY = 0;
     drawPattern();
-});
+}
 
 // Actualizar valores de configuración
 guideLines.addEventListener("input", () => {
     guideLinesValue.textContent = guideLines.value;
-    updatePatternLog(); // Actualizar log al cambiar divisiones
+    updatePatternLog();
     drawPattern();
 });
 
