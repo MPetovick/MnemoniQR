@@ -3,30 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editor Profesional de Crochet</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <title>Crochet Calculator</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <main class="editor-container">
-        <section class="canvas-section">
-            <canvas id="patternCanvas" aria-label="Área de diseño de patrones de crochet"></canvas>
-        </section>
+    <main class="calculator-container">
+        <div class="display-container">
+            <canvas id="patternCanvas"></canvas>
+        </div>
         
-        <section class="controls-section">
-            <div class="stitch-controls">
-                <div class="stitch-palette" aria-label="Paleta de puntadas"></div>
-                <div class="tool-controls">
-                    <button id="reset" class="tool-button" aria-label="Reiniciar diseño">
-                        <svg class="tool-icon" viewBox="0 0 24 24">
-                            <path d="M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6 0 2.97-2.17 5.43-5 5.91v2.02c3.89-.49 7-3.77 7-7.93 0-4.42-3.58-8-8-8zm-6 8c0-1.65.67-3.15 1.76-4.24L6.34 7.34C5.56 8.12 5 9.29 5 10.5c0 3.31 2.69 6 6 6v2l4-4-4-4v2c-1.94 0-3.5-1.56-3.5-3.5z"/>
-                        </svg>
-                        Reiniciar
-                    </button>
-                </div>
+        <div class="keypad">
+            <div class="stitch-buttons">
+                <!-- Botones generados dinámicamente -->
             </div>
-        </section>
+            <button id="reset" class="control-button">
+                <span>C</span>
+                <span>Reiniciar</span>
+            </button>
+        </div>
     </main>
+
     <script src="app.js"></script>
 </body>
 </html>
