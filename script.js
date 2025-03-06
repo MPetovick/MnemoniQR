@@ -17,7 +17,10 @@ const STITCH_TYPES = new Map([
 ]);
 
 const DEFAULT_STATE = {
-    rings: [{ segments: 8, points: [] }],
+    rings: [
+        { segments: 8, points: [] }, // Anillo 0
+        { segments: 8, points: [] }  // Anillo 1
+    ],
     history: [],
     historyIndex: 0,
     scale: 1,
@@ -45,7 +48,12 @@ class PatternState {
     undo() { if (this.state.historyIndex <= 0) return false; this.state.rings = structuredClone(this.state.history[--this.state.historyIndex]); return true; }
     redo() { if (this.state.historyIndex >= this.state.history.length - 1) return false; this.state.rings = structuredClone(this.state.history[++this.state.historyIndex]); return true; }
     setRings(rings) { this.state.rings = structuredClone(rings); this.saveState(); }
-    updateGuideLines(v) { this.state.guideLines = clamp(v, 4, 24); this.state.rings[0].segments = this.state.guideLines; this.saveState(); }
+    updateGuideLines(v) { 
+        this.state.guideLines = clamp(v, 4, 24); 
+        this.state.rings[0].segments = this.state.guideLines; 
+        if (this.state.rings.length > 1) this.state.rings[1].segments = this.state.guideLines; // Asegurar que el anillo 1 también se ajuste
+        this.saveState(); 
+    }
     updateRingSpacing(v) { this.state.ringSpacing = clamp(v, 30, 80); }
     addRing() { this.state.rings.push({ segments: this.state.rings.at(-1)?.segments || this.state.guideLines, points: [] }); this.saveState(); }
     increasePoints(ringIdx, segIdx) { if (ringIdx + 1 < this.state.rings.length) this.state.rings[ringIdx + 1].segments++; this.saveState(); }
@@ -80,7 +88,6 @@ class CanvasRenderer {
         this.ctx.restore();
     }
     updateTransform(state) {
-        // Amortiguación suave para escala y desplazamiento
         state.scale += (state.targetScale - state.scale) * 0.2;
         state.offset.x += (state.targetOffset.x - state.offset.x) * 0.2;
         state.offset.y += (state.targetOffset.y - state.offset.y) * 0.2;
@@ -91,7 +98,11 @@ class CanvasRenderer {
     drawRings(state) {
         this.ctx.lineWidth = 1 / state.scale;
         this.ctx.strokeStyle = '#ddd';
-        state.rings.forEach((_, r) => { this.ctx.beginPath(); this.ctx.arc(0, 0, (r + 1) * state.ringSpacing, 0, Math.PI * 2); this.ctx.stroke(); });
+        state.rings.forEach((_, r) => { 
+            this.ctx.beginPath(); 
+            this.ctx.arc(0, 0, (r + 1) * state.ringSpacing, 0, Math.PI * 2); 
+            this.ctx.stroke(); 
+        });
         this.ctx.strokeStyle = '#eee';
         const segments = state.guideLines, angleStep = Math.PI * 2 / segments, maxRadius = state.rings.length * state.ringSpacing;
         this.ctx.beginPath();
@@ -159,8 +170,8 @@ class CanvasRenderer {
         link.href = exportCanvas.toDataURL('image/png');
         link.click();
     }
-    drawRings(ctx, state, scale) { this.drawRings(state); } // Simplificado para exportación
-    drawStitches(ctx, state, scale) { this.drawStitches(state); } // Simplificado para exportación
+    drawRings(ctx, state, scale) { this.drawRings(state); }
+    drawStitches(ctx, state, scale) { this.drawStitches(state); }
     drawLegend(ctx, x, y) {
         ctx.font = '16px Arial'; ctx.fillStyle = '#000'; ctx.textAlign = 'left';
         ctx.fillText('Leyenda:', x, y); y += 20;
@@ -217,8 +228,8 @@ class InputHandler {
         const deltaX = (e.clientX - this.state.state.lastPos.x) / this.state.state.scale;
         const deltaY = (e.clientY - this.state.state.lastPos.y) / this.state.state.scale;
         this.state.state.targetOffset.x += deltaX;
-        this.state.state.lastPos = { x: e.clientX, y: e.clientY };
         this.state.state.targetOffset.y += deltaY;
+        this.state.state.lastPos = { x: e.clientX, y: e.clientY };
     }
     endDrag() {
         this.state.state.isDragging = false;
