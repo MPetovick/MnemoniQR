@@ -9,7 +9,11 @@
     --config-control-color: #2c3e50;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
 body {
     font-family: 'Segoe UI', system-ui, sans-serif;
@@ -56,7 +60,11 @@ body {
     z-index: 1000;
 }
 
-.navbar-brand { display: flex; align-items: center; gap: 0.5rem; }
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
 
 /* Editor Container */
 .editor-container {
@@ -81,9 +89,24 @@ body {
     z-index: 900;
 }
 
-.tool-section { display: flex; align-items: center; gap: 0.5rem; }
-.stitch-section { display: flex; align-items: center; gap: 0.5rem; }
-.tool-label { font-size: 0.9em; color: var(--primary-color); margin-right: 0.5rem; }
+.tool-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stitch-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tool-label {
+    font-size: 0.9em;
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+}
+
 .tool-btn {
     padding: 0.5rem;
     background: var(--background-color);
@@ -95,11 +118,37 @@ body {
     align-items: center;
     gap: 0.3rem;
 }
-.tool-btn:hover { background-color: var(--secondary-color); color: white; transform: translateY(-1px); }
-.tool-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.help-btn { background: none; border: none; color: var(--primary-color); font-size: 1rem; cursor: pointer; padding: 0; }
-.help-btn:hover { color: var(--secondary-color); }
-.stitch-palette { display: flex; gap: 0.3rem; }
+
+.tool-btn:hover {
+    background-color: var(--secondary-color);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.tool-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.help-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+}
+
+.help-btn:hover {
+    color: var(--secondary-color);
+}
+
+.stitch-palette {
+    display: flex;
+    gap: 0.3rem;
+}
+
 .stitch-btn {
     width: 28px;
     height: 28px;
@@ -113,13 +162,41 @@ body {
     transition: all 0.2s ease;
     background: var(--background-color);
 }
-.stitch-btn.active { border-color: var(--secondary-color); background-color: rgba(52, 152, 219, 0.1); }
-#loadProjects { padding: 0.3rem; border-radius: 4px; border: 1px solid var(--primary-color); font-size: 0.9em; }
+
+.stitch-btn.active {
+    border-color: var(--secondary-color);
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+#loadProjects {
+    padding: 0.3rem;
+    border-radius: 4px;
+    border: 1px solid var(--primary-color);
+    font-size: 0.9em;
+}
 
 /* Canvas y Exportación */
-.canvas-wrapper { display: flex; flex-direction: column; flex: 1; margin-top: 100px; margin-right: 80px; }
-.grid-view { position: relative; width: 100%; flex: 1; overflow: hidden; background: #fff; }
-#patternCanvas { width: 100%; height: 100%; }
+.canvas-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-top: 100px;
+    margin-right: 80px;
+}
+
+.grid-view {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
+    background: #fff;
+}
+
+#patternCanvas {
+    width: 100%;
+    height: 100%;
+}
+
 .zoom-controls {
     position: absolute;
     bottom: 0.5rem;
@@ -131,27 +208,49 @@ body {
     border-radius: 8px;
     box-shadow: var(--shadow);
 }
-.export-panel { background: var(--toolbar-bg); padding: 0.5rem 1rem; border-top: 1px solid #ddd; }
-.export-options { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
-.export-btn { padding: 0.5rem; background: var(--background-color); border: 1px solid var(--primary-color); border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
-.export-btn:hover { background-color: var(--secondary-color); color: white; }
 
-/* Config Bar Mejorada Visualmente */
+.export-panel {
+    background: var(--toolbar-bg);
+    padding: 0.5rem 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.export-options {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.export-btn {
+    padding: 0.5rem;
+    background: var(--background-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.export-btn:hover {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+/* Config Bar */
 .config-bar {
     position: fixed;
     top: 60px;
     right: 0;
     width: 80px;
     height: calc(100vh - 60px);
-    background: linear-gradient(to bottom, var(--config-bar-bg), #e9ecef); /* Gradiente sutil */
+    background: linear-gradient(to bottom, var(--config-bar-bg), #e9ecef);
     padding: 1.5rem 0.5rem;
-    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1); /* Sombra más pronunciada a la izquierda */
+    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2.5rem;
     z-index: 900;
-    border-left: 1px solid rgba(44, 62, 80, 0.1); /* Borde suave */
+    border-left: 1px solid rgba(44, 62, 80, 0.1);
 }
 
 .config-section {
@@ -167,15 +266,15 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.8); /* Fondo blanco translúcido */
+    background: rgba(255, 255, 255, 0.8);
     padding: 0.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Sombra suave */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: transform 0.2s ease;
 }
 
 .config-control:hover {
-    transform: scale(1.05); /* Efecto sutil al pasar el mouse */
+    transform: scale(1.05);
 }
 
 .config-control label {
@@ -186,19 +285,19 @@ body {
     writing-mode: vertical-lr;
     transform: rotate(180deg);
     margin-bottom: 0.5rem;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1); /* Sombra ligera para legibilidad */
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 input[type="range"].vertical {
     -webkit-appearance: slider-vertical;
     appearance: slider-vertical;
-    width: 10px; /* Un poco más ancho para mejor visibilidad */
-    height: 150px; /* Ligeramente más alto */
-    background: linear-gradient(to top, var(--primary-color), var(--secondary-color)); /* Gradiente en la barra */
+    width: 10px;
+    height: 150px;
+    background: linear-gradient(to top, var(--primary-color), var(--secondary-color));
     border-radius: 5px;
     outline: none;
     transition: opacity 0.2s ease;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2); /* Sombra interna */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 input[type="range"].vertical::-webkit-slider-thumb {
@@ -209,7 +308,7 @@ input[type="range"].vertical::-webkit-slider-thumb {
     background: var(--secondary-color);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 2px var(--primary-color); /* Sombra y borde */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 2px var(--primary-color);
     transition: transform 0.2s ease;
 }
 
@@ -223,10 +322,13 @@ input[type="range"].vertical::-moz-range-thumb {
     transition: transform 0.2s ease;
 }
 
-input[type="range"].vertical:hover { opacity: 0.9; }
+input[type="range"].vertical:hover {
+    opacity: 0.9;
+}
+
 input[type="range"].vertical::-webkit-slider-thumb:hover,
 input[type="range"].vertical::-moz-range-thumb:hover {
-    transform: scale(1.1); /* Aumento sutil al interactuar */
+    transform: scale(1.1);
 }
 
 .config-control span {
@@ -251,7 +353,7 @@ input[type="range"].vertical::-moz-range-thumb:hover {
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    width: 100%; /* Ocupa todo el ancho del contenedor */
+    width: 100%;
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
@@ -281,4 +383,7 @@ input[type="range"].vertical::-moz-range-thumb:hover {
     box-shadow: var(--shadow);
     z-index: 1000;
 }
-.tooltip.hidden { display: none; }
+
+.tooltip.hidden {
+    display: none;
+}
