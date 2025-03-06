@@ -55,7 +55,7 @@ class PatternState {
         }
         this.state.history.push(this.cloneRings());
         this.state.historyIndex++;
-        this.state.history = this.state.history.slice(-100);
+        this.state.history = this.state.history.slice(-100); // Limitar historial
     }
 
     undo() {
@@ -85,9 +85,7 @@ class PatternState {
     updateGuideLines(value) {
         this.state.guideLines = clamp(value, 4, 24);
         this.state.rings[0].segments = this.state.guideLines;
-        if (this.state.rings[0].points.length > this.state.guideLines) {
-            this.state.rings[0].points = this.state.rings[0].points.slice(0, this.state.guideLines);
-        }
+        // No modificamos ni añadimos puntos; el usuario lo hará manualmente
         this.saveState();
     }
 
@@ -105,25 +103,23 @@ class PatternState {
         this.saveState();
     }
 
-    increasePoints(ringIndex, segmentIndex, stitch) {
+    increasePoints(ringIndex, segmentIndex) {
         const nextRingIndex = ringIndex + 1;
-        const currentRing = this.state.rings[ringIndex];
         if (nextRingIndex >= this.state.rings.length) return;
         const nextRing = this.state.rings[nextRingIndex];
-        if (nextRing.points.length >= nextRing.segments) return;
-        nextRing.points.splice(segmentIndex, 0, `${stitch}_increase`);
-        nextRing.segments = nextRing.points.length;
+        // Solo aumentamos segmentos, no añadimos puntos automáticamente
+        nextRing.segments += 1;
         this.saveState();
     }
 
-    decreasePoints(ringIndex, segmentIndex, stitch) {
+    decreasePoints(ringIndex, segmentIndex) {
         const nextRingIndex = ringIndex + 1;
         if (nextRingIndex >= this.state.rings.length || this.state.rings[nextRingIndex].segments <= this.state.guideLines) return;
         const nextRing = this.state.rings[nextRingIndex];
-        if (nextRing.points.length <= nextRing.segments / 2) return;
-        nextRing.points.splice(segmentIndex, 1);
-        nextRing.segments = nextRing.points.length;
-        this.saveState();
+        if (nextRing.segments > nextRing.points.length) {
+            nextRing.segments -= 1; // Solo reducimos segmentos si es seguro
+            this.saveState();
+        }
     }
 }
 
@@ -133,6 +129,7 @@ class CanvasRenderer {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.resize();
+        this.isRendering = false; // Control para evitar renders simultáneos
     }
 
     resize() {
@@ -145,21 +142,26 @@ class CanvasRenderer {
     }
 
     render(state, mouseX = null, mouseY = null) {
-        this.resize();
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.updateTransform(state);
-        this.applyTransform(state);
-        this.drawRings(state);
-        this.drawStitches(state);
-        if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
-        this.ctx.restore();
+        if (this.isRendering) return; // Evitar renders concurrentes
+        this.isRendering = true;
+
+        requestAnimationFrame(() => {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.updateTransform(state);
+            this.applyTransform(state);
+            this.drawRings(state);
+            this.drawStitches(state);
+            if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
+            this.ctx.restore();
+            this.isRendering = false;
+        });
     }
 
     updateTransform(state) {
         state.offset.x += (state.targetOffset.x - state.offset.x) * 0.1;
         state.offset.y += (state.targetOffset.y - state.offset.y) * 0.1;
         state.scale += (state.targetScale - state.scale) * 0.1;
-        const maxOffset = this.canvas.width / (2 * state.scale);
+        const maxOffset = Math.max(this.canvas.width, this.canvas.height) / (2 * state.scale);
         state.targetOffset.x = clamp(state.targetOffset.x, -maxOffset, maxOffset);
         state.targetOffset.y = clamp(state.targetOffset.y, -maxOffset, maxOffset);
     }
@@ -405,7 +407,7 @@ class InputHandler {
         document.addEventListener('mousemove', debounce(this.handleDrag.bind(this), 16));
         document.addEventListener('mouseup', this.endDrag.bind(this));
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
-        window.addEventListener('resize', this.renderer.resize.bind(this.renderer));
+        window.addEventListener('resize', debounce(this.renderer.resize.bind(this.renderer), 100));
     }
 
     handleClick(e) {
@@ -415,13 +417,16 @@ class InputHandler {
             const ringData = this.state.state.rings[ring];
             if (segment < ringData.segments) {
                 if (e.shiftKey && ring < this.state.state.rings.length - 1) {
-                    this.state.increasePoints(ring, segment, this.state.state.selectedStitch);
+                    this.state.increasePoints(ring, segment);
                 } else if (e.ctrlKey && ring < this.state.state.rings.length - 1) {
-                    this.state.decreasePoints(ring, segment, this.state.state.selectedStitch);
-                } else if (ringData.points.length < ringData.segments) {
-                    ringData.points[segment] = this.state.state.selectedStitch;
+                    this.state.decreasePoints(ring, segment);
                 } else {
-                    ringData.points[segment] = this.state.state.selectedStitch;
+                    // Solo el usuario añade o modifica puntos aquí
+                    if (typeof ringData.points[segment] === 'undefined') {
+                        ringData.points[segment] = this.state.state.selectedStitch;
+                    } else {
+                        ringData.points[segment] = this.state.state.selectedStitch; // Reemplazar si existe
+                    }
                 }
                 this.state.saveState();
                 this.renderer.render(this.state.state);
@@ -525,7 +530,6 @@ class InputHandler {
 
     animate() {
         this.renderer.render(this.state.state);
-        if (this.needsAnimation()) requestAnimationFrame(this.animate.bind(this));
     }
 
     needsAnimation() {
@@ -758,7 +762,7 @@ class UIController {
         return y + 10;
     }
 
-    addPDFPattern(doc, pageWidth, pageHeight, margin, contentWidth, legendHeight) {
+        addPDFPattern(doc, pageWidth, pageHeight, margin, contentWidth, legendHeight) {
         const maxRadius = this.state.state.rings.length * this.state.state.ringSpacing;
         const availableHeight = pageHeight - legendHeight - margin;
         const scale = Math.min(contentWidth / (maxRadius * 2), availableHeight / (maxRadius * 2));
@@ -861,6 +865,27 @@ class UIController {
             addRingBtn.appendChild(counter);
         }
         counter.textContent = this.state.state.rings.length;
+    }
+
+    updateUI() {
+        document.getElementById('undoBtn').disabled = this.state.state.historyIndex === 0;
+        document.getElementById('redoBtn').disabled = this.state.state.historyIndex === this.state.history.length - 1;
+        this.updateExportPreview();
+        this.updateRingCounter();
+    }
+
+    updateExportPreview() {
+        const text = this.state.state.rings
+            .map((ring, ringIndex) =>
+                ring.points.map((type, segmentIndex) => {
+                    let desc = STITCH_TYPES.get(type.replace(/(_increase|_decrease)/, ''))?.desc || 'Desconocido';
+                    if (type.includes('_increase')) desc += ' (Aumento)';
+                    else if (type.includes('_decrease')) desc += ' (Disminución)';
+                    return `Anillo ${ringIndex + 1}, Segmento ${segmentIndex}: ${desc}`;
+                }).join('\n')
+            )
+            .join('\n') || 'Patrón vacío';
+        document.getElementById('exportText').value = text;
     }
 }
 
