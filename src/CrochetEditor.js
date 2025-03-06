@@ -6,10 +6,24 @@ import { UIController } from './UIController.js';
 export class CrochetEditor {
     constructor() {
         this.state = new PatternState();
-        this.renderer = new CanvasRenderer(document.getElementById('patternCanvas'));
-        this.inputHandler = new InputHandler(this.renderer.canvas, this.state, this.renderer);
+        this.canvas = document.getElementById('patternCanvas');
+        this.renderer = new CanvasRenderer(this.canvas);
+        this.inputHandler = new InputHandler(this.canvas, this.state, this.renderer);
         this.ui = new UIController(this.state, this.renderer, this.inputHandler);
+        
+        // Inicialización del canvas
+        this.initCanvas();
         this.ui.loadProjects();
         this.ui.loadFromLocalStorage();
+    }
+
+    initCanvas() {
+        // Mostrar canvas y ocultar logo
+        this.canvas.style.display = 'block';
+        document.getElementById('logoContainer').style.display = 'none';
+        
+        // Renderizado inicial
+        this.renderer.initialize();
+        this.renderer.draw(this.state);
     }
 }
