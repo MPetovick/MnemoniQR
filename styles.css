@@ -73,11 +73,13 @@ body {
     bottom: 0.5rem;
     right: 0.5rem;
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     background: rgba(255, 255, 255, 0.9);
     padding: 0.5rem;
     border-radius: 8px;
     box-shadow: var(--shadow);
+    align-items: center;
 }
 
 .zoom-controls button {
@@ -94,6 +96,48 @@ body {
 .zoom-controls button:hover {
     background-color: var(--secondary-color);
     color: white;
+}
+
+.config-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-section label {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.config-section input[type="range"] {
+    width: 80px;
+    height: 8px;
+    -webkit-appearance: none;
+    background: #ddd;
+    border-radius: 4px;
+    outline: none;
+}
+
+.config-section input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.config-section input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.config-section span {
+    font-size: 0.8em;
+    color: var(--text-color);
 }
 
 .log-panel {
@@ -180,46 +224,6 @@ body {
     background-color: var(--secondary-color);
 }
 
-.config-bar {
-    position: fixed;
-    top: 60px;
-    right: 0;
-    width: clamp(60px, 10vw, 100px);
-    height: calc(100vh - 60px);
-    background-color: var(--toolbar-bg);
-    padding: 1rem 0.5rem;
-    box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 900;
-}
-
-.config-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-}
-
-.config-section label {
-    font-size: 1rem;
-    color: var(--primary-color);
-}
-
-.config-section input[type="range"] {
-    writing-mode: bt-lr;
-    -webkit-appearance: slider-vertical;
-    width: 8px;
-    height: 100px;
-    padding: 0 5px;
-}
-
-.config-section span {
-    font-size: 0.8em;
-    color: var(--text-color);
-}
-
 .tooltip {
     position: absolute;
     background: var(--toolbar-bg);
@@ -243,5 +247,9 @@ body {
     
     #patternLog {
         height: 150px;
+    }
+    
+    .config-section input[type="range"] {
+        width: 100px;
     }
 }
