@@ -80,10 +80,11 @@ class CanvasRenderer {
         this.ctx.restore();
     }
     updateTransform(state) {
-        state.offset.x += (state.targetOffset.x - state.offset.x) * 0.1;
-        state.offset.y += (state.targetOffset.y - state.offset.y) * 0.1;
-        state.scale += (state.targetScale - state.scale) * 0.1;
-        const maxOffset = Math.max(this.canvas.width, this.canvas.height) / (2 * state.scale);
+        // Amortiguación suave para escala y desplazamiento
+        state.scale += (state.targetScale - state.scale) * 0.2;
+        state.offset.x += (state.targetOffset.x - state.offset.x) * 0.2;
+        state.offset.y += (state.targetOffset.y - state.offset.y) * 0.2;
+        const maxOffset = Math.max(this.canvas.width, this.canvas.height) / (2 * state.scale) - state.rings.length * state.ringSpacing;
         state.targetOffset.x = clamp(state.targetOffset.x, -maxOffset, maxOffset);
         state.targetOffset.y = clamp(state.targetOffset.y, -maxOffset, maxOffset);
     }
@@ -158,8 +159,8 @@ class CanvasRenderer {
         link.href = exportCanvas.toDataURL('image/png');
         link.click();
     }
-    drawRings(ctx, state, scale) { /* Similar a drawRings pero para exportación */ }
-    drawStitches(ctx, state, scale) { /* Similar a drawStitches pero para exportación */ }
+    drawRings(ctx, state, scale) { this.drawRings(state); } // Simplificado para exportación
+    drawStitches(ctx, state, scale) { this.drawStitches(state); } // Simplificado para exportación
     drawLegend(ctx, x, y) {
         ctx.font = '16px Arial'; ctx.fillStyle = '#000'; ctx.textAlign = 'left';
         ctx.fillText('Leyenda:', x, y); y += 20;
@@ -174,6 +175,7 @@ class InputHandler {
         this.canvas = canvas;
         this.state = state;
         this.renderer = renderer;
+        this.isAnimating = false;
         this.bindEvents();
     }
     bindEvents() {
@@ -193,7 +195,8 @@ class InputHandler {
         window.addEventListener('resize', debounce(() => this.renderer.resize(), 100));
     }
     handleClick(e) {
-        const { ring, segment } = this.renderer.getRingSegment(this.state.state, ...this.getCoords(e));
+        const [x, y] = this.getCoords(e);
+        const { ring, segment } = this.renderer.getRingSegment(this.state.state, x, y);
         if (ring >= 0 && ring < this.state.state.rings.length && segment < this.state.state.rings[ring].segments) {
             const ringData = this.state.state.rings[ring];
             if (e.shiftKey && ring < this.state.state.rings.length - 1) this.state.increasePoints(ring, segment);
@@ -204,17 +207,23 @@ class InputHandler {
         }
     }
     handleMouseMove(e) { this.renderer.render(this.state.state, ...this.getCoords(e)); }
-    startDrag(e) { this.state.state.isDragging = true; this.state.state.lastPos = { x: e.clientX, y: e.clientY }; }
+    startDrag(e) {
+        this.state.state.isDragging = true;
+        this.state.state.lastPos = { x: e.clientX, y: e.clientY };
+        this.animate();
+    }
     handleDrag(e) {
         if (!this.state.state.isDragging) return;
         const deltaX = (e.clientX - this.state.state.lastPos.x) / this.state.state.scale;
         const deltaY = (e.clientY - this.state.state.lastPos.y) / this.state.state.scale;
         this.state.state.targetOffset.x += deltaX;
-        this.state.state.targetOffset.y += deltaY;
         this.state.state.lastPos = { x: e.clientX, y: e.clientY };
-        this.renderer.render(this.state.state);
+        this.state.state.targetOffset.y += deltaY;
     }
-    endDrag() { this.state.state.isDragging = false; }
+    endDrag() {
+        this.state.state.isDragging = false;
+        this.isAnimating = false;
+    }
     handleTouchStart(e) {
         e.preventDefault();
         const touches = e.touches;
@@ -235,7 +244,10 @@ class InputHandler {
     getPinchDistance(touches) { const dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
     getCoords(e) {
         const rect = this.canvas.getBoundingClientRect();
-        return [(e.clientX - rect.left - this.canvas.width / 2) / this.state.state.scale - this.state.state.offset.x, (e.clientY - rect.top - this.canvas.height / 2) / this.state.state.scale - this.state.state.offset.y];
+        return [
+            (e.clientX - rect.left - this.canvas.width / 2) / this.state.state.scale - this.state.state.offset.x,
+            (e.clientY - rect.top - this.canvas.height / 2) / this.state.state.scale - this.state.state.offset.y
+        ];
     }
     handleKeyDown(e) {
         if (e.ctrlKey) {
@@ -245,8 +257,30 @@ class InputHandler {
         } else if (e.key === '+') this.adjustZoom(0.2);
         else if (e.key === '-') this.adjustZoom(-0.2);
     }
-    adjustZoom(amount) { this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3); this.renderer.render(this.state.state); }
-    resetView() { this.state.state.targetScale = 1; this.state.state.targetOffset = { x: 0, y: 0 }; this.state.state.offset = { x: 0, y: 0 }; this.renderer.render(this.state.state); }
+    adjustZoom(amount) {
+        this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3);
+        this.animate();
+    }
+    resetView() {
+        this.state.state.targetScale = 1;
+        this.state.state.targetOffset = { x: 0, y: 0 };
+        this.state.state.offset = { x: 0, y: 0 };
+        this.renderer.render(this.state.state);
+    }
+    animate() {
+        if (!this.isAnimating) {
+            this.isAnimating = true;
+            const loop = () => {
+                this.renderer.render(this.state.state);
+                if (this.state.state.isDragging || Math.abs(this.state.state.scale - this.state.state.targetScale) > 0.01) {
+                    requestAnimationFrame(loop);
+                } else {
+                    this.isAnimating = false;
+                }
+            };
+            requestAnimationFrame(loop);
+        }
+    }
 }
 
 // Clase UI
