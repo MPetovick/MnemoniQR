@@ -1,269 +1,234 @@
 :root {
-    --primary-bg: #f5f5f5;
-    --button-bg: #ffffff;
-    --button-border: #e0e0e0;
-    --button-active: #4a90e2;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --background-color: #f8f9fa;
+    --text-color: #2c3e50;
+    --toolbar-bg: #ffffff;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background: var(--primary-bg);
-    height: 100vh;
-    display: flex;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.4;
 }
 
-.calculator-container {
-    flex: 1;
-    max-width: 600px;
-    margin: auto;
-    padding: 20px;
-    display: grid;
-    grid-template-rows: 1fr auto;
-    gap: 20px;
-}
-
-.display-container {
-    background: white;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    overflow: hidden;
-}
-
-#patternCanvas {
-    width: 100%;
-    height: 400px;
-    display: block;
-}
-
-.keypad {
-    background: white;
-    padding: 15px;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-}
-
-.stitch-buttons {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.stitch-button {
-    aspect-ratio: 1;
-    background: var(--button-bg);
-    border: 2px solid var(--button-border);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.stitch-button.active {
-    border-color: var(--button-active);
-    transform: scale(0.95);
-    box-shadow: 0 2px 6px rgba(74, 144, 226, 0.2);
-}
-
-.stitch-symbol {
-    font-size: 24px;
-    margin-bottom: 4px;
-}
-
-.stitch-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
-    color: #666;
-}
-
-.control-button {
-    width: 100%;
-    padding: 12px;
-    background: var(--button-active);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.control-button:hover {
-    background-color: #357abd;
-}
-
-.control-button i {
-    font-size: 16px;
-}
-
-@media (max-width: 600px) {
-    .calculator-container {
-        padding: 10px;
-    }
-    
-    #patternCanvas {
-        height: 300px;
-    }
-    
-    .stitch-symbol {
-        font-size: 20px;
-    }
-    
-    .stitch-label {
-        font-size: 8px;
-    }
-}
-
-/* Estilos adicionales para la barra de navegación y otros elementos */
 .navbar {
-    background: white;
-    padding: 10px 20px;
-    box-shadow: var(--shadow);
     display: flex;
+    justify-content: center;
     align-items: center;
-    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: var(--shadow);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
 }
 
 .navbar-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
-}
-
-.navbar-brand i {
-    font-size: 24px;
-    color: var(--button-active);
-}
-
-.navbar-brand h1 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
+    gap: 0.5rem;
 }
 
 .editor-container {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    padding: 20px;
+    min-height: 100vh;
+    padding-top: 60px;
 }
 
-.top-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: white;
-    padding: 10px;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-}
-
-.tool-section {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.tool-btn {
-    background: var(--button-bg);
-    border: 2px solid var(--button-border);
-    border-radius: 8px;
-    padding: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.tool-btn:hover {
-    background: #f0f0f0;
-}
-
-.tool-btn i {
-    font-size: 16px;
-    color: #333;
-}
-
-.export-panel {
-    background: white;
-    padding: 15px;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-}
-
-.export-options {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.export-btn {
-    background: var(--button-bg);
-    border: 2px solid var(--button-border);
-    border-radius: 8px;
-    padding: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.export-btn:hover {
-    background: #f0f0f0;
-}
-
-.export-btn i {
-    font-size: 16px;
-    color: #333;
-}
-
-textarea#exportText {
+.canvas-wrapper {
+    flex: 1;
+    position: relative;
     width: 100%;
-    height: 100px;
-    padding: 10px;
-    border: 2px solid var(--button-border);
+}
+
+.grid-view {
+    position: relative;
+    width: 100%;
+    height: 50vh; /* Altura inicial para móviles */
+    overflow: hidden;
+    background: #fff;
+}
+
+#patternCanvas {
+    width: 100%;
+    height: 100%;
+}
+
+.zoom-controls {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.5rem;
     border-radius: 8px;
-    resize: none;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    color: #333;
+    box-shadow: var(--shadow);
+}
+
+.stitch-calculator {
+    background: var(--toolbar-bg);
+    padding: 1rem;
+    border-top: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stitch-palette {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 300px;
+}
+
+.stitch-btn {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--background-color);
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow);
+}
+
+.stitch-btn:hover {
+    background-color: var(--secondary-color);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.stitch-btn.active {
+    border-color: var(--secondary-color);
+    background-color: rgba(52, 152, 219, 0.2);
+}
+
+.help-btn {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.help-btn:hover {
+    background-color: var(--secondary-color);
 }
 
 .config-bar {
-    background: white;
-    padding: 15px;
-    border-radius: 12px;
+    position: fixed;
+    top: 60px;
+    right: 0;
+    width: 60px;
+    height: calc(100vh - 60px);
+    background-color: var(--toolbar-bg);
+    padding: 1rem 0.5rem;
     box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 900;
 }
 
 .config-section {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 1rem;
 }
 
 .config-section label {
-    font-size: 14px;
-    color: #333;
+    font-size: 1rem;
+    color: var(--primary-color);
 }
 
 .config-section input[type="range"] {
-    flex: 1;
+    writing-mode: bt-lr;
+    -webkit-appearance: slider-vertical;
+    width: 8px;
+    height: 100px;
+    padding: 0 5px;
 }
 
 .config-section span {
-    font-size: 14px;
-    color: #333;
+    font-size: 0.8em;
+    color: var(--text-color);
+}
+
+.tooltip {
+    position: absolute;
+    background: var(--toolbar-bg);
+    color: var(--text-color);
+    padding: 0.5rem;
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    max-width: 200px;
+    z-index: 1000;
+    font-size: 0.8rem;
+}
+
+.tooltip.hidden {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .grid-view {
+        height: 70vh;
+    }
+    
+    .stitch-palette {
+        grid-template-columns: repeat(6, 1fr);
+        max-width: 400px;
+    }
+}
+
+/* Añadir al final del CSS existente */
+
+.log-panel {
+    background: var(--toolbar-bg);
+    padding: 0.5rem;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
+#patternLog {
+    width: 100%;
+    height: 100px;
+    padding: 0.5rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    resize: none;
+    font-family: monospace;
+    font-size: 0.9rem;
+    background: #fff;
+    color: var(--text-color);
+}
+
+@media (min-width: 768px) {
+    #patternLog {
+        height: 150px;
+    }
 }
