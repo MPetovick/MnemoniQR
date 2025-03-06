@@ -3,23 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diseño Radial para Ganchillo Pro</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+    <title>Editor Profesional de Puntos de Ganchillo</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <canvas id="patternCanvas"></canvas>
-    
-    <div class="controls">
-        <div class="stitch-palette"></div>
+    <main class="editor-container">
+        <canvas id="patternCanvas" aria-label="Área de diseño de patrones de ganchillo"></canvas>
         
-        <button id="reset">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M2.5 2v6h6M21.5 22v-6h-6M22 11.5C22 6.253 17.747 2 12.5 2S2 6.253 2 11.5M2 12.5C2 17.747 6.253 22 12.5 22s9.5-4.253 9.5-9.5"/>
-            </svg>
-            <span>Reiniciar diseño</span>
-        </button>
-    </div>
+        <div class="controls-wrapper">
+            <nav class="stitch-controls" aria-label="Controles de puntadas">
+                <div class="stitch-grid">
+                    <!-- Botones generados dinámicamente por JS -->
+                </div>
+                
+                <div class="editor-tools">
+                    <button id="reset" class="tool-button" aria-label="Reiniciar diseño">
+                        <svg class="tool-icon" viewBox="0 0 24 24">
+                            <path d="M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6 0 2.97-2.17 5.43-5 5.91v2.02c3.89-.49 7-3.77 7-7.93 0-4.42-3.58-8-8-8zm-6 8c0-1.65.67-3.15 1.76-4.24L6.34 7.34C5.56 8.12 5 9.29 5 10.5c0 3.31 2.69 6 6 6v2l4-4-4-4v2c-1.94 0-3.5-1.56-3.5-3.5z"/>
+                        </svg>
+                        <span class="tool-label">Reiniciar</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </main>
 
     <script src="app.js"></script>
 </body>
