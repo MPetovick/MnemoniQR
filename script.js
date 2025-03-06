@@ -172,9 +172,10 @@ class UIController {
         STITCH_TYPES.forEach((stitch, key) => {
             const btn = document.createElement('button');
             btn.className = 'stitch-btn';
+            btn.style.setProperty('--stitch-color', stitch.color);
             btn.innerHTML = `
                 <span class="stitch-symbol">${stitch.symbol}</span>
-                <span class="stitch-label">${stitch.desc}</span>
+                <span class="stitch-label">${stitch.desc.split(' ')[0]}</span>
             `;
             btn.style.setProperty('--stitch-color', stitch.color);
             btn.dataset.stitch = key;
