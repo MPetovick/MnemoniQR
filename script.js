@@ -1,10 +1,10 @@
 const STITCH_TYPES = new Map([
     ['cadeneta', { symbol: '#', color: '#e74c3c', desc: 'Cadena' }],
-    ['punt_baix', { symbol: '•', color: '#2ecc71', desc: 'Punto Bajo' }],
-    ['punt_pla', { symbol: '-', color: '#3498db', desc: 'Punto Plano' }],
-    ['punt_mitja', { symbol: '●', color: '#f1c40f', desc: 'Punto Medio' }],
-    ['punt_alt', { symbol: '↑', color: '#9b59b6', desc: 'Punto Alto' }],
-    ['punt_doble_alt', { symbol: '⇑', color: '#e67e22', desc: 'Doble Alto' }],
+    ['punt_baix', { symbol: '•', color: '#2ecc71', desc: 'Bajo' }],
+    ['punt_pla', { symbol: '-', color: '#3498db', desc: 'Plano' }],
+    ['punt_mitja', { symbol: '●', color: '#f1c40f', desc: 'Medio' }],
+    ['punt_alt', { symbol: '↑', color: '#9b59b6', desc: 'Alto' }],
+    ['punt_doble_alt', { symbol: '⇑', color: '#e67e22', desc: 'Doble' }],
     ['picot', { symbol: '¤', color: '#1abc9c', desc: 'Picot' }]
 ]);
 
@@ -18,8 +18,12 @@ class PatternState {
         this.scale = 1;
         this.offset = { x: 0, y: 0 };
         this.selectedStitch = 'cadeneta';
-        this.guides = 8;
         this.spacing = 50;
+    }
+
+    updateStitch(ring, segment) {
+        if (ring >= this.rings.length) this.addRing();
+        this.rings[ring].stitches[segment] = this.selectedStitch;
     }
 
     addRing() {
@@ -28,11 +32,6 @@ class PatternState {
             segments: last.segments * 2,
             stitches: Array(last.segments * 2).fill(this.selectedStitch)
         });
-    }
-
-    updateStitch(ringIdx, segmentIdx) {
-        if (ringIdx >= this.rings.length) this.addRing();
-        this.rings[ringIdx].stitches[segmentIdx] = this.selectedStitch;
     }
 }
 
@@ -45,39 +44,33 @@ class CanvasRenderer {
     }
 
     resize() {
-        this.canvas.width = this.canvas.offsetWidth * window.devicePixelRatio;
-        this.canvas.height = this.canvas.offsetHeight * window.devicePixelRatio;
-        this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        this.canvas.width = this.canvas.offsetWidth;
+        this.canvas.height = this.canvas.offsetHeight;
         this.render(this.state);
     }
 
     render(state) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(this.canvas.width / (2 * window.devicePixelRatio) + state.offset.x, 
-                          this.canvas.height / (2 * window.devicePixelRatio) + state.offset.y);
+        this.ctx.translate(
+            this.canvas.width/2 + state.offset.x, 
+            this.canvas.height/2 + state.offset.y
+        );
         this.ctx.scale(state.scale, state.scale);
 
-        this.drawGrid(state);
-        this.drawStitches(state);
-        this.ctx.restore();
-    }
-
-    drawGrid(state) {
-        this.ctx.strokeStyle = '#e0e0e0';
-        this.ctx.lineWidth = 0.5;
+        // Dibujar cuadrícula
+        this.ctx.strokeStyle = '#eee';
         state.rings.forEach((_, i) => {
             const radius = (i + 1) * state.spacing;
             this.ctx.beginPath();
             this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
             this.ctx.stroke();
         });
-    }
 
-    drawStitches(state) {
+        // Dibujar puntos
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.font = 'bold 24px Arial';
+        this.ctx.font = '18px Arial';
         
         state.rings.forEach((ring, ringIdx) => {
             const radius = (ringIdx + 0.5) * state.spacing;
@@ -85,14 +78,16 @@ class CanvasRenderer {
             
             ring.stitches.forEach((stitch, segmentIdx) => {
                 const angle = angleStep * segmentIdx;
+                const { symbol, color } = STITCH_TYPES.get(stitch);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
-                const { symbol, color } = STITCH_TYPES.get(stitch);
                 
                 this.ctx.fillStyle = color;
                 this.ctx.fillText(symbol, x, y);
             });
         });
+        
+        this.ctx.restore();
     }
 }
 
@@ -101,101 +96,97 @@ class InputManager {
         this.canvas = canvas;
         this.state = state;
         this.renderer = renderer;
-        this.isDragging = false;
-        this.lastPos = { x: 0, y: 0 };
-        this.setupEvents();
+        this.init();
     }
 
-    setupEvents() {
-        this.canvas.addEventListener('click', e => this.handleClick(e));
-        this.canvas.addEventListener('mousedown', e => this.startDrag(e));
-        document.addEventListener('mousemove', e => this.handleDrag(e));
-        document.addEventListener('mouseup', () => this.endDrag());
-        this.canvas.addEventListener('wheel', e => this.handleZoom(e));
+    init() {
+        this.canvas.addEventListener('click', (e) => this.handleClick(e));
+        this.canvas.addEventListener('wheel', (e) => this.handleZoom(e));
+        this.setupDrag();
     }
 
     handleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left - this.state.offset.x - this.canvas.width / (2 * window.devicePixelRatio)) / this.state.scale;
-        const mouseY = (e.clientY - rect.top - this.state.offset.y - this.canvas.height / (2 * window.devicePixelRatio)) / this.state.scale;
+        const x = (e.clientX - rect.left - this.state.offset.x - this.canvas.width/2) / this.state.scale;
+        const y = (e.clientY - rect.top - this.state.offset.y - this.canvas.height/2) / this.state.scale;
         
-        const distance = Math.sqrt(mouseX ** 2 + mouseY ** 2);
-        const ringIdx = Math.floor(distance / this.state.spacing);
-        const angle = Math.atan2(mouseY, mouseX) + Math.PI;
-        const segmentIdx = Math.floor((angle / (Math.PI * 2)) * this.state.rings[ringIdx]?.segments || this.state.guides);
+        const ring = Math.floor(Math.sqrt(x**2 + y**2) / this.state.spacing);
+        const angle = Math.atan2(y, x) + Math.PI;
+        const segment = Math.floor((angle / (Math.PI * 2)) * 8);
 
-        this.state.updateStitch(ringIdx, segmentIdx);
+        this.state.updateStitch(ring, segment);
         this.renderer.render(this.state);
     }
 
     handleZoom(e) {
         e.preventDefault();
-        this.state.scale += e.deltaY > 0 ? -0.1 : 0.1;
-        this.state.scale = Math.min(3, Math.max(0.5, this.state.scale));
+        this.state.scale = Math.min(3, Math.max(0.5, this.state.scale + (e.deltaY > 0 ? -0.1 : 0.1)));
         this.renderer.render(this.state);
     }
 
-    startDrag(e) {
-        this.isDragging = true;
-        this.lastPos = { x: e.clientX, y: e.clientY };
-    }
+    setupDrag() {
+        let dragging = false;
+        let lastPos = { x: 0, y: 0 };
 
-    handleDrag(e) {
-        if (!this.isDragging) return;
-        this.state.offset.x += e.clientX - this.lastPos.x;
-        this.state.offset.y += e.clientY - this.lastPos.y;
-        this.lastPos = { x: e.clientX, y: e.clientY };
-        this.renderer.render(this.state);
-    }
+        this.canvas.addEventListener('mousedown', (e) => {
+            dragging = true;
+            lastPos = { x: e.clientX, y: e.clientY };
+        });
 
-    endDrag() {
-        this.isDragging = false;
+        document.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            this.state.offset.x += e.clientX - lastPos.x;
+            this.state.offset.y += e.clientY - lastPos.y;
+            lastPos = { x: e.clientX, y: e.clientY };
+            this.renderer.render(this.state);
+        });
+
+        document.addEventListener('mouseup', () => dragging = false);
     }
 }
 
 class UIController {
-    constructor(state, renderer) {
+    constructor(state) {
         this.state = state;
-        this.renderer = renderer;
-        this.initControls();
+        this.init();
     }
 
-    initControls() {
-        const palette = document.querySelector('.stitch-palette');
+    init() {
+        const container = document.querySelector('.stitch-buttons');
         
         STITCH_TYPES.forEach((stitch, key) => {
-            const btn = document.createElement('button');
-            btn.className = 'stitch-btn';
-            btn.style.setProperty('--stitch-color', stitch.color);
-            btn.innerHTML = `
+            const button = document.createElement('button');
+            button.className = 'stitch-button';
+            button.innerHTML = `
                 <span class="stitch-symbol">${stitch.symbol}</span>
                 <span class="stitch-label">${stitch.desc}</span>
             `;
-            btn.dataset.stitch = key;
+            button.style.color = stitch.color;
             
-            btn.addEventListener('click', () => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.stitch-button').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
                 this.state.selectedStitch = key;
-                document.querySelectorAll('.stitch-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
             });
-            
-            palette.appendChild(btn);
+
+            container.appendChild(button);
         });
 
-        palette.firstElementChild.classList.add('active');
         document.getElementById('reset').addEventListener('click', () => {
             this.state.reset();
-            this.renderer.render(this.state);
+            document.querySelector('.stitch-button').classList.add('active');
         });
+
+        document.querySelector('.stitch-button').classList.add('active');
     }
 }
 
+// Inicialización
 window.addEventListener('DOMContentLoaded', () => {
     const state = new PatternState();
     const canvas = document.getElementById('patternCanvas');
     const renderer = new CanvasRenderer(canvas);
-    renderer.state = state; // Pass state to renderer
     new InputManager(canvas, state, renderer);
-    new UIController(state, renderer);
+    new UIController(state);
     renderer.render(state);
 });
