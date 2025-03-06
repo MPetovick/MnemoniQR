@@ -79,22 +79,20 @@
         }
 
         updateGuideLines(value) {
-        // Forzar redimensionado completo
-        this.state.guideLines = value;
-        const newRing = {
-            segments: value,
-            points: Array(value).fill('')
-        };
-        
-        // Mantener puntos existentes donde sea posible
-        newRing.points = newRing.points.map((_, i) => 
-            i < this.state.rings[0].points.length ? 
-            this.state.rings[0].points[i] : ''
-        );
-        
-        this.state.rings[0] = newRing;
-        this.saveState();
+            this.state.guideLines = value;
+            const currentRing = this.state.rings[0];
             
+            // Mantener puntos existentes y rellenar nuevos con vacío
+            const newPoints = [...currentRing.points];
+            newPoints.length = value;
+            newPoints.fill('', currentRing.points.length);
+            
+            this.state.rings[0] = {
+                segments: value,
+                points: newPoints
+            };
+            
+            this.saveState();
         }
 
         updateRingSpacing(value) {
@@ -144,58 +142,52 @@
     }
 
     class CanvasRenderer {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.baseScale = 1; // Nueva propiedad para escala base
-        this.resize();
-    }
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.resize();
+        }
 
-    render(state, mouseX = null, mouseY = null) {
-        // Limpiar transformaciones anteriores
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        
-        requestAnimationFrame(() => {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            
-            // Resetear transformaciones
+        resize() {
+            this.canvas.width = this.canvas.parentElement.clientWidth;
+            this.canvas.height = this.canvas.parentElement.clientHeight;
+        }
+
+        render(state, mouseX = null, mouseY = null) {
+            requestAnimationFrame(() => {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.updateTransform(state);
+                this.applyTransform(state);
+                this.drawRings(state);
+                this.drawGuideLines(state);
+                this.drawStitches(state);
+                if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
+                this.ctx.restore();
+            });
+        }
+
+        updateTransform(state) {
+            state.offset.x += (state.targetOffset.x - state.offset.x) * 0.1;
+            state.offset.y += (state.targetOffset.y - state.offset.y) * 0.1;
+            state.scale += (state.targetScale - state.scale) * 0.1;
+        }
+
+        applyTransform(state) {
             this.ctx.save();
-            this.applyBaseTransform(state);
-            
-            // Dibujar elementos estáticos primero
-            this.drawRings(state);
-            this.drawGuideLines(state);
-            
-            // Dibujar elementos dinámicos
-            this.drawStitches(state);
-            
-            if (mouseX !== null && mouseY !== null) {
-                this.drawHoverEffect(state, mouseX, mouseY);
-            }
-            
-            this.ctx.restore();
-        });
-    }
+            this.ctx.translate(this.canvas.width / 2 + state.offset.x, this.canvas.height / 2 + state.offset.y);
+            this.ctx.scale(state.scale, state.scale);
+        }
 
-    applyBaseTransform(state) {
-        // Aplicar transformaciones base independientes del zoom/pan
-        this.ctx.translate(
-            this.canvas.width / 2 + state.offset.x * this.baseScale,
-            this.canvas.height / 2 + state.offset.y * this.baseScale
-        );
-        this.ctx.scale(this.baseScale, this.baseScale);
-    }
-
-    drawRings(state) {
-        this.ctx.strokeStyle = '#ddd';
-        this.ctx.lineWidth = 1;
-        state.rings.forEach((_, r) => {
-            const radius = (r + 1) * state.ringSpacing;
-            this.ctx.beginPath();
-            this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
-            this.ctx.stroke();
-        });
-    }
+        drawRings(state) {
+            this.ctx.strokeStyle = '#ddd';
+            this.ctx.lineWidth = 1 / state.scale;
+            state.rings.forEach((_, r) => {
+                const radius = (r + 1) * state.ringSpacing;
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+            });
+        }
 
         drawGuideLines(state) {
             const segments = state.guideLines;
@@ -286,119 +278,6 @@
             const segment = Math.floor((angle / (Math.PI * 2)) * segments) % segments;
             
             return { ring, segment };
-        }
-    }
-
-        exportAsImage(state, projectName) {
-            const exportCanvas = document.createElement('canvas');
-            const exportCtx = exportCanvas.getContext('2d');
-            const maxRadius = state.rings.length * state.ringSpacing;
-            const padding = 100;
-            const canvasSize = Math.max(800, (maxRadius * 2) + padding * 2);
-
-            exportCanvas.width = canvasSize;
-            exportCanvas.height = canvasSize + 200;
-            exportCtx.fillStyle = '#ffffff';
-            exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-
-            exportCtx.save();
-            exportCtx.translate(canvasSize / 2, canvasSize / 2);
-            this.drawRingsOnContext(exportCtx, state, 1);
-            this.drawStitchesOnContext(exportCtx, state, 1);
-            exportCtx.restore();
-
-            this.drawLegendOnCanvas(exportCtx, padding, canvasSize + 20);
-
-            const dataUrl = exportCanvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = `${projectName || 'patron_crochet'}.png`;
-            link.href = dataUrl;
-            link.click();
-        }
-
-        drawRingsOnContext(ctx, state, scale) {
-            ctx.strokeStyle = '#ddd';
-            ctx.lineWidth = 1 / scale;
-            state.rings.forEach((_, r) => {
-                const radius = (r + 1) * state.ringSpacing;
-                ctx.beginPath();
-                ctx.arc(0, 0, radius, 0, Math.PI * 2);
-                ctx.stroke();
-            });
-            this.drawGuideLinesOnContext(ctx, state, scale);
-        }
-
-        drawGuideLinesOnContext(ctx, state, scale) {
-            const segments = state.guideLines;
-            const angleStep = Math.PI * 2 / segments;
-            const maxRadius = state.rings.length * state.ringSpacing;
-            ctx.strokeStyle = '#eee';
-            ctx.beginPath();
-            for (let i = 0; i < segments; i++) {
-                const angle = i * angleStep;
-                const x = Math.cos(angle) * maxRadius;
-                const y = Math.sin(angle) * maxRadius;
-                ctx.moveTo(0, 0);
-                ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-        }
-
-        drawStitchesOnContext(ctx, state, scale) {
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = `${20 / scale}px Arial`;
-            state.rings.forEach((ring, ringIndex) => {
-                const segments = ring.segments;
-                const angleStep = Math.PI * 2 / segments;
-                const radius = (ringIndex + 0.5) * state.ringSpacing;
-                ring.points.forEach((type, segmentIndex) => {
-                    const angle = segmentIndex * angleStep + (angleStep / 2);
-                    const x = Math.cos(angle) * radius;
-                    const y = Math.sin(angle) * radius;
-                    let stitchType = type;
-                    let isSpecial = false;
-                    let symbol = STITCH_TYPES.get(stitchType).symbol;
-
-                    if (type.includes('_increase')) {
-                        stitchType = type.replace('_increase', '');
-                        isSpecial = true;
-                        symbol = '▿';
-                    } else if (type.includes('_decrease')) {
-                        stitchType = type.replace('_decrease', '');
-                        isSpecial = true;
-                        symbol = '▵';
-                    }
-
-                    ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                    ctx.fillText(symbol, x, y);
-
-                    if (isSpecial) {
-                        ctx.beginPath();
-                        ctx.arc(x, y, 5 / scale, 0, Math.PI * 2);
-                        ctx.strokeStyle = '#ff0000';
-                        ctx.lineWidth = 1 / scale;
-                        ctx.stroke();
-                    }
-                });
-            });
-        }
-
-        drawLegendOnCanvas(ctx, x, y) {
-            ctx.font = '16px Arial';
-            ctx.fillStyle = '#000000';
-            ctx.textAlign = 'left';
-            ctx.fillText('Leyenda de puntadas:', x, y);
-            y += 20;
-            for (const [, stitch] of STITCH_TYPES) {
-                ctx.fillStyle = stitch.color;
-                ctx.fillText(`${stitch.symbol} - ${stitch.desc}`, x, y);
-                y += 20;
-            }
-            ctx.fillStyle = '#000000';
-            ctx.fillText('▿ - Aumento', x, y);
-            y += 20;
-            ctx.fillText('▵ - Disminución', x, y);
         }
     }
 
