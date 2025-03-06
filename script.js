@@ -1,34 +1,33 @@
-// 1. CONSTANTES Y CONFIGURACIÓN INICIAL
-const STITCHES = {
-    chain: { symbol: '⛓', color: '#e74c3c', desc: 'Cadeneta' },
-    single: { symbol: '•', color: '#2ecc71', desc: 'Punto bajo' },
-    double: { symbol: '↟', color: '#3498db', desc: 'Punto alto' }
-};
+// Constantes globales
+const STITCH_TYPES = new Map([
+    ['cadeneta', { symbol: '#', color: '#e74c3c', desc: 'Cadena base' }],
+    ['punt_baix', { symbol: '•', color: '#2ecc71', desc: 'Punto bajo' }],
+    ['punt_pla', { symbol: '-', color: '#3498db', desc: 'Punto plano' }],
+    ['punt_mitja', { symbol: '●', color: '#f1c40f', desc: 'Punto medio' }],
+    ['punt_alt', { symbol: '↑', color: '#9b59b6', desc: 'Punto alto' }],
+    ['punt_doble_alt', { symbol: '⇑', color: '#e67e22', desc: 'Punto doble alto' }],
+    ['picot', { symbol: '¤', color: '#1abc9c', desc: 'Picot decorativo' }]
+]);
 
-const INITIAL_STATE = {
-    rings: [{ segments: 8, stitches: Array(8).fill('chain') }],
-    scale: 1,
-    offset: { x: 0, y: 0 },
-    selectedStitch: 'single',
-    guides: 8,
-    spacing: 40
-};
-
-// 2. GESTIÓN DEL ESTADO (SIMPLIFICADA)
 class PatternState {
     constructor() {
         this.reset();
     }
 
     reset() {
-        Object.assign(this, JSON.parse(JSON.stringify(INITIAL_STATE)));
+        this.rings = [{ segments: 8, stitches: Array(8).fill('cadeneta') }];
+        this.scale = 1;
+        this.offset = { x: 0, y: 0 };
+        this.selectedStitch = 'cadeneta';
+        this.guides = 8;
+        this.spacing = 50;
     }
 
     addRing() {
-        const lastRing = this.rings[this.rings.length - 1];
+        const last = this.rings[this.rings.length - 1];
         this.rings.push({
-            segments: lastRing.segments * 2,
-            stitches: Array(lastRing.segments * 2).fill(this.selectedStitch)
+            segments: last.segments * 2,
+            stitches: Array(last.segments * 2).fill(this.selectedStitch)
         });
     }
 
@@ -38,13 +37,11 @@ class PatternState {
     }
 }
 
-// 3. RENDERIZADO (CANVAS OPTIMIZADO)
 class CanvasRenderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.resize();
-        this.lastRender = 0;
     }
 
     resize() {
@@ -83,7 +80,7 @@ class CanvasRenderer {
     drawStitches(state) {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.font = '18px Arial';
+        this.ctx.font = '20px Arial';
         
         state.rings.forEach((ring, ringIdx) => {
             const radius = (ringIdx + 0.5) * state.spacing;
@@ -93,15 +90,15 @@ class CanvasRenderer {
                 const angle = angleStep * segmentIdx;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
+                const { symbol, color } = STITCH_TYPES.get(stitch);
                 
-                this.ctx.fillStyle = STITCHES[stitch].color;
-                this.ctx.fillText(STITCHES[stitch].symbol, x, y);
+                this.ctx.fillStyle = color;
+                this.ctx.fillText(symbol, x, y);
             });
         });
     }
 }
 
-// 4. MANEJO DE ENTRADA (ESENCIAL)
 class InputManager {
     constructor(canvas, state, renderer) {
         this.canvas = canvas;
@@ -160,7 +157,6 @@ class InputManager {
     }
 }
 
-// 5. INTERFAZ DE USUARIO (MÍNIMA)
 class UIController {
     constructor(state, renderer) {
         this.state = state;
@@ -169,22 +165,37 @@ class UIController {
     }
 
     initControls() {
+        const palette = document.querySelector('.stitch-palette');
+        palette.innerHTML = '';
+
+        // Generar botones dinámicamente
+        STITCH_TYPES.forEach((stitch, key) => {
+            const btn = document.createElement('button');
+            btn.className = 'stitch-btn';
+            btn.innerHTML = `
+                <span class="stitch-symbol">${stitch.symbol}</span>
+                <span class="stitch-label">${stitch.desc}</span>
+            `;
+            btn.style.setProperty('--stitch-color', stitch.color);
+            btn.dataset.stitch = key;
+            
+            btn.addEventListener('click', () => {
+                this.state.selectedStitch = key;
+                document.querySelectorAll('.stitch-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+            
+            palette.appendChild(btn);
+        });
+
         document.getElementById('reset').addEventListener('click', () => {
             this.state.reset();
             this.renderer.render(this.state);
         });
-
-        document.querySelectorAll('.stitch-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.state.selectedStitch = btn.dataset.stitch;
-                document.querySelectorAll('.stitch-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
     }
 }
 
-// INICIALIZACIÓN
+// Inicialización
 window.addEventListener('DOMContentLoaded', () => {
     const state = new PatternState();
     const canvas = document.getElementById('patternCanvas');
