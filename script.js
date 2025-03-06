@@ -18,8 +18,8 @@ const STITCH_TYPES = new Map([
 
 const DEFAULT_STATE = {
     rings: [
-        { segments: 8, points: Array(8).fill('cadeneta') }, // Anillo 0
-        { segments: 8, points: [] }                         // Anillo 1
+        { segments: 8, points: Array(8).fill('cadeneta') },
+        { segments: 8, points: [] }
     ],
     history: [],
     historyIndex: 0,
@@ -35,7 +35,7 @@ const DEFAULT_STATE = {
     pinchDistance: null
 };
 
-// Clase Estado
+// Clase Estado con optimizaciones
 class PatternState {
     constructor() { this.state = structuredClone(DEFAULT_STATE); this.saveState(); }
     reset() { 
@@ -44,10 +44,16 @@ class PatternState {
         this.saveState(); 
     }
     saveState() {
-        if (this.state.historyIndex < this.state.history.length - 1) this.state.history = this.state.history.slice(0, this.state.historyIndex + 1);
-        this.state.history.push(structuredClone(this.state.rings));
+        const current = this.state.rings;
+        const prev = this.state.history[this.state.historyIndex] || [];
+        if (this.areRingsEqual(current, prev)) return;
+
+        this.state.history.push(this.deepCloneRings(current));
         this.state.historyIndex++;
-        if (this.state.history.length > 100) this.state.history.shift();
+        if (this.state.history.length > 100) {
+            this.state.history = [this.state.history[0], ...this.state.history.slice(-98)];
+            this.state.historyIndex = this.state.history.length - 1;
+        }
     }
     undo() { if (this.state.historyIndex <= 0) return false; this.state.rings = structuredClone(this.state.history[--this.state.historyIndex]); return true; }
     redo() { if (this.state.historyIndex >= this.state.history.length - 1) return false; this.state.rings = structuredClone(this.state.history[++this.state.historyIndex]); return true; }
@@ -63,34 +69,47 @@ class PatternState {
     addRing() { this.state.rings.push({ segments: this.state.rings.at(-1)?.segments || this.state.guideLines, points: [] }); this.saveState(); }
     increasePoints(ringIdx, segIdx) { if (ringIdx + 1 < this.state.rings.length) this.state.rings[ringIdx + 1].segments++; this.saveState(); }
     decreasePoints(ringIdx, segIdx) { if (ringIdx + 1 < this.state.rings.length && this.state.rings[ringIdx + 1].segments > this.state.guideLines) this.state.rings[ringIdx + 1].segments--; this.saveState(); }
+    deepCloneRings(rings) { return rings.map(ring => ({ segments: ring.segments, points: [...ring.points] })); }
+    areRingsEqual(a, b) {
+        if (a.length !== b.length) return false;
+        return a.every((ring, i) => 
+            ring.segments === b[i].segments &&
+            ring.points.length === b[i].points.length &&
+            ring.points.every((p, j) => p === b[i].points[j])
+        );
+    }
 }
 
-// Clase Renderizado
+// Clase Renderizado optimizada
 class CanvasRenderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
+        this.offscreenCanvas = document.createElement('canvas');
+        this.offscreenCtx = this.offscreenCanvas.getContext('2d');
+        this.staticCache = null;
+        this.staticDirty = true;
+        this.cachedFont = '';
         this.resize();
     }
     resize() {
         const { clientWidth: w, clientHeight: h } = this.canvas.parentElement;
-        this.canvas.width = w * devicePixelRatio;
-        this.canvas.height = h * devicePixelRatio;
-        this.canvas.style.width = `${w}px`;
-        this.canvas.style.height = `${h}px`;
-        this.ctx.scale(devicePixelRatio, devicePixelRatio);
+        const dpr = devicePixelRatio;
+        [this.canvas, this.offscreenCanvas].forEach(c => {
+            c.width = w * dpr;
+            c.height = h * dpr;
+            c.style.width = `${w}px`;
+            c.style.height = `${h}px`;
+        });
+        this.ctx.scale(dpr, dpr);
+        this.offscreenCtx.scale(dpr, dpr);
+        this.staticDirty = true; // Invalidar cache al redimensionar
     }
     render(state, mouseX = null, mouseY = null) {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.updateTransform(state);
-        this.ctx.save();
-        this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-        this.ctx.scale(state.scale, state.scale);
-        this.ctx.translate(state.offset.x, state.offset.y);
-        this.drawRings(state);
-        this.drawStitches(state);
-        if (mouseX !== null && mouseY !== null) this.drawHover(state, mouseX, mouseY);
-        this.ctx.restore();
+        this.drawToOffscreen(state, mouseX, mouseY);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.drawImage(this.offscreenCanvas, 0, 0);
     }
     updateTransform(state) {
         state.scale += (state.targetScale - state.scale) * 0.2;
@@ -100,27 +119,57 @@ class CanvasRenderer {
         state.targetOffset.x = clamp(state.targetOffset.x, -maxOffset, maxOffset);
         state.targetOffset.y = clamp(state.targetOffset.y, -maxOffset, maxOffset);
     }
-    drawRings(state) {
-        this.ctx.lineWidth = 1 / state.scale;
-        this.ctx.strokeStyle = '#ddd';
+    drawToOffscreen(state, mouseX, mouseY) {
+        const ctx = this.offscreenCtx;
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.save();
+        ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+        ctx.scale(state.scale, state.scale);
+        ctx.translate(state.offset.x, state.offset.y);
+        this.drawStaticElements(ctx, state);
+        this.drawStitches(ctx, state);
+        if (mouseX !== null && mouseY !== null) this.drawHover(ctx, state, mouseX, mouseY);
+        ctx.restore();
+    }
+    drawStaticElements(ctx, state) {
+        if (!this.staticCache || this.staticDirty) {
+            this.staticCache = document.createElement('canvas');
+            this.staticCache.width = this.canvas.width;
+            this.staticCache.height = this.canvas.height;
+            const staticCtx = this.staticCache.getContext('2d');
+            staticCtx.save();
+            staticCtx.translate(this.canvas.width / 2, this.canvas.height / 2);
+            this.drawRings(staticCtx, state);
+            staticCtx.restore();
+            this.staticDirty = false;
+        }
+        ctx.drawImage(this.staticCache, -this.canvas.width / 2, -this.canvas.height / 2);
+    }
+    drawRings(ctx, state) {
+        ctx.lineWidth = 1 / state.scale;
+        ctx.strokeStyle = '#ddd';
         state.rings.forEach((_, r) => { 
-            this.ctx.beginPath(); 
-            this.ctx.arc(0, 0, (r + 1) * state.ringSpacing, 0, Math.PI * 2); 
-            this.ctx.stroke(); 
+            ctx.beginPath(); 
+            ctx.arc(0, 0, (r + 1) * state.ringSpacing, 0, Math.PI * 2); 
+            ctx.stroke(); 
         });
-        this.ctx.strokeStyle = '#eee';
+        ctx.strokeStyle = '#eee';
         const segments = state.guideLines, angleStep = Math.PI * 2 / segments, maxRadius = state.rings.length * state.ringSpacing;
-        this.ctx.beginPath();
+        ctx.beginPath();
         for (let i = 0; i < segments; i++) {
             const angle = i * angleStep, x = Math.cos(angle) * maxRadius, y = Math.sin(angle) * maxRadius;
-            this.ctx.moveTo(0, 0); this.ctx.lineTo(x, y);
+            ctx.moveTo(0, 0); ctx.lineTo(x, y);
         }
-        this.ctx.stroke();
+        ctx.stroke();
     }
-    drawStitches(state) {
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.font = `${20 / state.scale}px Arial`;
+    drawStitches(ctx, state) {
+        const font = `${20 / state.scale}px Arial`;
+        if (this.cachedFont !== font) {
+            ctx.font = font;
+            this.cachedFont = font;
+        }
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         state.rings.forEach((ring, rIdx) => {
             const segments = ring.segments, angleStep = Math.PI * 2 / segments, radius = (rIdx + 0.5) * state.ringSpacing;
             ring.points.forEach((type, sIdx) => {
@@ -128,26 +177,26 @@ class CanvasRenderer {
                 const angle = sIdx * angleStep + (angleStep / 2), x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
                 const { stitchType, symbol, isSpecial } = this.parseStitch(type);
                 if (STITCH_TYPES.has(stitchType)) {
-                    this.ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                    this.ctx.fillText(symbol, x, y);
+                    ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
+                    ctx.fillText(symbol, x, y);
                     if (isSpecial) {
-                        this.ctx.beginPath();
-                        this.ctx.arc(x, y, 5 / state.scale, 0, Math.PI * 2);
-                        this.ctx.strokeStyle = '#ff0000';
-                        this.ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(x, y, 5 / state.scale, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#ff0000';
+                        ctx.stroke();
                     }
                 }
             });
         });
     }
-    drawHover(state, mouseX, mouseY) {
+    drawHover(ctx, state, mouseX, mouseY) {
         const { ring, segment } = this.getRingSegment(state, mouseX, mouseY);
         if (ring >= 0 && ring < state.rings.length) {
             const segments = state.rings[ring].segments, angleStep = Math.PI * 2 / segments, radius = (ring + 0.5) * state.ringSpacing;
             const angle = segment * angleStep + (angleStep / 2), x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
             const stitch = STITCH_TYPES.get(state.selectedStitch);
-            this.ctx.fillStyle = stitch.color + '80';
-            this.ctx.fillText(stitch.symbol, x, y);
+            ctx.fillStyle = stitch.color + '80';
+            ctx.fillText(stitch.symbol, x, y);
         }
     }
     getRingSegment(state, x, y) {
@@ -168,15 +217,13 @@ class CanvasRenderer {
         exportCanvas.width = size; exportCanvas.height = size + 200;
         ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size + 200);
         ctx.save(); ctx.translate(size / 2, size / 2);
-        this.drawRings(ctx, state, 1); this.drawStitches(ctx, state, 1);
+        this.drawRings(ctx, state); this.drawStitches(ctx, state);
         ctx.restore(); this.drawLegend(ctx, padding, size + 20);
         const link = document.createElement('a');
         link.download = `${name || 'patron_crochet'}.png`;
         link.href = exportCanvas.toDataURL('image/png');
         link.click();
     }
-    drawRings(ctx, state, scale) { this.drawRings(state); }
-    drawStitches(ctx, state, scale) { this.drawStitches(state); }
     drawLegend(ctx, x, y) {
         ctx.font = '16px Arial'; ctx.fillStyle = '#000'; ctx.textAlign = 'left';
         ctx.fillText('Leyenda:', x, y); y += 20;
@@ -185,13 +232,18 @@ class CanvasRenderer {
     }
 }
 
-// Clase Entrada
+// Clase Entrada optimizada
 class InputHandler {
     constructor(canvas, state, renderer) {
         this.canvas = canvas;
         this.state = state;
         this.renderer = renderer;
         this.isAnimating = false;
+        this.lastRender = 0;
+        this.renderThrottle = 16; // ~60fps
+        this.cachedRect = null;
+        this.rectCacheTime = 0;
+        this.lastFrame = 0;
         this.bindEvents();
     }
     bindEvents() {
@@ -219,10 +271,17 @@ class InputHandler {
             else if (e.ctrlKey && ring < this.state.state.rings.length - 1) this.state.decreasePoints(ring, segment);
             else ringData.points[segment] = this.state.state.selectedStitch;
             this.state.saveState();
+            this.renderer.staticDirty = true; // Invalidar cache al cambiar estado
             this.renderer.render(this.state.state);
         }
     }
-    handleMouseMove(e) { this.renderer.render(this.state.state, ...this.getCoords(e)); }
+    handleMouseMove(e) {
+        const now = performance.now();
+        if (now - this.lastRender >= this.renderThrottle) {
+            this.renderer.render(this.state.state, ...this.getCoords(e));
+            this.lastRender = now;
+        }
+    }
     startDrag(e) {
         this.state.state.isDragging = true;
         this.state.state.lastPos = { x: e.clientX, y: e.clientY };
@@ -256,10 +315,13 @@ class InputHandler {
     handleTouchEnd(e) { if (e.touches.length === 0) { this.endDrag(); this.state.state.pinchDistance = null; } }
     getPinchDistance(touches) { const dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
     getCoords(e) {
-        const rect = this.canvas.getBoundingClientRect();
+        if (!this.cachedRect || Date.now() - this.rectCacheTime > 1000) {
+            this.cachedRect = this.canvas.getBoundingClientRect();
+            this.rectCacheTime = Date.now();
+        }
         return [
-            (e.clientX - rect.left - this.canvas.width / 2) / this.state.state.scale - this.state.state.offset.x,
-            (e.clientY - rect.top - this.canvas.height / 2) / this.state.state.scale - this.state.state.offset.y
+            (e.clientX - this.cachedRect.left - this.canvas.width / 2) / this.state.state.scale - this.state.state.offset.x,
+            (e.clientY - this.cachedRect.top - this.canvas.height / 2) / this.state.state.scale - this.state.state.offset.y
         ];
     }
     handleKeyDown(e) {
@@ -270,25 +332,40 @@ class InputHandler {
         } else if (e.key === '+') this.adjustZoom(0.2);
         else if (e.key === '-') this.adjustZoom(-0.2);
     }
-    adjustZoom(amount) { this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3); this.animate(); }
-    resetView() { this.state.state.targetScale = 1; this.state.state.targetOffset = { x: 0, y: 0 }; this.state.state.offset = { x: 0, y: 0 }; this.renderer.render(this.state.state); }
+    adjustZoom(amount) { 
+        this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3); 
+        this.animate(); 
+    }
+    resetView() { 
+        this.state.state.targetScale = 1; 
+        this.state.state.targetOffset = { x: 0, y: 0 }; 
+        this.state.state.offset = { x: 0, y: 0 }; 
+        this.renderer.render(this.state.state); 
+    }
     animate() {
         if (!this.isAnimating) {
             this.isAnimating = true;
-            const loop = () => {
-                this.renderer.render(this.state.state);
-                if (this.state.state.isDragging || Math.abs(this.state.state.scale - this.state.state.targetScale) > 0.01) {
-                    requestAnimationFrame(loop);
+            const animateFrame = (timestamp) => {
+                const elapsed = timestamp - (this.lastFrame || timestamp);
+                if (elapsed > this.renderThrottle) {
+                    this.renderer.render(this.state.state);
+                    this.lastFrame = timestamp;
+                }
+                if (this.needsAnimation()) {
+                    requestAnimationFrame(animateFrame);
                 } else {
                     this.isAnimating = false;
                 }
             };
-            requestAnimationFrame(loop);
+            requestAnimationFrame(animateFrame);
         }
+    }
+    needsAnimation() {
+        return this.state.state.isDragging || Math.abs(this.state.state.scale - this.state.state.targetScale) > 0.01;
     }
 }
 
-// Clase UI
+// Clase UI optimizada
 class UIController {
     constructor(state, renderer, inputHandler) {
         this.state = state;
@@ -297,7 +374,6 @@ class UIController {
         this.currentProjectName = null;
         this.logoContainer = document.getElementById('logoContainer');
         this.canvas = document.getElementById('patternCanvas');
-        // Estado inicial: logo visible, canvas oculto
         this.logoContainer.style.display = 'block';
         this.canvas.style.display = 'none';
         this.setupUI();
@@ -316,9 +392,9 @@ class UIController {
             ['exportTxt', () => this.exportText()],
             ['exportPng', () => this.renderer.exportAsImage(this.state.state, this.currentProjectName)],
             ['exportPdf', () => this.exportPDF()],
-            ['addRingBtn', () => { this.state.addRing(); this.updateRingCounter(); this.renderer.render(this.state.state); }]
+            ['addRingBtn', () => { this.state.addRing(); this.updateRingCounter(); this.renderer.staticDirty = true; this.renderer.render(this.state.state); }]
         ]);
-        this.bindRange('guideLines', v => this.state.updateGuideLines(v), 'guideLinesValue', v => v);
+        this.bindRange('guideLines', v => { this.state.updateGuideLines(v); this.renderer.staticDirty = true; }, 'guideLinesValue', v => v);
         this.bindRange('ringSpacing', v => this.state.updateRingSpacing(v), 'ringSpacingValue', v => `${v}px`);
         this.setupStitchPalette();
         this.updateRingCounter();
@@ -336,10 +412,10 @@ class UIController {
     newProject() { 
         this.state.reset(); 
         this.currentProjectName = null; 
-        // Ocultar logo y mostrar canvas
         this.logoContainer.style.display = 'none'; 
         this.canvas.style.display = 'block'; 
         this.renderer.resize();
+        this.renderer.staticDirty = true;
         this.renderer.render(this.state.state); 
         this.updateUI(); 
     }
@@ -359,13 +435,12 @@ class UIController {
         const saved = localStorage.getItem('crochetPattern');
         if (saved) { 
             this.state.setRings(JSON.parse(saved)); 
-            // Solo ocultar logo si hay datos guardados
             this.logoContainer.style.display = 'none'; 
             this.canvas.style.display = 'block'; 
+            this.renderer.staticDirty = true;
             this.renderer.render(this.state.state); 
             this.updateUI(); 
         } else {
-            // Mostrar logo si no hay datos
             this.logoContainer.style.display = 'block';
             this.canvas.style.display = 'none';
         }
@@ -373,18 +448,25 @@ class UIController {
     getProjects() { return JSON.parse(localStorage.getItem('crochetProjects') || '{}'); }
     loadProjects() {
         const projects = this.getProjects(), select = document.getElementById('loadProjects');
-        select.innerHTML = '<option value="">Cargar...</option>' + Object.keys(projects).map(n => `<option value="${n}" ${n === this.currentProjectName ? 'selected' : ''}>${n}</option>`).join('');
+        const fragment = document.createDocumentFragment();
+        fragment.appendChild(new Option('Cargar...', ''));
+        Object.keys(projects).forEach(n => {
+            const option = new Option(n, n);
+            if (n === this.currentProjectName) option.selected = true;
+            fragment.appendChild(option);
+        });
+        select.replaceChildren(fragment);
         select.onchange = () => {
             if (select.value) {
                 this.state.setRings(structuredClone(projects[select.value]));
                 this.currentProjectName = select.value;
                 this.logoContainer.style.display = 'none'; 
                 this.canvas.style.display = 'block'; 
-                this.renderer.resize(); // Añadido para consistencia
+                this.renderer.resize();
+                this.renderer.staticDirty = true;
                 this.renderer.render(this.state.state);
                 this.updateUI();
             } else {
-                // Si se selecciona "Cargar..." (valor vacío), volver al logo
                 this.state.reset();
                 this.currentProjectName = null;
                 this.logoContainer.style.display = 'block';
@@ -431,13 +513,23 @@ class UIController {
     }
     setupStitchPalette() {
         const palette = document.getElementById('stitchPalette');
-        palette.innerHTML = [...STITCH_TYPES].map(([k, s], i) => `<button class="stitch-btn ${i === 0 ? 'active' : ''}" style="color:${s.color}" title="${s.desc}" data-key="${k}">${s.symbol}</button>`).join('');
-        palette.querySelectorAll('.stitch-btn').forEach(btn => btn.onclick = () => {
-            this.state.state.selectedStitch = btn.dataset.key;
-            palette.querySelectorAll('.stitch-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            this.renderer.render(this.state.state);
+        const fragment = document.createDocumentFragment();
+        STITCH_TYPES.forEach(([k, s], i) => {
+            const btn = document.createElement('button');
+            btn.className = `stitch-btn ${i === 0 ? 'active' : ''}`;
+            btn.style.color = s.color;
+            btn.title = s.desc;
+            btn.dataset.key = k;
+            btn.textContent = s.symbol;
+            btn.onclick = () => {
+                this.state.state.selectedStitch = k;
+                palette.querySelectorAll('.stitch-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.renderer.render(this.state.state);
+            };
+            fragment.appendChild(btn);
         });
+        palette.appendChild(fragment);
     }
     toggleTooltip(e) {
         const tooltip = document.getElementById('stitchTooltip');
@@ -475,7 +567,6 @@ class CrochetEditor {
         this.ui = new UIController(this.state, this.renderer, this.inputHandler);
         this.ui.loadProjects();
         this.ui.loadFromLocalStorage();
-        // No renderizamos inicialmente para mostrar el logo
     }
 }
 
