@@ -10,7 +10,7 @@ const STITCH_TYPES = new Map([
 ]);
 
 const DEFAULT_STATE = {
-    rings: [{ segments: 8, points: [] }], // Eliminado Array(8).fill('cadeneta')
+    rings: [{ segments: 8, points: Array(8) }], // Array vacío con longitud fija, sin fill
     history: [],
     historyIndex: 0,
     scale: 1,
@@ -34,7 +34,7 @@ class PatternState {
 
     reset() {
         this.state = { ...DEFAULT_STATE };
-        this.state.rings[0].points = []; // Eliminado Array(this.state.guideLines).fill('cadeneta')
+        this.state.rings[0].points = Array(this.state.guideLines); // Longitud fija, sin fill
         this.state.history = [this.cloneRings()];
         this.state.historyIndex = 0;
     }
@@ -82,9 +82,8 @@ class PatternState {
     updateGuideLines(value) {
         this.state.guideLines = value;
         this.state.rings[0].segments = value;
-        // No rellenamos points automáticamente
         const currentPoints = this.state.rings[0].points || [];
-        const newPoints = [];
+        const newPoints = Array(value); // Longitud fija, sin fill
         for (let i = 0; i < value; i++) {
             newPoints[i] = i < currentPoints.length ? currentPoints[i] : undefined;
         }
@@ -100,22 +99,25 @@ class PatternState {
         const currentRing = this.state.rings[ringIndex];
 
         if (nextRingIndex >= this.state.rings.length) {
-            // Crear el siguiente anillo sin puntos automáticos
+            // Crear el siguiente anillo con longitud fija pero sin puntos automáticos
+            const newSegments = currentRing.segments * 2;
+            const newPoints = Array(newSegments); // Longitud fija, sin fill
+            newPoints[segmentIndex * 2] = `${stitch}_increase`; // Solo añadimos el aumento
             this.state.rings.push({
-                segments: currentRing.segments * 2,
-                points: [] // Eliminado Array(currentRing.segments * 2).fill(stitch)
+                segments: newSegments,
+                points: newPoints
             });
-            this.state.rings[nextRingIndex].points[segmentIndex * 2] = `${stitch}_increase`; // Solo añadimos el aumento
         } else {
             // Si ya existe el siguiente anillo, duplicar sus puntos
             const nextRing = this.state.rings[nextRingIndex];
-            const newPoints = [];
-            nextRing.points.forEach((point, idx) => {
-                newPoints.push(point);
+            const newPoints = Array(nextRing.segments * 2); // Nueva longitud fija
+            let newIdx = 0;
+            for (let idx = 0; idx < nextRing.points.length; idx++) {
+                newPoints[newIdx++] = nextRing.points[idx];
                 if (idx === segmentIndex) {
-                    newPoints.push(`${stitch}_increase`); // Marcar el aumento
+                    newPoints[newIdx++] = `${stitch}_increase`; // Marcar el aumento
                 }
-            });
+            }
             nextRing.segments = newPoints.length;
             nextRing.points = newPoints;
         }
@@ -132,12 +134,12 @@ class PatternState {
         const nextRing = this.state.rings[nextRingIndex];
         if (nextRing.segments % 2 !== 0) return; // Solo disminuir si es par
 
-        const newPoints = [];
-        for (let i = 0; i < nextRing.points.length; i += 2) {
+        const newPoints = Array(nextRing.segments / 2); // Nueva longitud fija
+        for (let i = 0, j = 0; i < nextRing.points.length; i += 2, j++) {
             if (i === segmentIndex) {
-                newPoints.push(`${stitch}_decrease`); // Marcar la disminución
+                newPoints[j] = `${stitch}_decrease`; // Marcar la disminución
             } else {
-                newPoints.push(nextRing.points[i]);
+                newPoints[j] = nextRing.points[i];
             }
         }
         nextRing.segments = newPoints.length;
@@ -161,15 +163,13 @@ class CanvasRenderer {
     }
 
     render(state, mouseX = null, mouseY = null) {
-        requestAnimationFrame(() => {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.updateTransform(state);
-            this.applyTransform(state);
-            this.drawRings(state);
-            this.drawStitches(state);
-            if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
-            this.ctx.restore();
-        });
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.updateTransform(state);
+        this.applyTransform(state);
+        this.drawRings(state);
+        this.drawStitches(state);
+        if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
+        this.ctx.restore();
     }
 
     updateTransform(state) {
@@ -220,8 +220,9 @@ class CanvasRenderer {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
             const radius = (ringIndex + 0.5) * state.ringSpacing;
-            ring.points.forEach((type, segmentIndex) => {
-                if (!type) return; // No dibujar si no hay punto
+            for (let segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
+                const type = ring.points[segmentIndex];
+                if (!type) continue; // No dibujar si no hay punto
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
@@ -249,13 +250,13 @@ class CanvasRenderer {
                     this.ctx.lineWidth = 1 / state.scale;
                     this.ctx.stroke();
                 }
-            });
+            }
         });
     }
 
     drawHoverEffect(state, mouseX, mouseY) {
         const { ring, segment } = this.getRingAndSegment(state, mouseX, mouseY);
-        if (ring >= 0 && ring < state.rings.length) {
+        if (ring >= 0 && ring < state.rings.length && !state.rings[ring].points[segment]) {
             const segments = state.rings[ring].segments;
             const angleStep = Math.PI * 2 / segments;
             const radius = (ring + 0.5) * state.ringSpacing;
@@ -342,8 +343,9 @@ class CanvasRenderer {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
             const radius = (ringIndex + 0.5) * state.ringSpacing;
-            ring.points.forEach((type, segmentIndex) => {
-                if (!type) return; // No dibujar si no hay punto
+            for (let segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
+                const type = ring.points[segmentIndex];
+                if (!type) continue;
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
@@ -371,7 +373,7 @@ class CanvasRenderer {
                     ctx.lineWidth = 1 / scale;
                     ctx.stroke();
                 }
-            });
+            }
         });
     }
 
@@ -785,8 +787,9 @@ class UIController {
             const segments = ring.segments;
             const angleStep = Math.PI * 2 / segments;
             const stitchRadius = (ringIndex + 0.5) * this.state.state.ringSpacing * scale * 0.0353;
-            ring.points.forEach((type, segmentIndex) => {
-                if (!type) return;
+            for (let segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
+                const type = ring.points[segmentIndex];
+                if (!type) continue;
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = centerX + Math.cos(angle) * stitchRadius;
                 const y = centerY + Math.sin(angle) * stitchRadius;
@@ -804,7 +807,7 @@ class UIController {
                 doc.setTextColor(STITCH_TYPES.get(stitchType).color);
                 doc.setFontSize(12 * scale);
                 doc.text(symbol, x, y, { align: 'center', baseline: 'middle' });
-            });
+            }
         });
 
         doc.setDrawColor('#eee');
