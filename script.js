@@ -18,8 +18,8 @@ const STITCH_TYPES = new Map([
 
 const DEFAULT_STATE = {
     rings: [
-        { segments: 8, points: Array(8).fill('cadeneta') }, // Anillo 0 con cadenas base
-        { segments: 8, points: [] }                         // Anillo 1 vacío
+        { segments: 8, points: Array(8).fill('cadeneta') }, // Anillo 0
+        { segments: 8, points: [] }                         // Anillo 1
     ],
     history: [],
     historyIndex: 0,
@@ -295,6 +295,8 @@ class UIController {
         this.renderer = renderer;
         this.inputHandler = inputHandler;
         this.currentProjectName = null;
+        this.logoContainer = document.getElementById('logoContainer');
+        this.canvas = document.getElementById('patternCanvas');
         this.setupUI();
     }
     setupUI() {
@@ -328,7 +330,15 @@ class UIController {
             this.renderer.render(this.state.state);
         });
     }
-    newProject() { this.state.reset(); this.currentProjectName = null; this.renderer.render(this.state.state); this.updateUI(); }
+    newProject() { 
+        this.state.reset(); 
+        this.currentProjectName = null; 
+        this.logoContainer.style.display = 'none'; 
+        this.canvas.style.display = 'block'; 
+        this.renderer.resize();
+        this.renderer.render(this.state.state); 
+        this.updateUI(); 
+    }
     saveProject() {
         this.currentProjectName = this.currentProjectName || `Patrón ${new Date().toLocaleDateString()}`;
         const projects = this.getProjects();
@@ -343,7 +353,13 @@ class UIController {
     }
     loadFromLocalStorage() {
         const saved = localStorage.getItem('crochetPattern');
-        if (saved) { this.state.setRings(JSON.parse(saved)); this.renderer.render(this.state.state); this.updateUI(); }
+        if (saved) { 
+            this.state.setRings(JSON.parse(saved)); 
+            this.logoContainer.style.display = 'none'; 
+            this.canvas.style.display = 'block'; 
+            this.renderer.render(this.state.state); 
+            this.updateUI(); 
+        }
     }
     getProjects() { return JSON.parse(localStorage.getItem('crochetProjects') || '{}'); }
     loadProjects() {
@@ -353,6 +369,8 @@ class UIController {
             if (select.value) {
                 this.state.setRings(structuredClone(projects[select.value]));
                 this.currentProjectName = select.value;
+                this.logoContainer.style.display = 'none'; 
+                this.canvas.style.display = 'block'; 
                 this.renderer.render(this.state.state);
                 this.updateUI();
             }
@@ -441,7 +459,7 @@ class CrochetEditor {
         this.ui = new UIController(this.state, this.renderer, this.inputHandler);
         this.ui.loadProjects();
         this.ui.loadFromLocalStorage();
-        this.renderer.render(this.state.state);
+        // No renderizamos inicialmente para mostrar el logo
     }
 }
 
