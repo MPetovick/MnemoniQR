@@ -57,7 +57,8 @@ body {
 .grid-view {
     position: relative;
     width: 100%;
-    height: 50vh; /* Altura inicial para móviles */
+    height: calc(100vh - 320px);
+    min-height: 200px;
     overflow: hidden;
     background: #fff;
 }
@@ -79,6 +80,42 @@ body {
     box-shadow: var(--shadow);
 }
 
+.zoom-controls button {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 1.1rem;
+    background: var(--background-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.zoom-controls button:hover {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.log-panel {
+    background: var(--toolbar-bg);
+    padding: 0.5rem;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
+#patternLog {
+    width: 100%;
+    height: 100px;
+    padding: 0.5rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    resize: none;
+    font-family: monospace;
+    font-size: 0.9rem;
+    background: #fff;
+    color: var(--text-color);
+}
+
 .stitch-calculator {
     background: var(--toolbar-bg);
     padding: 1rem;
@@ -91,14 +128,17 @@ body {
 
 .stitch-palette {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
     gap: 0.5rem;
     width: 100%;
-    max-width: 300px;
+    max-width: 400px;
+    padding: 0 1rem;
 }
 
 .stitch-btn {
     width: 100%;
+    min-width: 50px;
+    min-height: 50px;
     aspect-ratio: 1;
     display: flex;
     align-items: center;
@@ -132,6 +172,8 @@ body {
     padding: 0.5rem 1rem;
     border-radius: 8px;
     box-shadow: var(--shadow);
+    min-width: 40px;
+    min-height: 40px;
 }
 
 .help-btn:hover {
@@ -142,7 +184,7 @@ body {
     position: fixed;
     top: 60px;
     right: 0;
-    width: 60px;
+    width: clamp(60px, 10vw, 100px);
     height: calc(100vh - 60px);
     background-color: var(--toolbar-bg);
     padding: 1rem 0.5rem;
@@ -196,38 +238,9 @@ body {
 
 @media (min-width: 768px) {
     .grid-view {
-        height: 70vh;
+        height: calc(100vh - 360px);
     }
     
-    .stitch-palette {
-        grid-template-columns: repeat(6, 1fr);
-        max-width: 400px;
-    }
-}
-
-/* Añadir al final del CSS existente */
-
-.log-panel {
-    background: var(--toolbar-bg);
-    padding: 0.5rem;
-    border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
-}
-
-#patternLog {
-    width: 100%;
-    height: 100px;
-    padding: 0.5rem;
-    border: 1px solid var(--primary-color);
-    border-radius: 4px;
-    resize: none;
-    font-family: monospace;
-    font-size: 0.9rem;
-    background: #fff;
-    color: var(--text-color);
-}
-
-@media (min-width: 768px) {
     #patternLog {
         height: 150px;
     }
