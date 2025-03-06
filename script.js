@@ -20,7 +20,7 @@ const STITCH_TYPES = new Map([
 ]);
 
 const DEFAULT_STATE = {
-    rings: [{ segments: 8, points: Array(8).fill('cadeneta') }],
+    rings: [{ segments: 8, points: [] }],
     history: [],
     historyIndex: 0,
     scale: 1,
@@ -44,7 +44,7 @@ class PatternState {
 
     reset() {
         this.state = structuredClone(DEFAULT_STATE);
-        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
+        this.state.rings[0].points = [];
         this.state.history = [this.cloneRings()];
         this.state.historyIndex = 0;
     }
@@ -85,7 +85,10 @@ class PatternState {
     updateGuideLines(value) {
         this.state.guideLines = clamp(value, 4, 24);
         this.state.rings[0].segments = this.state.guideLines;
-        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
+        if (this.state.rings[0].points.length > this.state.guideLines) {
+            this.state.rings[0].points = this.state.rings[0].points.slice(0, this.state.guideLines);
+        }
+        this.saveState();
     }
 
     updateRingSpacing(value) {
@@ -94,30 +97,22 @@ class PatternState {
 
     addRing() {
         const lastRing = this.state.rings.at(-1);
-        if (!lastRing) throw new Error('No rings available');
-        this.state.rings.push({
-            segments: lastRing.segments,
-            points: Array(lastRing.segments).fill('cadeneta')
-        });
+        if (!lastRing) {
+            this.state.rings.push({ segments: this.state.guideLines, points: [] });
+        } else {
+            this.state.rings.push({ segments: lastRing.segments, points: [] });
+        }
         this.saveState();
     }
 
     increasePoints(ringIndex, segmentIndex, stitch) {
         const nextRingIndex = ringIndex + 1;
         const currentRing = this.state.rings[ringIndex];
-        if (nextRingIndex >= this.state.rings.length) {
-            this.state.rings.push({
-                segments: currentRing.segments * 2,
-                points: Array(currentRing.segments * 2).fill(stitch)
-            });
-        } else {
-            const nextRing = this.state.rings[nextRingIndex];
-            const newPoints = nextRing.points.flatMap((point, idx) =>
-                idx === segmentIndex ? [point, `${stitch}_increase`] : point
-            );
-            nextRing.segments = newPoints.length;
-            nextRing.points = newPoints;
-        }
+        if (nextRingIndex >= this.state.rings.length) return;
+        const nextRing = this.state.rings[nextRingIndex];
+        if (nextRing.points.length >= nextRing.segments) return;
+        nextRing.points.splice(segmentIndex, 0, `${stitch}_increase`);
+        nextRing.segments = nextRing.points.length;
         this.saveState();
     }
 
@@ -125,11 +120,8 @@ class PatternState {
         const nextRingIndex = ringIndex + 1;
         if (nextRingIndex >= this.state.rings.length || this.state.rings[nextRingIndex].segments <= this.state.guideLines) return;
         const nextRing = this.state.rings[nextRingIndex];
-        if (nextRing.segments % 2 !== 0) return;
-        nextRing.points = nextRing.points.reduce((acc, point, i) => {
-            if (i % 2 === 0) acc.push(i === segmentIndex ? `${stitch}_decrease` : point);
-            return acc;
-        }, []);
+        if (nextRing.points.length <= nextRing.segments / 2) return;
+        nextRing.points.splice(segmentIndex, 1);
         nextRing.segments = nextRing.points.length;
         this.saveState();
     }
@@ -145,26 +137,31 @@ class CanvasRenderer {
 
     resize() {
         const { clientWidth: w, clientHeight: h } = this.canvas.parentElement;
-        this.canvas.width = w;
-        this.canvas.height = h;
+        this.canvas.width = w * window.devicePixelRatio;
+        this.canvas.height = h * window.devicePixelRatio;
+        this.canvas.style.width = `${w}px`;
+        this.canvas.style.height = `${h}px`;
+        this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
     }
 
     render(state, mouseX = null, mouseY = null) {
-        requestAnimationFrame(() => {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.updateTransform(state);
-            this.applyTransform(state);
-            this.drawRings(state);
-            this.drawStitches(state);
-            if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
-            this.ctx.restore();
-        });
+        this.resize();
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.updateTransform(state);
+        this.applyTransform(state);
+        this.drawRings(state);
+        this.drawStitches(state);
+        if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
+        this.ctx.restore();
     }
 
     updateTransform(state) {
         state.offset.x += (state.targetOffset.x - state.offset.x) * 0.1;
         state.offset.y += (state.targetOffset.y - state.offset.y) * 0.1;
         state.scale += (state.targetScale - state.scale) * 0.1;
+        const maxOffset = this.canvas.width / (2 * state.scale);
+        state.targetOffset.x = clamp(state.targetOffset.x, -maxOffset, maxOffset);
+        state.targetOffset.y = clamp(state.targetOffset.y, -maxOffset, maxOffset);
     }
 
     applyTransform(state) {
@@ -210,12 +207,13 @@ class CanvasRenderer {
             const angleStep = Math.PI * 2 / segments;
             const radius = (ringIndex + 0.5) * state.ringSpacing;
             ring.points.forEach((type, segmentIndex) => {
+                if (segmentIndex >= segments) return;
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
                 let stitchType = type;
                 let isSpecial = false;
-                let symbol = STITCH_TYPES.get(stitchType).symbol;
+                let symbol = STITCH_TYPES.get(stitchType)?.symbol || '';
 
                 if (type.includes('_increase')) {
                     stitchType = type.replace('_increase', '');
@@ -227,8 +225,10 @@ class CanvasRenderer {
                     symbol = '▵';
                 }
 
-                this.ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                this.ctx.fillText(symbol, x, y);
+                if (STITCH_TYPES.has(stitchType)) {
+                    this.ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
+                    this.ctx.fillText(symbol, x, y);
+                }
 
                 if (isSpecial) {
                     this.ctx.beginPath();
@@ -330,12 +330,13 @@ class CanvasRenderer {
             const angleStep = Math.PI * 2 / segments;
             const radius = (ringIndex + 0.5) * state.ringSpacing;
             ring.points.forEach((type, segmentIndex) => {
+                if (segmentIndex >= segments) return;
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
                 let stitchType = type;
                 let isSpecial = false;
-                let symbol = STITCH_TYPES.get(stitchType).symbol;
+                let symbol = STITCH_TYPES.get(stitchType)?.symbol || '';
 
                 if (type.includes('_increase')) {
                     stitchType = type.replace('_increase', '');
@@ -347,8 +348,10 @@ class CanvasRenderer {
                     symbol = '▵';
                 }
 
-                ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
-                ctx.fillText(symbol, x, y);
+                if (STITCH_TYPES.has(stitchType)) {
+                    ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
+                    ctx.fillText(symbol, x, y);
+                }
 
                 if (isSpecial) {
                     ctx.beginPath();
@@ -409,15 +412,20 @@ class InputHandler {
         const { x, y } = this.getCanvasCoordinates(e);
         const { ring, segment } = this.renderer.getRingAndSegment(this.state.state, x, y);
         if (ring >= 0 && ring < this.state.state.rings.length) {
-            if (e.shiftKey) {
-                this.state.increasePoints(ring, segment, this.state.state.selectedStitch);
-            } else if (e.ctrlKey) {
-                this.state.decreasePoints(ring, segment, this.state.state.selectedStitch);
-            } else {
-                this.state.state.rings[ring].points[segment] = this.state.state.selectedStitch;
+            const ringData = this.state.state.rings[ring];
+            if (segment < ringData.segments) {
+                if (e.shiftKey && ring < this.state.state.rings.length - 1) {
+                    this.state.increasePoints(ring, segment, this.state.state.selectedStitch);
+                } else if (e.ctrlKey && ring < this.state.state.rings.length - 1) {
+                    this.state.decreasePoints(ring, segment, this.state.state.selectedStitch);
+                } else if (ringData.points.length < ringData.segments) {
+                    ringData.points[segment] = this.state.state.selectedStitch;
+                } else {
+                    ringData.points[segment] = this.state.state.selectedStitch;
+                }
+                this.state.saveState();
+                this.renderer.render(this.state.state);
             }
-            this.state.saveState();
-            this.renderer.render(this.state.state);
         }
     }
 
@@ -531,10 +539,10 @@ class InputHandler {
 
 // Clase para la interfaz de usuario
 class UIController {
-    constructor(state, renderer, inputHandler) { // Añadimos inputHandler como parámetro
+    constructor(state, renderer, inputHandler) {
         this.state = state;
         this.renderer = renderer;
-        this.inputHandler = inputHandler; // Usamos la instancia existente
+        this.inputHandler = inputHandler;
         this.currentProjectName = null;
         this.tooltip = null;
         this.setupListeners();
@@ -549,7 +557,7 @@ class UIController {
             { id: 'saveAsBtn', fn: this.saveProjectAs.bind(this) },
             { id: 'undoBtn', fn: () => this.state.undo() && this.renderer.render(this.state.state) },
             { id: 'redoBtn', fn: () => this.state.redo() && this.renderer.render(this.state.state) },
-            { id: 'zoomIn', fn: () => this.inputHandler.adjustZoom(0.2) }, // Usamos la instancia existente
+            { id: 'zoomIn', fn: () => this.inputHandler.adjustZoom(0.2) },
             { id: 'zoomOut', fn: () => this.inputHandler.adjustZoom(-0.2) },
             { id: 'resetView', fn: () => this.inputHandler.resetView() },
             { id: 'stitchHelpBtn', fn: this.toggleStitchTooltip.bind(this) },
@@ -686,7 +694,7 @@ class UIController {
         const text = this.state.state.rings
             .map((ring, ringIndex) =>
                 ring.points.map((type, segmentIndex) => {
-                    let desc = STITCH_TYPES.get(type.replace(/(_increase|_decrease)/, '')).desc;
+                    let desc = STITCH_TYPES.get(type.replace(/(_increase|_decrease)/, ''))?.desc || 'Desconocido';
                     if (type.includes('_increase')) desc += ' (Aumento)';
                     else if (type.includes('_decrease')) desc += ' (Disminución)';
                     return `Anillo ${ringIndex + 1}, Segmento ${segmentIndex}: ${desc}`;
@@ -767,11 +775,12 @@ class UIController {
             const angleStep = Math.PI * 2 / segments;
             const stitchRadius = (ringIndex + 0.5) * this.state.state.ringSpacing * scale * 0.0353;
             ring.points.forEach((type, segmentIndex) => {
+                if (segmentIndex >= segments) return;
                 const angle = segmentIndex * angleStep + (angleStep / 2);
                 const x = centerX + Math.cos(angle) * stitchRadius;
                 const y = centerY + Math.sin(angle) * stitchRadius;
                 let stitchType = type;
-                let symbol = STITCH_TYPES.get(stitchType).symbol;
+                let symbol = STITCH_TYPES.get(stitchType)?.symbol || '';
 
                 if (type.includes('_increase')) {
                     stitchType = type.replace('_increase', '');
@@ -781,9 +790,11 @@ class UIController {
                     symbol = '▵';
                 }
 
-                doc.setTextColor(STITCH_TYPES.get(stitchType).color);
-                doc.setFontSize(12 * scale);
-                doc.text(symbol, x, y, { align: 'center', baseline: 'middle' });
+                if (STITCH_TYPES.has(stitchType)) {
+                    doc.setTextColor(STITCH_TYPES.get(stitchType).color);
+                    doc.setFontSize(12 * scale);
+                    doc.text(symbol, x, y, { align: 'center', baseline: 'middle' });
+                }
             });
         });
 
@@ -859,7 +870,7 @@ class CrochetEditor {
         this.state = new PatternState();
         this.renderer = new CanvasRenderer(document.getElementById('patternCanvas'));
         this.inputHandler = new InputHandler(this.renderer.canvas, this.state, this.renderer);
-        this.uiController = new UIController(this.state, this.renderer, this.inputHandler); // Pasamos inputHandler
+        this.uiController = new UIController(this.state, this.renderer, this.inputHandler);
         this.initialize();
     }
 
