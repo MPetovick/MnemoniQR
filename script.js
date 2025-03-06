@@ -18,7 +18,10 @@
 
         reset() {
             this.state = {
-                rings: [{ segments: 8, points: Array(8).fill() }],
+                rings: [{ 
+                    segments: 8, 
+                    points: Array(8).fill('') // Matriz vacía inicial
+                }],
                 history: [],
                 historyIndex: 0,
                 scale: 1,
@@ -77,39 +80,53 @@
 
         updateGuideLines(value) {
             this.state.guideLines = value;
-            this.state.rings[0].segments = value;
-            this.state.rings[0].points = Array(value).fill();
+            const currentRing = this.state.rings[0];
+            
+            // Mantener puntos existentes y rellenar nuevos con vacío
+            const newPoints = [...currentRing.points];
+            newPoints.length = value;
+            newPoints.fill('', currentRing.points.length);
+            
+            this.state.rings[0] = {
+                segments: value,
+                points: newPoints
+            };
+            
+            this.saveState();
         }
 
         updateRingSpacing(value) {
             this.state.ringSpacing = value;
         }
 
-        increasePoints(ringIndex, segmentIndex, stitch) {
-            const nextRingIndex = ringIndex + 1;
+        increasePoints(ringIndex, segmentIndex) {
             const currentRing = this.state.rings[ringIndex];
-
-            if (nextRingIndex >= this.state.rings.length) {
+            
+            if (ringIndex + 1 >= this.state.rings.length) {
+                // Nuevo anillo vacío
                 this.state.rings.push({
                     segments: currentRing.segments * 2,
-                    points: Array(currentRing.segments * 2).fill(stitch)
+                    points: Array(currentRing.segments * 2).fill('')
                 });
             } else {
-                const nextRing = this.state.rings[nextRingIndex];
+                const nextRing = this.state.rings[ringIndex + 1];
                 const newPoints = [];
+                
                 nextRing.points.forEach((point, idx) => {
                     newPoints.push(point);
-                    if (idx === segmentIndex) newPoints.push(`${stitch}_increase`);
+                    if (idx === segmentIndex) newPoints.push('');
                 });
+                
                 nextRing.segments = newPoints.length;
                 nextRing.points = newPoints;
             }
             this.saveState();
         }
 
-        decreasePoints(ringIndex, segmentIndex, stitch) {
+        decreasePoints(ringIndex, segmentIndex) {
             const nextRingIndex = ringIndex + 1;
-            if (nextRingIndex >= this.state.rings.length || this.state.rings[nextRingIndex].segments <= this.state.guideLines) return;
+            if (nextRingIndex >= this.state.rings.length || 
+                this.state.rings[nextRingIndex].segments <= this.state.guideLines) return;
 
             const nextRing = this.state.rings[nextRingIndex];
             if (nextRing.segments % 2 !== 0) return;
@@ -142,6 +159,7 @@
                 this.updateTransform(state);
                 this.applyTransform(state);
                 this.drawRings(state);
+                this.drawGuideLines(state);
                 this.drawStitches(state);
                 if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
                 this.ctx.restore();
@@ -169,13 +187,13 @@
                 this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 this.ctx.stroke();
             });
-            this.drawGuideLines(state);
         }
 
         drawGuideLines(state) {
             const segments = state.guideLines;
             const angleStep = Math.PI * 2 / segments;
             const maxRadius = state.rings.length * state.ringSpacing;
+            
             this.ctx.strokeStyle = '#eee';
             this.ctx.beginPath();
             for (let i = 0; i < segments; i++) {
@@ -192,17 +210,22 @@
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.font = `${20 / state.scale}px Arial`;
+            
             state.rings.forEach((ring, ringIndex) => {
                 const segments = ring.segments;
                 const angleStep = Math.PI * 2 / segments;
                 const radius = (ringIndex + 0.5) * state.ringSpacing;
+                
                 ring.points.forEach((type, segmentIndex) => {
+                    if (!type) return; // No dibujar puntos vacíos
+                    
                     const angle = segmentIndex * angleStep + (angleStep / 2);
                     const x = Math.cos(angle) * radius;
                     const y = Math.sin(angle) * radius;
+                    
                     let stitchType = type;
                     let isSpecial = false;
-                    let symbol = STITCH_TYPES.get(stitchType).symbol;
+                    let symbol = STITCH_TYPES.get(stitchType)?.symbol || '?';
 
                     if (type.includes('_increase')) {
                         stitchType = type.replace('_increase', '');
@@ -214,7 +237,7 @@
                         symbol = '▵';
                     }
 
-                    this.ctx.fillStyle = STITCH_TYPES.get(stitchType).color;
+                    this.ctx.fillStyle = STITCH_TYPES.get(stitchType)?.color || '#000000';
                     this.ctx.fillText(symbol, x, y);
 
                     if (isSpecial) {
@@ -230,16 +253,18 @@
 
         drawHoverEffect(state, mouseX, mouseY) {
             const { ring, segment } = this.getRingAndSegment(state, mouseX, mouseY);
-            if (ring >= 0 && ring < state.rings.length) {
+            if (ring >= 0 && ring < state.rings.length && !state.rings[ring].points[segment]) {
                 const segments = state.rings[ring].segments;
                 const angleStep = Math.PI * 2 / segments;
                 const radius = (ring + 0.5) * state.ringSpacing;
                 const angle = segment * angleStep + (angleStep / 2);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
-                const stitch = STITCH_TYPES.get(state.selectedStitch);
-                this.ctx.fillStyle = stitch.color + '80';
-                this.ctx.fillText(stitch.symbol, x, y);
+                
+                this.ctx.fillStyle = '#00000020';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 10 / state.scale, 0, Math.PI * 2);
+                this.ctx.fill();
             }
         }
 
@@ -251,8 +276,10 @@
             const segments = state.rings[ring].segments;
             const angle = Math.atan2(y, x) + Math.PI * 2;
             const segment = Math.floor((angle / (Math.PI * 2)) * segments) % segments;
+            
             return { ring, segment };
         }
+    }
 
         exportAsImage(state, projectName) {
             const exportCanvas = document.createElement('canvas');
