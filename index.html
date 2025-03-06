@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Editor de patrones de crochet radiales">
-    <title>LATROCA v001</title>
+    <title>RadialStitch Pro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav class="navbar"><div class="navbar-brand"><i class="fas fa-crop-alt"></i><h1>LATROCA</h1></div></nav>
+    <nav class="navbar"><div class="navbar-brand"><i class="fas fa-crop-alt"></i><h1>Cadeneta ePatch</h1></div></nav>
     <main class="editor-container">
         <div class="top-toolbar">
             <div class="tool-section">
@@ -28,7 +28,10 @@
         </div>
         <div class="canvas-wrapper">
             <div id="grid" class="grid-view">
-                <canvas id="patternCanvas"></canvas>
+                <div id="logoContainer" class="logo-container">
+                    <img src="logo.png" alt="Cadeneta ePatch Logo" id="logoImage">
+                </div>
+                <canvas id="patternCanvas" style="display: none;"></canvas>
                 <div class="zoom-controls">
                     <button id="zoomIn" title="Zoom In (+)"><i class="fas fa-search-plus"></i></button>
                     <button id="zoomOut" title="Zoom Out (-)"><i class="fas fa-search-minus"></i></button>
