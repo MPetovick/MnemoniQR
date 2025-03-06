@@ -18,8 +18,8 @@ const STITCH_TYPES = new Map([
 
 const DEFAULT_STATE = {
     rings: [
-        { segments: 8, points: [] }, // Anillo 0
-        { segments: 8, points: [] }  // Anillo 1
+        { segments: 8, points: Array(8).fill('cadeneta') }, // Anillo 0 con cadenas base
+        { segments: 8, points: [] }                         // Anillo 1 vacío
     ],
     history: [],
     historyIndex: 0,
@@ -38,7 +38,11 @@ const DEFAULT_STATE = {
 // Clase Estado
 class PatternState {
     constructor() { this.state = structuredClone(DEFAULT_STATE); this.saveState(); }
-    reset() { this.state = structuredClone(DEFAULT_STATE); this.saveState(); }
+    reset() { 
+        this.state = structuredClone(DEFAULT_STATE); 
+        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
+        this.saveState(); 
+    }
     saveState() {
         if (this.state.historyIndex < this.state.history.length - 1) this.state.history = this.state.history.slice(0, this.state.historyIndex + 1);
         this.state.history.push(structuredClone(this.state.rings));
@@ -51,7 +55,8 @@ class PatternState {
     updateGuideLines(v) { 
         this.state.guideLines = clamp(v, 4, 24); 
         this.state.rings[0].segments = this.state.guideLines; 
-        if (this.state.rings.length > 1) this.state.rings[1].segments = this.state.guideLines; // Asegurar que el anillo 1 también se ajuste
+        this.state.rings[0].points = Array(this.state.guideLines).fill('cadeneta');
+        if (this.state.rings.length > 1) this.state.rings[1].segments = this.state.guideLines; 
         this.saveState(); 
     }
     updateRingSpacing(v) { this.state.ringSpacing = clamp(v, 30, 80); }
@@ -231,10 +236,7 @@ class InputHandler {
         this.state.state.targetOffset.y += deltaY;
         this.state.state.lastPos = { x: e.clientX, y: e.clientY };
     }
-    endDrag() {
-        this.state.state.isDragging = false;
-        this.isAnimating = false;
-    }
+    endDrag() { this.state.state.isDragging = false; this.isAnimating = false; }
     handleTouchStart(e) {
         e.preventDefault();
         const touches = e.touches;
@@ -268,16 +270,8 @@ class InputHandler {
         } else if (e.key === '+') this.adjustZoom(0.2);
         else if (e.key === '-') this.adjustZoom(-0.2);
     }
-    adjustZoom(amount) {
-        this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3);
-        this.animate();
-    }
-    resetView() {
-        this.state.state.targetScale = 1;
-        this.state.state.targetOffset = { x: 0, y: 0 };
-        this.state.state.offset = { x: 0, y: 0 };
-        this.renderer.render(this.state.state);
-    }
+    adjustZoom(amount) { this.state.state.targetScale = clamp(this.state.state.targetScale + amount, 0.3, 3); this.animate(); }
+    resetView() { this.state.state.targetScale = 1; this.state.state.targetOffset = { x: 0, y: 0 }; this.state.state.offset = { x: 0, y: 0 }; this.renderer.render(this.state.state); }
     animate() {
         if (!this.isAnimating) {
             this.isAnimating = true;
