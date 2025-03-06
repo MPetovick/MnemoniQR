@@ -79,20 +79,22 @@
         }
 
         updateGuideLines(value) {
-            this.state.guideLines = value;
-            const currentRing = this.state.rings[0];
+        // Forzar redimensionado completo
+        this.state.guideLines = value;
+        const newRing = {
+            segments: value,
+            points: Array(value).fill('')
+        };
+        
+        // Mantener puntos existentes donde sea posible
+        newRing.points = newRing.points.map((_, i) => 
+            i < this.state.rings[0].points.length ? 
+            this.state.rings[0].points[i] : ''
+        );
+        
+        this.state.rings[0] = newRing;
+        this.saveState();
             
-            // Mantener puntos existentes y rellenar nuevos con vacío
-            const newPoints = [...currentRing.points];
-            newPoints.length = value;
-            newPoints.fill('', currentRing.points.length);
-            
-            this.state.rings[0] = {
-                segments: value,
-                points: newPoints
-            };
-            
-            this.saveState();
         }
 
         updateRingSpacing(value) {
@@ -142,52 +144,58 @@
     }
 
     class CanvasRenderer {
-        constructor(canvas) {
-            this.canvas = canvas;
-            this.ctx = canvas.getContext('2d');
-            this.resize();
-        }
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.baseScale = 1; // Nueva propiedad para escala base
+        this.resize();
+    }
 
-        resize() {
-            this.canvas.width = this.canvas.parentElement.clientWidth;
-            this.canvas.height = this.canvas.parentElement.clientHeight;
-        }
-
-        render(state, mouseX = null, mouseY = null) {
-            requestAnimationFrame(() => {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                this.updateTransform(state);
-                this.applyTransform(state);
-                this.drawRings(state);
-                this.drawGuideLines(state);
-                this.drawStitches(state);
-                if (mouseX !== null && mouseY !== null) this.drawHoverEffect(state, mouseX, mouseY);
-                this.ctx.restore();
-            });
-        }
-
-        updateTransform(state) {
-            state.offset.x += (state.targetOffset.x - state.offset.x) * 0.1;
-            state.offset.y += (state.targetOffset.y - state.offset.y) * 0.1;
-            state.scale += (state.targetScale - state.scale) * 0.1;
-        }
-
-        applyTransform(state) {
+    render(state, mouseX = null, mouseY = null) {
+        // Limpiar transformaciones anteriores
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        requestAnimationFrame(() => {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Resetear transformaciones
             this.ctx.save();
-            this.ctx.translate(this.canvas.width / 2 + state.offset.x, this.canvas.height / 2 + state.offset.y);
-            this.ctx.scale(state.scale, state.scale);
-        }
+            this.applyBaseTransform(state);
+            
+            // Dibujar elementos estáticos primero
+            this.drawRings(state);
+            this.drawGuideLines(state);
+            
+            // Dibujar elementos dinámicos
+            this.drawStitches(state);
+            
+            if (mouseX !== null && mouseY !== null) {
+                this.drawHoverEffect(state, mouseX, mouseY);
+            }
+            
+            this.ctx.restore();
+        });
+    }
 
-        drawRings(state) {
-            this.ctx.strokeStyle = '#ddd';
-            this.ctx.lineWidth = 1 / state.scale;
-            state.rings.forEach((_, r) => {
-                const radius = (r + 1) * state.ringSpacing;
-                this.ctx.beginPath();
-                this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
-                this.ctx.stroke();
-            });
-        }
+    applyBaseTransform(state) {
+        // Aplicar transformaciones base independientes del zoom/pan
+        this.ctx.translate(
+            this.canvas.width / 2 + state.offset.x * this.baseScale,
+            this.canvas.height / 2 + state.offset.y * this.baseScale
+        );
+        this.ctx.scale(this.baseScale, this.baseScale);
+    }
+
+    drawRings(state) {
+        this.ctx.strokeStyle = '#ddd';
+        this.ctx.lineWidth = 1;
+        state.rings.forEach((_, r) => {
+            const radius = (r + 1) * state.ringSpacing;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            this.ctx.stroke();
+        });
+    }
 
         drawGuideLines(state) {
             const segments = state.guideLines;
@@ -605,10 +613,12 @@
         }
 
         newProject() {
-            this.state.reset();
-            this.currentProjectName = null;
-            this.renderer.render(this.state.state);
-            this.updateUI();
+        this.state.reset();
+        this.renderer.baseScale = 1; // Resetear escala base
+        this.renderer.resize();
+        this.renderer.render(this.state.state);
+        this.updateUI();
+        
         }
 
         saveProject() {
