@@ -61,10 +61,21 @@ function selectStitch(stitch, button) {
     drawPattern();
 }
 
-// Actualizar el log de la secuencia
+// Actualizar el log de la secuencia por anillos
 function updatePatternLog() {
-    const logText = patternSequence.map(s => `${s.position}: ${s.name} (${s.symbol})`).join("\n");
-    patternLog.value = logText;
+    const divisions = parseInt(guideLines.value);
+    const rings = Math.ceil(patternSequence.length / divisions); // Número de anillos necesarios
+    let logText = "";
+
+    for (let ring = 0; ring < rings; ring++) {
+        const startIdx = ring * divisions;
+        const endIdx = Math.min(startIdx + divisions, patternSequence.length);
+        const ringStitches = patternSequence.slice(startIdx, endIdx);
+        const ringText = ringStitches.map(s => `${s.symbol}`).join(" ");
+        logText += `Linea ${ring + 1}: ${ringText || "Vacío"}\n`;
+    }
+
+    patternLog.value = logText.trim();
     patternLog.scrollTop = patternLog.scrollHeight; // Auto-scroll al final
 }
 
@@ -201,6 +212,7 @@ resetView.addEventListener("click", () => {
 // Actualizar valores de configuración
 guideLines.addEventListener("input", () => {
     guideLinesValue.textContent = guideLines.value;
+    updatePatternLog(); // Actualizar log al cambiar divisiones
     drawPattern();
 });
 
