@@ -25,6 +25,12 @@ body {
     line-height: 1.6;
 }
 
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 #patternCanvas {
     flex: 1;
     background: var(--surface);
@@ -33,50 +39,44 @@ body {
     margin: 1.5rem;
     border-radius: var(--radius);
     touch-action: none;
-    transition: var(--transition);
 }
 
-.controls {
-    padding: 1.25rem;
-    background: var(--surface);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+.controls-wrapper {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.stitch-controls {
     display: flex;
     gap: 1rem;
     align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
+    background: var(--surface);
+    padding: 1rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
 }
 
 .stitch-palette {
-    display: flex;
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.75rem;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(8px);
-    padding: 0.75rem;
-    border-radius: calc(var(--radius) + 4px);
-    border: 1px solid var(--border);
-    flex-wrap: wrap;
-    justify-content: center;
 }
 
-button {
-    padding: 0.75rem 1.25rem;
+.stitch-btn {
+    padding: 0.75rem;
     border: 2px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: calc(var(--radius) - 2px);
     background: var(--surface);
     cursor: pointer;
     transition: var(--transition);
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-weight: 500;
-    position: relative;
-    overflow: hidden;
 }
 
-button:hover {
+.stitch-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px var(--border);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
 }
 
 .stitch-btn.active {
@@ -87,7 +87,8 @@ button:hover {
 .stitch-symbol {
     font-size: 1.4em;
     color: var(--stitch-color);
-    transition: color 0.2s;
+    width: 24px;
+    text-align: center;
 }
 
 .stitch-label {
@@ -95,46 +96,34 @@ button:hover {
     white-space: nowrap;
 }
 
-#reset {
+.tool-button {
+    padding: 0.75rem 1.25rem;
     background: #ff6b6b;
     color: white;
-    padding: 0.75rem 1.5rem;
     border: none;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
 }
 
-#reset:hover {
-    background: #fa5252;
-    transform: none;
+.tool-icon {
+    width: 20px;
+    height: 20px;
 }
 
 @media (max-width: 768px) {
-    .controls {
-        padding: 1rem;
-        position: sticky;
-        bottom: 0;
-        z-index: 100;
+    .stitch-controls {
+        flex-direction: column;
     }
     
-    .stitch-btn {
-        flex: 1 1 160px;
-        justify-content: center;
-        padding: 0.75rem;
-    }
-    
-    #patternCanvas {
-        margin: 1rem;
+    .stitch-palette {
+        width: 100%;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     }
     
     .stitch-label {
         display: none;
     }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.controls {
-    animation: fadeIn 0.6s ease-out;
 }
