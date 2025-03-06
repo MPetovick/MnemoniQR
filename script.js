@@ -137,9 +137,10 @@ function drawPattern() {
     const centerY = 0;
     const divisions = parseInt(guideLines.value);
     const spacing = parseInt(ringSpacing.value);
+    const totalRings = Math.max(1, Math.ceil(patternSequence.length / divisions)); // Al menos 1 anillo
 
-    // Dibujar anillos
-    for (let r = 1; r <= 5; r++) {
+    // Dibujar anillos según la cantidad de puntos
+    for (let r = 1; r <= totalRings; r++) {
         ctx.beginPath();
         ctx.arc(centerX, centerY, r * spacing, 0, Math.PI * 2);
         ctx.strokeStyle = "#ddd";
@@ -147,13 +148,14 @@ function drawPattern() {
         ctx.stroke();
     }
 
-    // Dibujar líneas guía
+    // Dibujar líneas guía hasta el anillo más externo
     for (let i = 0; i < divisions; i++) {
         const angle = (i / divisions) * Math.PI * 2;
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
-        ctx.lineTo(centerX + Math.cos(angle) * spacing * 5, centerY + Math.sin(angle) * spacing * 5);
+        ctx.lineTo(centerX + Math.cos(angle) * spacing * totalRings, centerY + Math.sin(angle) * spacing * totalRings);
         ctx.strokeStyle = "#ccc";
+        ctx.lineWidth = 1 / zoomLevel;
         ctx.stroke();
     }
 
