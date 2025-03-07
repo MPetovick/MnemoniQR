@@ -1,5 +1,5 @@
-// Definir los símbolos de crochet y sus descripciones
 const stitches = [
+    { symbol: "-", name: "Punt pla", description: "Punt pla" }, // Nuevo primer botón
     { symbol: "○", name: "Cadeneta (ch)", description: "Punto de cadena" },
     { symbol: "●", name: "Punto deslizado (sl st)", description: "Punto deslizado" },
     { symbol: "✚", name: "Punto bajo (sc)", description: "Punto bajo o medio punto" },
