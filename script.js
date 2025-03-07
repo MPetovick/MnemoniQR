@@ -213,15 +213,22 @@ ringSpacing.addEventListener("input", () => {
     drawPattern();
 });
 
-// Mostrar y ocultar el modal de ayuda
+// Mostrar imagen como leyenda en el modal
 stitchHelpBtn.addEventListener("click", () => {
+    const modalContent = helpModal.querySelector('.modal-content');
+    modalContent.innerHTML = `
+        <span class="close-modal">×</span>
+        <img src="img/crochet-stitches-guide.jpg" alt="Guía visual de puntos de crochet" style="max-width: 100%; height: auto;">
+    `;
     helpModal.classList.remove("hidden");
+    
+    // Re-asignar el evento de cerrar porque se recreó el elemento close-modal
+    modalContent.querySelector('.close-modal').addEventListener("click", () => {
+        helpModal.classList.add("hidden");
+    });
 });
 
-closeModal.addEventListener("click", () => {
-    helpModal.classList.add("hidden");
-});
-
+// Mantener los eventos existentes para cerrar el modal al hacer clic fuera
 window.addEventListener("click", (e) => {
     if (e.target === helpModal) {
         helpModal.classList.add("hidden");
