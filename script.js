@@ -1,5 +1,3 @@
-// script.js
-
 // Definir los símbolos de crochet y sus descripciones
 const stitches = [
     { symbol: "○", name: "Cadeneta (ch)", description: "Punto de cadena" },
@@ -14,7 +12,6 @@ const stitches = [
 // Elementos del DOM
 const stitchPalette = document.getElementById("stitchPalette");
 const stitchHelpBtn = document.getElementById("stitchHelpBtn");
-const stitchTooltip = document.getElementById("stitchTooltip");
 const canvas = document.getElementById("patternCanvas");
 const ctx = canvas.getContext("2d");
 const guideLines = document.getElementById("guideLines");
@@ -25,6 +22,8 @@ const zoomIn = document.getElementById("zoomIn");
 const zoomOut = document.getElementById("zoomOut");
 const resetView = document.getElementById("resetView");
 const patternLog = document.getElementById("patternLog");
+const helpModal = document.getElementById("helpModal");
+const closeModal = document.querySelector(".close-modal");
 
 // Variables de estado
 let selectedStitch = null;
@@ -76,48 +75,6 @@ function updatePatternLog() {
 
     patternLog.value = logText.trim();
     patternLog.scrollTop = patternLog.scrollHeight;
-}
-
-// Mostrar tooltip al pasar el mouse o tocar
-stitchPalette.addEventListener("mouseover", (e) => {
-    if (e.target.classList.contains("stitch-btn")) {
-        showTooltip(e.target, e);
-    }
-});
-
-stitchPalette.addEventListener("mouseout", hideTooltip);
-
-stitchPalette.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    const target = e.target.closest(".stitch-btn");
-    if (target) {
-        const stitch = stitches.find(s => s.symbol === target.textContent);
-        if (stitch) selectStitch(stitch, target);
-        showTooltip(target, e.touches[0]);
-    }
-}, { passive: false });
-
-// Mostrar tooltip al hacer clic en el botón de ayuda
-stitchHelpBtn.addEventListener("click", () => {
-    const helpText = stitches.map(s => `${s.symbol}: ${s.name} - ${s.description}`).join("\n");
-    stitchTooltip.textContent = helpText;
-    stitchTooltip.style.left = "50%";
-    stitchTooltip.style.top = "50%";
-    stitchTooltip.style.transform = "translate(-50%, -50%)";
-    stitchTooltip.classList.remove("hidden");
-    setTimeout(hideTooltip, 5000);
-});
-
-// Funciones de tooltip
-function showTooltip(element, event) {
-    stitchTooltip.textContent = `${element.dataset.name}: ${element.dataset.description}`;
-    stitchTooltip.style.left = `${event.pageX + 10}px`;
-    stitchTooltip.style.top = `${event.pageY + 10}px`;
-    stitchTooltip.classList.remove("hidden");
-}
-
-function hideTooltip() {
-    stitchTooltip.classList.add("hidden");
 }
 
 // Configurar el canvas
@@ -254,6 +211,21 @@ guideLines.addEventListener("input", () => {
 ringSpacing.addEventListener("input", () => {
     ringSpacingValue.textContent = `${ringSpacing.value}px`;
     drawPattern();
+});
+
+// Mostrar y ocultar el modal de ayuda
+stitchHelpBtn.addEventListener("click", () => {
+    helpModal.classList.remove("hidden");
+});
+
+closeModal.addEventListener("click", () => {
+    helpModal.classList.add("hidden");
+});
+
+window.addEventListener("click", (e) => {
+    if (e.target === helpModal) {
+        helpModal.classList.add("hidden");
+    }
 });
 
 // Inicialización
