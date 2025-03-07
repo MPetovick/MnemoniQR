@@ -91,11 +91,34 @@ body {
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex; /* Usa flexbox para alinear íconos */
+    align-items: center; /* Centra el ícono verticalmente */
+    justify-content: center; /* Centra el ícono horizontalmente */
 }
 
 .zoom-controls button:hover {
     background-color: var(--secondary-color);
     color: white;
+}
+
+#stitchHelpBtn,
+#deleteLastStitchBtn {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    font-size: 1.1rem; /* Mismo tamaño de ícono */
+    padding: 0; /* Elimina el padding adicional */
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex; /* Usa flexbox para alinear íconos */
+    align-items: center; /* Centra el ícono verticalmente */
+    justify-content: center; /* Centra el ícono horizontalmente */
+}
+
+#stitchHelpBtn:hover,
+#deleteLastStitchBtn:hover {
+    background-color: var(--secondary-color);
 }
 
 .config-section {
