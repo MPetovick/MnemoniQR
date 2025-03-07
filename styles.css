@@ -91,9 +91,9 @@ body {
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
-    display: flex; /* Usa flexbox para alinear íconos */
-    align-items: center; /* Centra el ícono verticalmente */
-    justify-content: center; /* Centra el ícono horizontalmente */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .zoom-controls button:hover {
@@ -102,22 +102,32 @@ body {
 }
 
 #stitchHelpBtn,
-#deleteLastStitchBtn {
+#deleteLastStitchBtn,
+#newProjectBtn,
+#saveProjectBtn,
+#deleteProjectBtn,
+#downloadPatternBtn,
+#loadSelectedProjectBtn {
     background: var(--primary-color);
     border: none;
     color: white;
-    font-size: 1.1rem; /* Mismo tamaño de ícono */
-    padding: 0; /* Elimina el padding adicional */
+    font-size: 1.1rem;
+    padding: 0;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
-    display: flex; /* Usa flexbox para alinear íconos */
-    align-items: center; /* Centra el ícono verticalmente */
-    justify-content: center; /* Centra el ícono horizontalmente */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #stitchHelpBtn:hover,
-#deleteLastStitchBtn:hover {
+#deleteLastStitchBtn:hover,
+#newProjectBtn:hover,
+#saveProjectBtn:hover,
+#deleteProjectBtn:hover,
+#downloadPatternBtn:hover,
+#loadSelectedProjectBtn:hover {
     background-color: var(--secondary-color);
 }
 
@@ -231,9 +241,9 @@ body {
 }
 
 .help-image-container {
-    display: none; /* Oculto por defecto */
+    display: none;
     position: fixed;
-    top: 60px; /* Debajo de la barra de navegación */
+    top: 60px;
     right: 20px;
     background-color: var(--toolbar-bg);
     padding: 15px;
@@ -250,9 +260,8 @@ body {
     border-radius: 4px;
 }
 
-/* Mostrar la imagen en pantallas grandes */
 @media (min-width: 768px) {
     .help-image-container {
-        display: block; /* Mostrar la imagen en pantallas grandes */
+        display: block;
     }
 }
