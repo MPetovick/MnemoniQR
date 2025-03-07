@@ -1,4 +1,3 @@
-
 :root {
     --primary-color: #2c3e50;
     --secondary-color: #3498db;
@@ -208,43 +207,6 @@ body {
     background-color: rgba(52, 152, 219, 0.2);
 }
 
-.help-btn {
-    background: var(--primary-color);
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    box-shadow: var(--shadow);
-    min-width: 40px;
-    min-height: 40px;
-}
-
-.help-btn:hover {
-    background-color: var(--secondary-color);
-}
-
-/* Estilos para el botón de borrar último punto */
-#deleteLastStitchBtn {
-    background: var(--primary-color);
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    box-shadow: var(--shadow);
-    min-width: 40px;
-    min-height: 40px;
-    margin-top: 0.5rem; /* Espacio entre botones */
-}
-
-#deleteLastStitchBtn:hover {
-    background-color: var(--secondary-color);
-}
-
-/* Estilos para el contenedor de la imagen de ayuda */
 .help-image-container {
     display: none; /* Oculto por defecto */
     position: fixed;
@@ -269,12 +231,5 @@ body {
 @media (min-width: 768px) {
     .help-image-container {
         display: block; /* Mostrar la imagen en pantallas grandes */
-    }
-}
-
-/* Estilos para el botón de ayuda en pantallas pequeñas */
-@media (max-width: 767px) {
-    .stitchHelpBtn {
-        display: block; /* Mostrar el botón de ayuda en pantallas pequeñas */
     }
 }
