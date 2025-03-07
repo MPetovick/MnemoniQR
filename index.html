@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -25,6 +24,14 @@
                     <button id="zoomIn" title="Zoom In (+)"><i class="fas fa-search-plus"></i></button>
                     <button id="zoomOut" title="Zoom Out (-)"><i class="fas fa-search-minus"></i></button>
                     <button id="resetView"><i class="fas fa-expand-arrows-alt"></i></button>
+                    <!-- Botón de ayuda -->
+                    <button id="stitchHelpBtn" class="help-btn" title="Guía de símbolos">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <!-- Botón de retroceso -->
+                    <button id="deleteLastStitchBtn" class="help-btn" title="Borrar último punto">
+                        <i class="fas fa-undo"></i>
+                    </button>
                     <div class="config-section">
                         <label for="guideLines" title="Divisiones Iniciales"><i class="fas fa-drafting-compass"></i></label>
                         <input type="range" id="guideLines" min="4" max="24" value="8">
@@ -48,13 +55,6 @@
             <div class="help-image-container">
                 <img src="src/crochet.jpg" alt="Leyenda de puntos de crochet">
             </div>
-            <button id="stitchHelpBtn" class="help-btn" title="Guía de símbolos">
-                <i class="fas fa-question-circle"></i>
-            </button>
-            <!-- Botón para borrar el último punto -->
-            <button id="deleteLastStitchBtn" class="help-btn" title="Borrar último punto">
-                <i class="fas fa-undo"></i>
-            </button>
         </div>
     </main>
 
