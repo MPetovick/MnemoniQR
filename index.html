@@ -17,45 +17,51 @@
     </nav>
 
     <main class="editor-container">
-        <div class="canvas-wrapper">
-            <div id="grid" class="grid-view">
+        <div class="workspace">
+            <div class="canvas-container">
                 <canvas id="patternCanvas"></canvas>
-                <div class="zoom-controls">
-                    <button id="zoomIn" title="Zoom In (+)"><i class="fas fa-search-plus"></i></button>
-                    <button id="zoomOut" title="Zoom Out (-)"><i class="fas fa-search-minus"></i></button>
-                    <button id="resetView"><i class="fas fa-expand-arrows-alt"></i></button>
-                    <div class="config-section">
-                        <label for="guideLines" title="Divisiones Iniciales"><i class="fas fa-drafting-compass"></i></label>
-                        <input type="range" id="guideLines" min="4" max="24" value="8">
-                        <span id="guideLinesValue">8</span>
-                        <label for="ringSpacing" title="Espaciado de Anillos"><i class="fas fa-circle-notch"></i></label>
-                        <input type="range" id="ringSpacing" min="30" max="80" value="50">
-                        <span id="ringSpacingValue">50px</span>
+                <div class="controls">
+                    <div class="zoom-controls">
+                        <button id="zoomIn" title="Zoom In (+)"><i class="fas fa-search-plus"></i></button>
+                        <button id="zoomOut" title="Zoom Out (-)"><i class="fas fa-search-minus"></i></button>
+                        <button id="resetView" title="Resetear vista"><i class="fas fa-expand-arrows-alt"></i></button>
+                    </div>
+                    <div class="config-controls">
+                        <div class="config-group">
+                            <label for="guideLines"><i class="fas fa-drafting-compass"></i></label>
+                            <input type="range" id="guideLines" min="4" max="24" value="8">
+                            <span id="guideLinesValue">8</span>
+                        </div>
+                        <div class="config-group">
+                            <label for="ringSpacing"><i class="fas fa-circle-notch"></i></label>
+                            <input type="range" id="ringSpacing" min="30" max="80" value="50">
+                            <span id="ringSpacingValue">50px</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="log-panel">
-                <textarea id="patternLog" placeholder="Secuencia de puntos por anillo..." readonly></textarea>
+            
+            <div class="side-panel">
+                <div class="log-panel">
+                    <textarea id="patternLog" placeholder="Secuencia de puntos por anillo..." readonly></textarea>
+                </div>
+                <div class="toolbar">
+                    <button id="stitchHelpBtn" class="tool-btn" title="Guía de símbolos">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <button id="deleteLastStitchBtn" class="tool-btn" title="Borrar último punto">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="stitch-calculator">
-            <div class="stitch-palette" id="stitchPalette">
-                <!-- Los botones se generan dinámicamente en JS -->
-            </div>
-            <button id="stitchHelpBtn" class="help-btn" title="Guía de símbolos">
-                <i class="fas fa-question-circle"></i>
-            </button>
-        </div>
-    </main>
+        <div class="stitch-palette" id="stitchPalette"></div>
 
-    <!-- Modal para la imagen de ayuda -->
-    <div id="helpModal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
+        <div class="help-image-container">
             <img src="src/crochet.jpg" alt="Leyenda de puntos de crochet">
         </div>
-    </div>
+    </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
