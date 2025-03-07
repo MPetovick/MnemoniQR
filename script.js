@@ -218,7 +218,7 @@ stitchHelpBtn.addEventListener("click", () => {
     const modalContent = helpModal.querySelector('.modal-content');
     modalContent.innerHTML = `
         <span class="close-modal">×</span>
-        <img src="img/crochet-stitches-guide.jpg" alt="Guía visual de puntos de crochet" style="max-width: 100%; height: auto;">
+        <img src="img/crochet.jpg" alt="Guía visual de puntos de crochet" style="max-width: 100%; height: auto;">
     `;
     helpModal.classList.remove("hidden");
     
