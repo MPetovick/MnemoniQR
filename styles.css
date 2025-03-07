@@ -204,19 +204,20 @@ body {
 }
 
 .stitch-palette {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(37px, 1fr));
-    gap: 0.7rem;
-    width: 100%;
-    max-width: 600px;
-    padding: 0 1rem;
+    display: flex; /* Usar flexbox para alinear los botones en una fila */
+    flex-wrap: nowrap; /* Evitar que los botones se envuelvan en varias líneas */
+    gap: 0.5rem; /* Espacio entre los botones */
+    width: 100%; /* Ocupar todo el ancho disponible */
+    overflow-x: auto; /* Permitir desplazamiento horizontal si hay muchos botones */
+    padding: 0.5rem; /* Espaciado interno */
+    justify-content: space-between; /* Distribuir el espacio entre los botones */
 }
 
 .stitch-btn {
-    width: 100%;
-    min-width: 50px;
-    min-height: 50px;
-    aspect-ratio: 1;
+    flex: 1; /* Hacer que los botones se expandan para ocupar el espacio disponible */
+    min-width: 50px; /* Ancho mínimo para cada botón */
+    min-height: 50px; /* Altura mínima para cada botón */
+    aspect-ratio: 1; /* Mantener los botones cuadrados */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -250,7 +251,7 @@ body {
     border-radius: 8px;
     box-shadow: var(--shadow);
     z-index: 1000;
-    max-width: 500px;
+    max-width: 300px;
     width: 100%;
 }
 
