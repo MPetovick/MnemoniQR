@@ -24,6 +24,12 @@ const zoomIn = document.getElementById("zoomIn");
 const zoomOut = document.getElementById("zoomOut");
 const resetView = document.getElementById("resetView");
 const patternLog = document.getElementById("patternLog");
+const newProjectBtn = document.getElementById("newProjectBtn");
+const saveProjectBtn = document.getElementById("saveProjectBtn");
+const deleteProjectBtn = document.getElementById("deleteProjectBtn");
+const downloadPatternBtn = document.getElementById("downloadPatternBtn");
+const savedProjectsList = document.getElementById("savedProjectsList");
+const loadSelectedProjectBtn = document.getElementById("loadSelectedProjectBtn");
 
 // Variables de estado
 let selectedStitch = null;
@@ -241,10 +247,105 @@ function deleteLastStitch() {
 // Asignar la función al botón de borrar último punto
 deleteLastStitchBtn.addEventListener("click", deleteLastStitch);
 
+// Función para crear un nuevo proyecto
+function newProject() {
+    patternSequence = []; // Limpiar la secuencia de patrones
+    patternLog.value = ""; // Limpiar el log de patrones
+    drawPattern(); // Redibujar el lienzo
+}
+
+// Función para guardar el proyecto en localStorage
+function saveProject() {
+    const patternText = patternSequence.map(stitch => stitch.symbol).join(" "); // Convertir la secuencia a texto
+    const fileName = prompt("Ingresa un nombre para el archivo:", "patron_crochet"); // Pedir nombre del archivo
+    if (fileName) {
+        // Guardar en localStorage
+        localStorage.setItem(fileName, patternText);
+        alert(`Proyecto "${fileName}" guardado correctamente.`);
+        updateSavedProjectsList(); // Actualizar la lista de proyectos guardados
+    }
+}
+
+// Función para actualizar la lista de proyectos guardados
+function updateSavedProjectsList() {
+    savedProjectsList.innerHTML = '<option value="" disabled selected>Selecciona un proyecto</option>'; // Resetear la lista
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = key;
+        savedProjectsList.appendChild(option);
+    }
+}
+
+// Función para cargar un proyecto seleccionado
+function loadSelectedProject() {
+    const selectedProject = savedProjectsList.value; // Obtener el nombre del proyecto seleccionado
+    if (selectedProject) {
+        const patternText = localStorage.getItem(selectedProject); // Obtener el contenido del proyecto
+        if (patternText) {
+            const symbols = patternText.split(" "); // Convertir el contenido a símbolos
+            patternSequence = []; // Limpiar la secuencia actual
+            symbols.forEach(symbol => {
+                const stitch = stitches.find(s => s.symbol === symbol); // Buscar el símbolo en la lista de puntadas
+                if (stitch) {
+                    patternSequence.push({ ...stitch, position: patternSequence.length + 1 }); // Añadir a la secuencia
+                }
+            });
+            updatePatternLog(); // Actualizar el log
+            drawPattern(); // Redibujar el patrón
+            alert(`Proyecto "${selectedProject}" cargado correctamente.`);
+        }
+    } else {
+        alert("Por favor, selecciona un proyecto de la lista.");
+    }
+}
+
+// Función para eliminar un proyecto seleccionado
+function deleteSelectedProject() {
+    const selectedProject = savedProjectsList.value; // Obtener el nombre del proyecto seleccionado
+    if (selectedProject) {
+        const confirmDelete = confirm(`¿Estás seguro de que quieres eliminar el proyecto "${selectedProject}"?`);
+        if (confirmDelete) {
+            localStorage.removeItem(selectedProject); // Eliminar el proyecto de localStorage
+            updateSavedProjectsList(); // Actualizar la lista de proyectos guardados
+            alert(`Proyecto "${selectedProject}" eliminado correctamente.`);
+        }
+    } else {
+        alert("Por favor, selecciona un proyecto de la lista.");
+    }
+}
+
+function downloadPattern() {
+    if (patternSequence.length === 0) {
+        alert("No hay ningún patrón para descargar.");
+        return;
+    }
+    const patternText = patternSequence.map(stitch => stitch.symbol).join(" "); // Convertir la secuencia a texto
+    const blob = new Blob([patternText], { type: "text/plain" }); // Crear un archivo Blob
+    const link = document.createElement("a"); // Crear un enlace de descarga
+    link.href = URL.createObjectURL(blob);
+    link.download = "patron_actual.txt"; // Nombre predeterminado del archivo
+    document.body.appendChild(link); // Añadir el enlace al DOM
+    link.click(); // Simular clic en el enlace
+    document.body.removeChild(link); // Eliminar el enlace del DOM
+}
+
+// Asignar función al botón de descargar patrón
+downloadPatternBtn.addEventListener("click", downloadPattern);
+
+// Asignar funciones a los botones
+newProjectBtn.addEventListener("click", newProject);
+saveProjectBtn.addEventListener("click", saveProject);
+deleteProjectBtn.addEventListener("click", deleteSelectedProject);
+downloadPatternBtn.addEventListener("click", downloadPattern);
+loadSelectedProjectBtn.addEventListener("click", loadSelectedProject);
+
 // Inicialización
 window.addEventListener("load", () => {
     createStitchButtons();
     resizeCanvas();
+    updateSavedProjectsList(); // Cargar la lista de proyectos guardados
 });
 
 window.addEventListener("resize", resizeCanvas);
