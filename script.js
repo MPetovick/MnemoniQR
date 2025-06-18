@@ -44,7 +44,12 @@ const dom = {
     seedWordsContainer: document.getElementById('seed-words-container'),
     copySeed: document.getElementById('copy-seed'),
     closeDecrypted: document.getElementById('close-decrypted'),
-    wordCount: document.getElementById('word-count')
+    wordCount: document.getElementById('word-count'),
+    
+    // Modal de bienvenida
+    welcomeModal: document.getElementById('welcome-modal'),
+    closeWelcome: document.getElementById('close-welcome'),
+    acceptWelcome: document.getElementById('accept-welcome')
 };
 
 // Estado de la aplicación
@@ -157,6 +162,15 @@ dom.closeDecrypted.addEventListener('click', () => {
     // Limpiar datos sensibles
     dom.decryptedSeed.value = '';
     appState.seedPhrase = '';
+});
+
+// Modal de bienvenida
+dom.closeWelcome.addEventListener('click', () => {
+    dom.welcomeModal.style.display = 'none';
+});
+
+dom.acceptWelcome.addEventListener('click', () => {
+    dom.welcomeModal.style.display = 'none';
 });
 
 // Funciones principales
@@ -696,6 +710,40 @@ const cryptoUtils = {
     }
 };
 
+// Mostrar indicador de modo offline
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+function updateOnlineStatus() {
+    if (!navigator.onLine) {
+        showToast('Modo offline activado - Máxima seguridad', 'success');
+        // Crear indicador visual
+        const offlineBadge = document.createElement('div');
+        offlineBadge.id = 'offline-badge';
+        offlineBadge.innerHTML = '<i class="fas fa-wifi-slash"></i> Modo Offline';
+        offlineBadge.style.position = 'fixed';
+        offlineBadge.style.bottom = '20px';
+        offlineBadge.style.left = '20px';
+        offlineBadge.style.background = 'var(--accent-color)';
+        offlineBadge.style.color = 'white';
+        offlineBadge.style.padding = '8px 16px';
+        offlineBadge.style.borderRadius = '20px';
+        offlineBadge.style.zIndex = '10000';
+        offlineBadge.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        offlineBadge.style.fontWeight = '600';
+        offlineBadge.style.display = 'flex';
+        offlineBadge.style.alignItems = 'center';
+        offlineBadge.style.gap = '8px';
+        document.body.appendChild(offlineBadge);
+    } else {
+        const badge = document.getElementById('offline-badge');
+        if (badge) badge.remove();
+    }
+}
+
+// Comprobar estado inicial
+updateOnlineStatus();
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     dom.passwordSection.style.display = 'block';
@@ -738,4 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+    
+    // Mostrar modal de bienvenida al cargar
+    dom.welcomeModal.style.display = 'flex';
 });
