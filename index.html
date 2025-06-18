@@ -3,79 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Editor profesional de patrones de crochet radiales con símbolos estandarizados">
-    <title>RadialStitch Pro - Editor de Patrones de Crochet</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>MnemoniQR - Cifrado y Descifrado de Semillas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="navbar-brand">
-            <i class="fas fa-crop-alt"></i>
-            <h1>LATROCA</h1>
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-qrcode logo-icon"></i>MnemoniQR
         </div>
-    </nav>
-
-    <main class="editor-container">
-        <div class="canvas-wrapper">
-            <div id="grid" class="grid-view">
-                <canvas id="patternCanvas"></canvas>
-                <div class="zoom-controls">
-                    <button id="zoomIn" title="Zoom In (+)"><i class="fas fa-search-plus"></i></button>
-                    <button id="zoomOut" title="Zoom Out (-)"><i class="fas fa-search-minus"></i></button>
-                    <button id="resetView"><i class="fas fa-expand-arrows-alt"></i></button>
-                    <!-- Botón de Nuevo -->
-                    <button id="newProjectBtn" title="Nuevo Proyecto"><i class="fas fa-file"></i></button>
-                    <!-- Botón de Guardar Proyecto -->
-                    <button id="saveProjectBtn" title="Guardar Proyecto"><i class="fas fa-save"></i></button>
-                    <!-- Lista de proyectos guardados -->
-                    <select id="savedProjectsList" title="Proyectos Guardados">
-                        <option value="" disabled selected>Selecciona un proyecto</option>
-                    </select>
-                    <button id="loadSelectedProjectBtn" title="Cargar Proyecto Seleccionado">
-                        <i class="fas fa-upload"></i>
+        
+        <p class="tagline">
+            Protege tus semillas de criptomonedas con cifrado AES-256-GCM y almacénalas de forma segura en códigos QR
+        </p>
+        
+        <button id="start-btn" class="btn-primary">
+            <i class="fas fa-lock"></i> Cifrar Semilla
+        </button>
+        
+        <div class="decrypt-section">
+            <h3 class="decrypt-title">
+                <i class="fas fa-unlock"></i> Descifrar Semilla
+            </h3>
+            <div class="drop-area" id="drop-area">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Arrastra y suelta tu código QR aquí</p>
+                <p class="small">O haz clic para seleccionar una imagen</p>
+                <input type="file" id="qr-file" accept="image/*" style="display: none;">
+            </div>
+            <img id="qr-preview" alt="Vista previa del QR">
+            <button id="decrypt-btn" class="btn-primary" style="display: none;">
+                <i class="fas fa-key"></i> Descifrar Semilla
+            </button>
+        </div>
+        
+        <div id="qr-container">
+            <div class="qr-wrapper">
+                <div class="hushbox-compatible">
+                    <i class="fas fa-shield-alt"></i> HUSHBOX Compatible
+                </div>
+                <canvas id="qr-canvas"></canvas>
+            </div>
+            
+            <div class="qr-actions">
+                <button id="copy-btn" class="btn-secondary">
+                    <i class="fas fa-copy"></i> Copiar QR
+                </button>
+                <button id="download-btn" class="btn-secondary">
+                    <i class="fas fa-download"></i> Descargar PNG
+                </button>
+                <button id="pdf-btn" class="btn-primary">
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+            </div>
+            
+            <div class="security-note">
+                <i class="fas fa-shield-alt"></i>
+                <strong>Importante:</strong> Este QR contiene tu semilla cifrada con AES-256-GCM. 
+                Para descifrar, necesitarás la contraseña que has establecido. Recomendamos almacenar la contraseña 
+                por separado en un gestor de contraseñas seguro.
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para cifrar semilla -->
+    <div id="seed-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Tu Frase Semilla</h2>
+                <p class="modal-subtitle">Ingresa 12, 18 o 24 palabras separadas por espacios</p>
+                <div class="close-modal">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label" for="seed-phrase">
+                    Frase de recuperación
+                    <span>Máximo 24 palabras</span>
+                </label>
+                <div class="seed-input-container">
+                    <textarea id="seed-phrase" placeholder="Ingresa cada palabra separada por un espacio..."></textarea>
+                    <div class="word-counter" id="word-counter">0 palabras</div>
+                    <button class="toggle-visibility" id="toggle-visibility">
+                        <i class="fas fa-eye"></i>
                     </button>
-                    <!-- Botón de Eliminar Proyecto -->
-                    <button id="deleteProjectBtn" title="Eliminar Proyecto"><i class="fas fa-trash"></i></button>
-                    <!-- Botón de Descargar Patrón -->
-                    <button id="downloadPatternBtn" title="Descargar Patrón"><i class="fas fa-download"></i></button>
-                    <!-- Botón de retroceso -->
-                    <button id="deleteLastStitchBtn" class="help-btn" title="Borrar último punto">
-                        <i class="fas fa-undo"></i>
-                    </button>
-                    <!-- Botón de ayuda -->
-                    <button id="stitchHelpBtn" class="help-btn" title="Guía de símbolos">
-                        <i class="fas fa-question-circle"></i>
-                    </button>
-
-
-                    <div class="config-section">
-                        <label for="guideLines" title="Divisiones Iniciales"><i class="fas fa-drafting-compass"></i></label>
-                        <input type="range" id="guideLines" min="4" max="24" value="8">
-                        <span id="guideLinesValue">8</span>
-                        <label for="ringSpacing" title="Espaciado de Anillos"><i class="fas fa-circle-notch"></i></label>
-                        <input type="range" id="ringSpacing" min="30" max="80" value="50">
-                        <span id="ringSpacingValue">50px</span>
+                </div>
+                
+                <div class="word-hints">
+                    <div class="word-hint">
+                        <i class="fas fa-check-circle"></i> 12 palabras
+                    </div>
+                    <div class="word-hint">
+                        <i class="fas fa-check-circle"></i> 18 palabras
+                    </div>
+                    <div class="word-hint">
+                        <i class="fas fa-check-circle"></i> 24 palabras
                     </div>
                 </div>
             </div>
-            <div class="log-panel">
-                <textarea id="patternLog" placeholder="Secuencia de puntos por anillo..." readonly></textarea>
+            
+            <div class="password-section" id="password-section">
+                <div class="input-group">
+                    <label class="input-label" for="password">
+                        Contraseña de cifrado
+                        <span>Mínimo 12 caracteres</span>
+                    </label>
+                    <div class="password-input-container">
+                        <input type="password" id="password" class="password-input" placeholder="Crea una contraseña segura">
+                        <button class="password-toggle" id="password-toggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="password-strength-bar"></div>
+                    </div>
+                    <div class="password-strength-text" id="password-strength-text">Seguridad: Muy débil</div>
+                    
+                    <div class="generate-password-btn" id="generate-password">
+                        <i class="fas fa-dice"></i> Generar contraseña segura
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn-secondary" id="cancel-btn">Cancelar</button>
+                <button class="btn-primary" id="encrypt-btn">Cifrar Semilla</button>
             </div>
         </div>
-
-        <div class="stitch-calculator">
-            <div class="stitch-palette" id="stitchPalette">
-                <!-- Los botones se generan dinámicamente en JS -->
+    </div>
+    
+    <!-- Modal para mostrar semilla descifrada -->
+    <div id="decrypted-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Semilla Descifrada</h2>
+                <p class="modal-subtitle">Tu frase semilla se ha descifrado correctamente</p>
+                <div class="close-modal">
+                    <i class="fas fa-times"></i>
+                </div>
             </div>
-            <!-- Contenedor para la imagen de ayuda -->
-            <div class="help-image-container">
-                <img src="src/crochet.jpg" alt="Leyenda de puntos de crochet">
+            
+            <div class="input-group">
+                <label class="input-label">
+                    Frase de recuperación
+                    <span id="word-count">0 palabras</span>
+                </label>
+                <div class="seed-input-container">
+                    <textarea id="decrypted-seed" class="password-input" readonly style="min-height: 100px;"></textarea>
+                    <button class="toggle-visibility" id="copy-seed">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                
+                <div class="seed-words" id="seed-words-container">
+                    <!-- Las palabras se generarán dinámicamente -->
+                </div>
+            </div>
+            
+            <div class="security-note">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Importante:</strong> Esta es tu frase semilla sin cifrar. Mantenla segura y no la compartas con nadie. 
+                Recomendamos cerrar esta ventana después de haber copiado la semilla.
+            </div>
+            
+            <div class="actions">
+                <button class="btn-primary" id="close-decrypted">Cerrar</button>
             </div>
         </div>
-    </main>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    </div>
+    
+    <div id="toast-container"></div>
+    
+    <footer>
+        <p>MnemoniQR &copy; 2023 | Cifrado seguro de semillas para criptomonedas</p>
+        <p>Ningún dato abandona tu dispositivo. Todo el procesamiento ocurre localmente.</p>
+    </footer>
+    
     <script src="script.js"></script>
 </body>
 </html>
