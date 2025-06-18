@@ -1,3 +1,4 @@
+// Configuración compatible
 const CONFIG = {
     PBKDF2_ITERATIONS: 310000,
     SALT_LENGTH: 32,
@@ -10,6 +11,7 @@ const CONFIG = {
     QR_ERROR_CORRECTION: 'H'
 };
 
+// Referencias a elementos DOM
 const dom = {
     startBtn: document.getElementById('start-btn'),
     seedModal: document.getElementById('seed-modal'),
@@ -32,6 +34,7 @@ const dom = {
     downloadBtn: document.getElementById('download-btn'),
     toastContainer: document.getElementById('toast-container'),
     
+    // Nuevos elementos para descifrado
     dropArea: document.getElementById('drop-area'),
     qrFile: document.getElementById('qr-file'),
     qrPreview: document.getElementById('qr-preview'),
@@ -44,6 +47,7 @@ const dom = {
     wordCount: document.getElementById('word-count')
 };
 
+// Estado de la aplicación
 const appState = {
     wordsVisible: false,
     passwordVisible: false,
@@ -53,6 +57,7 @@ const appState = {
     qrImageData: null
 };
 
+// Event Listeners
 dom.startBtn.addEventListener('click', () => {
     dom.seedModal.style.display = 'flex';
     dom.seedPhrase.focus();
@@ -70,6 +75,7 @@ dom.seedPhrase.addEventListener('input', () => {
     // Habilitar botón si tenemos un número válido de palabras
     dom.encryptBtn.disabled = ![12, 18, 24].includes(wordCount);
     
+    // Actualizar estado
     appState.seedPhrase = dom.seedPhrase.value;
 });
 
@@ -116,6 +122,7 @@ dom.dropArea.addEventListener('click', () => {
 
 dom.qrFile.addEventListener('change', handleFileSelect);
 
+// Drag and drop
 dom.dropArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     dom.dropArea.classList.add('drag-over');
@@ -233,10 +240,12 @@ function generateSecurePassword() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
     let password = '';
     
+    // Asegurarse de que la contraseña cumple con los requisitos
     for (let i = 0; i < 16; i++) {
         password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     
+    // Asegurar al menos una mayúscula, minúscula, número y símbolo
     if (!/[A-Z]/.test(password)) password = 'A' + password.slice(1);
     if (!/[a-z]/.test(password)) password = password.slice(0, -1) + 'a';
     if (!/[0-9]/.test(password)) password = password.slice(0, -1) + '1';
@@ -252,18 +261,23 @@ function generateSecurePassword() {
 
 async function encryptSeedPhrase() {
     try {
+        // Validar semilla
         const words = appState.seedPhrase.trim().split(/\s+/);
         if (![12, 18, 24].includes(words.length)) {
             throw new Error('La frase semilla debe contener 12, 18 o 24 palabras');
         }
         
+        // Convertir a formato seguro
         const seedData = words.join(' ');
         
+        // Cifrar usando Web Crypto API
         const encrypted = await cryptoUtils.encryptMessage(seedData, appState.password);
         appState.encryptedData = encrypted;
         
+        // Generar QR
         await generateQR(encrypted);
         
+        // Cerrar modal y mostrar resultado
         closeModal();
         dom.qrContainer.style.display = 'flex';
         showToast('Semilla cifrada correctamente', 'success');
