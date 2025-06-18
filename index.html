@@ -176,6 +176,55 @@
         </div>
     </div>
     
+    <!-- Modal de Bienvenida -->
+    <div id="welcome-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Bienvenido a MnemoniQR</h2>
+                <div class="close-modal" id="close-welcome">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <div class="security-note" style="margin-bottom: 1rem;">
+                    <i class="fas fa-shield-alt"></i>
+                    <strong>Procesamiento 100% Client-Side:</strong> 
+                    <p>Toda la información se procesa exclusivamente en tu dispositivo.</p>
+                </div>
+                
+                <div class="security-note" style="margin-bottom: 1rem;">
+                    <i class="fas fa-lock"></i>
+                    <strong>Máxima Seguridad:</strong> 
+                    <p>Tus frases semilla y contraseñas <u>nunca abandonan tu navegador</u>.</p>
+                </div>
+                
+                <div class="security-note" style="margin-bottom: 1rem;">
+                    <i class="fas fa-bolt"></i>
+                    <strong>Sin Dependencia de Servidores:</strong> 
+                    <p>La aplicación funciona completamente offline una vez cargada.</p>
+                </div>
+                
+                <div class="security-note" style="background: rgba(255, 193, 7, 0.1); border-left-color: #ffc107;">
+                    <i class="fas fa-wifi-slash"></i>
+                    <strong>Recomendación de Seguridad:</strong>
+                    <p>Para máxima protección, usa esta aplicación en <strong>modo offline</strong>:</p>
+                    <ol style="padding-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Carga la página mientras estás conectado a internet</li>
+                        <li>Desconéctate de internet</li>
+                        <li>Recarga la página (Ctrl + F5) para cargar desde caché</li>
+                        <li>O guarda la página completa (Archivo → Guardar como)</li>
+                    </ol>
+                    <p style="margin-top: 0.5rem;">¡Así garantizas que no haya ninguna posibilidad de que tus datos sensibles se transmitan por internet!</p>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn-primary" id="accept-welcome">Comenzar</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="toast-container"></div>
     
     <footer>
