@@ -1,351 +1,741 @@
-const stitches = [
-    { symbol: "-", name: "Punt pla", description: "Punt pla" }, // Nuevo primer botón
-    { symbol: "○", name: "Cadeneta (ch)", description: "Punto de cadena" },
-    { symbol: "●", name: "Punto deslizado (sl st)", description: "Punto deslizado" },
-    { symbol: "✚", name: "Punto bajo (sc)", description: "Punto bajo o medio punto" },
-    { symbol: "𝖙", name: "Punto alto (dc)", description: "Punto alto o vareta" },
-    { symbol: "𝖳", name: "Punto alto doble (tr)", description: "Punto alto doble" },
-    { symbol: "V", name: "Aumento (inc)", description: "2 puntos en el mismo espacio" },
-    { symbol: "Λ", name: "Disminución (dec)", description: "2 puntos juntos" }
-];
+// Configuración compatible
+const CONFIG = {
+    PBKDF2_ITERATIONS: 310000,
+    SALT_LENGTH: 32,
+    IV_LENGTH: 16,
+    AES_KEY_LENGTH: 256,
+    HMAC_KEY_LENGTH: 256,
+    HMAC_LENGTH: 32,
+    QR_SIZE: 220,
+    MIN_PASSPHRASE_LENGTH: 12,
+    QR_ERROR_CORRECTION: 'H'
+};
 
-// Elementos del DOM
-const stitchPalette = document.getElementById("stitchPalette");
-const stitchHelpBtn = document.getElementById("stitchHelpBtn");
-const helpImageContainer = document.querySelector(".help-image-container");
-const deleteLastStitchBtn = document.getElementById("deleteLastStitchBtn");
-const canvas = document.getElementById("patternCanvas");
-const ctx = canvas.getContext("2d");
-const guideLines = document.getElementById("guideLines");
-const guideLinesValue = document.getElementById("guideLinesValue");
-const ringSpacing = document.getElementById("ringSpacing");
-const ringSpacingValue = document.getElementById("ringSpacingValue");
-const zoomIn = document.getElementById("zoomIn");
-const zoomOut = document.getElementById("zoomOut");
-const resetView = document.getElementById("resetView");
-const patternLog = document.getElementById("patternLog");
-const newProjectBtn = document.getElementById("newProjectBtn");
-const saveProjectBtn = document.getElementById("saveProjectBtn");
-const deleteProjectBtn = document.getElementById("deleteProjectBtn");
-const downloadPatternBtn = document.getElementById("downloadPatternBtn");
-const savedProjectsList = document.getElementById("savedProjectsList");
-const loadSelectedProjectBtn = document.getElementById("loadSelectedProjectBtn");
-
-// Variables de estado
-let selectedStitch = null;
-let zoomLevel = 1;
-let offsetX = 0;
-let offsetY = 0;
-let isDragging = false;
-let startX, startY;
-let patternSequence = [];
-
-// Generar botones de la paleta de puntadas
-function createStitchButtons() {
-    stitches.forEach(stitch => {
-        const button = document.createElement("button");
-        button.className = "stitch-btn";
-        button.textContent = stitch.symbol;
-        button.dataset.name = stitch.name;
-        button.dataset.description = stitch.description;
-        button.addEventListener("click", () => selectStitch(stitch, button));
-        stitchPalette.appendChild(button);
-    });
-}
-
-// Seleccionar un punto y añadirlo a la secuencia
-function selectStitch(stitch, button) {
-    selectedStitch = stitch;
-    document.querySelectorAll(".stitch-btn").forEach(btn => btn.classList.remove("active"));
-    button.classList.add("active");
+// Referencias a elementos DOM
+const dom = {
+    startBtn: document.getElementById('start-btn'),
+    seedModal: document.getElementById('seed-modal'),
+    closeModal: document.querySelector('.close-modal'),
+    cancelBtn: document.getElementById('cancel-btn'),
+    seedPhrase: document.getElementById('seed-phrase'),
+    wordCounter: document.getElementById('word-counter'),
+    toggleVisibility: document.getElementById('toggle-visibility'),
+    encryptBtn: document.getElementById('encrypt-btn'),
+    passwordSection: document.getElementById('password-section'),
+    password: document.getElementById('password'),
+    passwordToggle: document.getElementById('password-toggle'),
+    passwordStrengthBar: document.getElementById('password-strength-bar'),
+    passwordStrengthText: document.getElementById('password-strength-text'),
+    generatePassword: document.getElementById('generate-password'),
+    qrContainer: document.getElementById('qr-container'),
+    qrCanvas: document.getElementById('qr-canvas'),
+    pdfBtn: document.getElementById('pdf-btn'),
+    copyBtn: document.getElementById('copy-btn'),
+    downloadBtn: document.getElementById('download-btn'),
+    toastContainer: document.getElementById('toast-container'),
     
-    const stitchCount = patternSequence.length + 1;
-    patternSequence.push({ ...stitch, position: stitchCount });
-    updatePatternLog();
-    drawPattern();
-}
+    // Nuevos elementos para descifrado
+    dropArea: document.getElementById('drop-area'),
+    qrFile: document.getElementById('qr-file'),
+    qrPreview: document.getElementById('qr-preview'),
+    decryptBtn: document.getElementById('decrypt-btn'),
+    decryptedModal: document.getElementById('decrypted-modal'),
+    decryptedSeed: document.getElementById('decrypted-seed'),
+    seedWordsContainer: document.getElementById('seed-words-container'),
+    copySeed: document.getElementById('copy-seed'),
+    closeDecrypted: document.getElementById('close-decrypted'),
+    wordCount: document.getElementById('word-count')
+};
 
-// Actualizar el log de la secuencia por anillos
-function updatePatternLog() {
-    const divisions = parseInt(guideLines.value);
-    const rings = Math.ceil(patternSequence.length / divisions);
-    let logText = "";
+// Estado de la aplicación
+const appState = {
+    wordsVisible: false,
+    passwordVisible: false,
+    seedPhrase: '',
+    password: '',
+    encryptedData: '',
+    qrImageData: null
+};
 
-    for (let ring = 0; ring < rings; ring++) {
-        const startIdx = ring * divisions;
-        const endIdx = Math.min(startIdx + divisions, patternSequence.length);
-        const ringStitches = patternSequence.slice(startIdx, endIdx);
-        const ringText = ringStitches.map(s => `${s.symbol}`).join(" ");
-        logText += `Anillo ${ring + 1}: ${ringText || "Vacío"}\n`;
+// Event Listeners
+dom.startBtn.addEventListener('click', () => {
+    dom.seedModal.style.display = 'flex';
+    dom.seedPhrase.focus();
+});
+
+dom.closeModal.addEventListener('click', closeModal);
+dom.cancelBtn.addEventListener('click', closeModal);
+
+dom.seedPhrase.addEventListener('input', () => {
+    const words = dom.seedPhrase.value.trim().split(/\s+/).filter(word => word.length > 0);
+    const wordCount = words.length;
+    
+    dom.wordCounter.textContent = `${wordCount} palabras`;
+    
+    // Habilitar botón si tenemos un número válido de palabras
+    dom.encryptBtn.disabled = ![12, 18, 24].includes(wordCount);
+    
+    // Actualizar estado
+    appState.seedPhrase = dom.seedPhrase.value;
+});
+
+dom.toggleVisibility.addEventListener('click', () => {
+    appState.wordsVisible = !appState.wordsVisible;
+    dom.seedPhrase.type = appState.wordsVisible ? 'text' : 'password';
+    dom.toggleVisibility.innerHTML = appState.wordsVisible ? 
+        '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+});
+
+dom.passwordToggle.addEventListener('click', () => {
+    appState.passwordVisible = !appState.passwordVisible;
+    dom.password.type = appState.passwordVisible ? 'text' : 'password';
+    dom.passwordToggle.innerHTML = appState.passwordVisible ? 
+        '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+});
+
+dom.encryptBtn.addEventListener('click', async () => {
+    if (validateInputs()) {
+        try {
+            await encryptSeedPhrase();
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+        }
     }
+});
 
-    patternLog.value = logText.trim();
-    patternLog.scrollTop = patternLog.scrollHeight;
-}
+dom.password.addEventListener('input', () => {
+    const strength = calculatePasswordStrength(dom.password.value);
+    dom.passwordStrengthBar.style.width = `${strength}%`;
+    updatePasswordStrengthText(strength);
+});
 
-// Configurar el canvas
-function resizeCanvas() {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    drawPattern();
-}
+dom.generatePassword.addEventListener('click', generateSecurePassword);
 
-function drawPattern() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(offsetX + canvas.width / 2, offsetY + canvas.height / 2);
-    ctx.scale(zoomLevel, zoomLevel);
+dom.pdfBtn.addEventListener('click', generatePDF);
+dom.copyBtn.addEventListener('click', copyQRToClipboard);
+dom.downloadBtn.addEventListener('click', downloadQRAsPNG);
 
-    const centerX = 0;
-    const centerY = 0;
-    const divisions = parseInt(guideLines.value);
-    const spacing = parseInt(ringSpacing.value);
-    const totalRings = Math.max(1, Math.ceil(patternSequence.length / divisions)); // Al menos 1 anillo
+// Event Listeners para descifrado
+dom.dropArea.addEventListener('click', () => {
+    dom.qrFile.click();
+});
 
-    // Dibujar anillos según la cantidad de puntos
-    for (let r = 1; r <= totalRings; r++) {
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, r * spacing, 0, Math.PI * 2);
-        ctx.strokeStyle = "#ddd";
-        ctx.lineWidth = 1 / zoomLevel;
-        ctx.stroke();
-    }
+dom.qrFile.addEventListener('change', handleFileSelect);
 
-    // Dibujar líneas guía hasta el anillo más externo
-    for (let i = 0; i < divisions; i++) {
-        const angle = (i / divisions) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.lineTo(centerX + Math.cos(angle) * spacing * totalRings, centerY + Math.sin(angle) * spacing * totalRings);
-        ctx.strokeStyle = "#ccc";
-        ctx.lineWidth = 1 / zoomLevel;
-        ctx.stroke();
-    }
-
-    // Dibujar puntos de crochet en el patrón
-    patternSequence.forEach((stitch, index) => {
-        const ring = Math.floor(index / divisions) + 1;
-        const positionInRing = index % divisions;
-        const angle = (positionInRing / divisions) * Math.PI * 2;
-        const x = centerX + Math.cos(angle) * (ring * spacing);
-        const y = centerY + Math.sin(angle) * (ring * spacing);
-
-        ctx.font = `${20 / zoomLevel}px Arial`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = "#2c3e50";
-        ctx.fillText(stitch.symbol, x, y);
-    });
-
-    ctx.restore();
-}
-
-// Interacción con el canvas
-canvas.addEventListener("mousedown", startDragging);
-canvas.addEventListener("mousemove", drag);
-canvas.addEventListener("mouseup", stopDragging);
-canvas.addEventListener("mouseleave", stopDragging);
-
-canvas.addEventListener("touchstart", startDragging, { passive: false });
-canvas.addEventListener("touchmove", drag, { passive: false });
-canvas.addEventListener("touchend", stopDragging);
-canvas.addEventListener("touchcancel", stopDragging);
-
-function startDragging(e) {
+// Drag and drop
+dom.dropArea.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if (e.type === "touchstart") {
-        const touch = e.touches[0];
-        startX = touch.clientX - offsetX;
-        startY = touch.clientY - offsetY;
+    dom.dropArea.classList.add('drag-over');
+});
+
+dom.dropArea.addEventListener('dragleave', () => {
+    dom.dropArea.classList.remove('drag-over');
+});
+
+dom.dropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dom.dropArea.classList.remove('drag-over');
+    
+    if (e.dataTransfer.files.length) {
+        handleFile(e.dataTransfer.files[0]);
+    }
+});
+
+dom.decryptBtn.addEventListener('click', () => {
+    dom.seedModal.style.display = 'flex';
+    dom.password.focus();
+});
+
+dom.copySeed.addEventListener('click', () => {
+    dom.decryptedSeed.select();
+    document.execCommand('copy');
+    showToast('Semilla copiada al portapapeles', 'success');
+});
+
+dom.closeDecrypted.addEventListener('click', () => {
+    dom.decryptedModal.style.display = 'none';
+    // Limpiar datos sensibles
+    dom.decryptedSeed.value = '';
+    appState.seedPhrase = '';
+});
+
+// Funciones principales
+function closeModal() {
+    dom.seedModal.style.display = 'none';
+    resetModalState();
+}
+
+function resetModalState() {
+    dom.seedPhrase.value = '';
+    dom.password.value = '';
+    dom.wordCounter.textContent = '0 palabras';
+    appState.wordsVisible = false;
+    appState.passwordVisible = false;
+    dom.seedPhrase.type = 'password';
+    dom.password.type = 'password';
+    dom.toggleVisibility.innerHTML = '<i class="fas fa-eye"></i>';
+    dom.passwordToggle.innerHTML = '<i class="fas fa-eye"></i>';
+    dom.passwordStrengthBar.style.width = '0%';
+    dom.passwordStrengthText.textContent = 'Seguridad: Muy débil';
+    dom.encryptBtn.disabled = true;
+}
+
+function validateInputs() {
+    // Validar semilla
+    const words = appState.seedPhrase.trim().split(/\s+/);
+    if (![12, 18, 24].includes(words.length)) {
+        showToast('La frase semilla debe contener 12, 18 o 24 palabras', 'error');
+        return false;
+    }
+    
+    // Validar contraseña
+    if (dom.password.value.length < CONFIG.MIN_PASSPHRASE_LENGTH) {
+        showToast(`La contraseña debe tener al menos ${CONFIG.MIN_PASSPHRASE_LENGTH} caracteres`, 'error');
+        return false;
+    }
+    
+    const strength = calculatePasswordStrength(dom.password.value);
+    if (strength < 40) {
+        showToast('La contraseña es demasiado débil. Por favor, usa una más segura.', 'warning');
+        return false;
+    }
+    
+    appState.password = dom.password.value;
+    return true;
+}
+
+function calculatePasswordStrength(password) {
+    if (!password) return 0;
+    
+    let strength = 0;
+    strength += Math.min(password.length * 4, 40);
+    
+    if (/[A-Z]/.test(password)) strength += 10;
+    if (/[a-z]/.test(password)) strength += 10;
+    if (/[0-9]/.test(password)) strength += 10;
+    if (/[^A-Za-z0-9]/.test(password)) strength += 15;
+    
+    return Math.max(0, Math.min(100, strength));
+}
+
+function updatePasswordStrengthText(strength) {
+    let text = 'Seguridad: ';
+    
+    if (strength < 20) {
+        text += 'Muy débil';
+    } else if (strength < 40) {
+        text += 'Débil';
+    } else if (strength < 60) {
+        text += 'Moderada';
+    } else if (strength < 80) {
+        text += 'Fuerte';
     } else {
-        startX = e.clientX - offsetX;
-        startY = e.clientY - offsetY;
+        text += 'Muy fuerte';
     }
-    isDragging = true;
+    
+    dom.passwordStrengthText.textContent = text;
 }
 
-function drag(e) {
-    if (!isDragging) return;
-    e.preventDefault();
-    if (e.type === "touchmove") {
-        const touch = e.touches[0];
-        offsetX = touch.clientX - startX;
-        offsetY = touch.clientY - startY;
-    } else {
-        offsetX = e.clientX - startX;
-        offsetY = e.clientY - startY;
+function generateSecurePassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
+    let password = '';
+    
+    // Asegurarse de que la contraseña cumple con los requisitos
+    for (let i = 0; i < 16; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    drawPattern();
+    
+    // Asegurar al menos una mayúscula, minúscula, número y símbolo
+    if (!/[A-Z]/.test(password)) password = 'A' + password.slice(1);
+    if (!/[a-z]/.test(password)) password = password.slice(0, -1) + 'a';
+    if (!/[0-9]/.test(password)) password = password.slice(0, -1) + '1';
+    if (!/[^A-Za-z0-9]/.test(password)) password = password.slice(0, -1) + '!';
+    
+    dom.password.value = password;
+    const strength = calculatePasswordStrength(password);
+    dom.passwordStrengthBar.style.width = `${strength}%`;
+    updatePasswordStrengthText(strength);
+    
+    showToast('Contraseña segura generada', 'success');
 }
 
-function stopDragging() {
-    isDragging = false;
-}
-
-// Controles de zoom
-zoomIn.addEventListener("click", zoomInHandler);
-zoomOut.addEventListener("click", zoomOutHandler);
-resetView.addEventListener("click", resetViewHandler);
-
-function zoomInHandler(e) {
-    e.preventDefault();
-    zoomLevel = Math.min(zoomLevel + 0.2, 3);
-    drawPattern();
-}
-
-function zoomOutHandler(e) {
-    e.preventDefault();
-    zoomLevel = Math.max(zoomLevel - 0.2, 0.5);
-    drawPattern();
-}
-
-function resetViewHandler(e) {
-    e.preventDefault();
-    zoomLevel = 1;
-    offsetX = 0;
-    offsetY = 0;
-    drawPattern();
-}
-
-// Actualizar valores de configuración
-guideLines.addEventListener("input", () => {
-    guideLinesValue.textContent = guideLines.value;
-    updatePatternLog();
-    drawPattern();
-});
-
-ringSpacing.addEventListener("input", () => {
-    ringSpacingValue.textContent = `${ringSpacing.value}px`;
-    drawPattern();
-});
-
-// Mostrar/ocultar la imagen en pantallas pequeñas
-stitchHelpBtn.addEventListener("click", () => {
-    if (helpImageContainer.style.display === "none" || helpImageContainer.style.display === "") {
-        helpImageContainer.style.display = "block"; // Mostrar la imagen
-    } else {
-        helpImageContainer.style.display = "none"; // Ocultar la imagen
-    }
-});
-
-// Ocultar la imagen si se hace clic fuera de ella
-window.addEventListener("click", (e) => {
-    if (!helpImageContainer.contains(e.target) && e.target !== stitchHelpBtn) {
-        helpImageContainer.style.display = "none"; // Ocultar la imagen
-    }
-});
-
-// Función para borrar el último punto
-function deleteLastStitch() {
-    if (patternSequence.length > 0) {
-        patternSequence.pop(); // Eliminar el último punto
-        updatePatternLog(); // Actualizar el registro de patrones
-        drawPattern(); // Redibujar el patrón en el lienzo
+async function encryptSeedPhrase() {
+    try {
+        // Validar semilla
+        const words = appState.seedPhrase.trim().split(/\s+/);
+        if (![12, 18, 24].includes(words.length)) {
+            throw new Error('La frase semilla debe contener 12, 18 o 24 palabras');
+        }
+        
+        // Convertir a formato seguro
+        const seedData = words.join(' ');
+        
+        // Cifrar usando Web Crypto API
+        const encrypted = await cryptoUtils.encryptMessage(seedData, appState.password);
+        appState.encryptedData = encrypted;
+        
+        // Generar QR
+        await generateQR(encrypted);
+        
+        // Cerrar modal y mostrar resultado
+        closeModal();
+        dom.qrContainer.style.display = 'flex';
+        showToast('Semilla cifrada correctamente', 'success');
+    } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+        console.error('Encryption error:', error);
     }
 }
 
-// Asignar la función al botón de borrar último punto
-deleteLastStitchBtn.addEventListener("click", deleteLastStitch);
-
-// Función para crear un nuevo proyecto
-function newProject() {
-    patternSequence = []; // Limpiar la secuencia de patrones
-    patternLog.value = ""; // Limpiar el log de patrones
-    drawPattern(); // Redibujar el lienzo
-}
-
-// Función para guardar el proyecto en localStorage
-function saveProject() {
-    const patternText = patternSequence.map(stitch => stitch.symbol).join(" "); // Convertir la secuencia a texto
-    const fileName = prompt("Ingresa un nombre para el archivo:", "patron_crochet"); // Pedir nombre del archivo
-    if (fileName) {
-        // Guardar en localStorage
-        localStorage.setItem(fileName, patternText);
-        alert(`Proyecto "${fileName}" guardado correctamente.`);
-        updateSavedProjectsList(); // Actualizar la lista de proyectos guardados
-    }
-}
-
-// Función para actualizar la lista de proyectos guardados
-function updateSavedProjectsList() {
-    savedProjectsList.innerHTML = '<option value="" disabled selected>Selecciona un proyecto</option>'; // Resetear la lista
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        const option = document.createElement("option");
-        option.value = key;
-        option.textContent = key;
-        savedProjectsList.appendChild(option);
-    }
-}
-
-// Función para cargar un proyecto seleccionado
-function loadSelectedProject() {
-    const selectedProject = savedProjectsList.value; // Obtener el nombre del proyecto seleccionado
-    if (selectedProject) {
-        const patternText = localStorage.getItem(selectedProject); // Obtener el contenido del proyecto
-        if (patternText) {
-            const symbols = patternText.split(" "); // Convertir el contenido a símbolos
-            patternSequence = []; // Limpiar la secuencia actual
-            symbols.forEach(symbol => {
-                const stitch = stitches.find(s => s.symbol === symbol); // Buscar el símbolo en la lista de puntadas
-                if (stitch) {
-                    patternSequence.push({ ...stitch, position: patternSequence.length + 1 }); // Añadir a la secuencia
+async function generateQR(data) {
+    return new Promise((resolve, reject) => {
+        const qrSize = CONFIG.QR_SIZE;
+        dom.qrCanvas.width = qrSize;
+        dom.qrCanvas.height = qrSize;
+        
+        QRCode.toCanvas(
+            dom.qrCanvas,
+            data,
+            {
+                width: qrSize,
+                margin: 2,
+                color: { dark: '#000000', light: '#ffffff' },
+                errorCorrectionLevel: CONFIG.QR_ERROR_CORRECTION
+            },
+            (error) => {
+                if (error) {
+                    reject(error);
+                    return;
                 }
-            });
-            updatePatternLog(); // Actualizar el log
-            drawPattern(); // Redibujar el patrón
-            alert(`Proyecto "${selectedProject}" cargado correctamente.`);
-        }
-    } else {
-        alert("Por favor, selecciona un proyecto de la lista.");
-    }
+                
+                resolve();
+            }
+        );
+    });
 }
 
-// Función para eliminar un proyecto seleccionado
-function deleteSelectedProject() {
-    const selectedProject = savedProjectsList.value; // Obtener el nombre del proyecto seleccionado
-    if (selectedProject) {
-        const confirmDelete = confirm(`¿Estás seguro de que quieres eliminar el proyecto "${selectedProject}"?`);
-        if (confirmDelete) {
-            localStorage.removeItem(selectedProject); // Eliminar el proyecto de localStorage
-            updateSavedProjectsList(); // Actualizar la lista de proyectos guardados
-            alert(`Proyecto "${selectedProject}" eliminado correctamente.`);
-        }
-    } else {
-        alert("Por favor, selecciona un proyecto de la lista.");
-    }
-}
-
-function downloadPattern() {
-    if (patternSequence.length === 0) {
-        alert("No hay ningún patrón para descargar.");
+function generatePDF() {
+    if (!appState.encryptedData) {
+        showToast('Primero genera un código QR', 'error');
         return;
     }
-    const patternText = patternSequence.map(stitch => stitch.symbol).join(" "); // Convertir la secuencia a texto
-    const blob = new Blob([patternText], { type: "text/plain" }); // Crear un archivo Blob
-    const link = document.createElement("a"); // Crear un enlace de descarga
-    link.href = URL.createObjectURL(blob);
-    link.download = "patron_actual.txt"; // Nombre predeterminado del archivo
-    document.body.appendChild(link); // Añadir el enlace al DOM
-    link.click(); // Simular clic en el enlace
-    document.body.removeChild(link); // Eliminar el enlace del DOM
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a5'
+        });
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Respaldo Seguro de Semilla', 105, 15, null, null, 'center');
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Este código QR contiene tu frase semilla cifrada con AES-256-GCM', 105, 22, null, null, 'center');
+        
+        const qrDataUrl = dom.qrCanvas.toDataURL('image/png');
+        doc.addImage(qrDataUrl, 'PNG', 50, 30, 100, 100);
+        
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Generado por MnemoniQR - ' + new Date().toLocaleDateString(), 105, 145, null, null, 'center');
+        
+        doc.save(`mnemoniqr-backup-${Date.now()}.pdf`);
+        showToast('PDF generado correctamente', 'success');
+    } catch (error) {
+        console.error('PDF generation error:', error);
+        showToast('Error al generar el PDF', 'error');
+    }
 }
 
-// Asignar función al botón de descargar patrón
-downloadPatternBtn.addEventListener("click", downloadPattern);
+function copyQRToClipboard() {
+    if (!appState.encryptedData) {
+        showToast('Primero genera un código QR', 'error');
+        return;
+    }
+    
+    try {
+        dom.qrCanvas.toBlob(blob => {
+            navigator.clipboard.write([
+                new ClipboardItem({
+                    'image/png': blob
+                })
+            ]).then(() => {
+                showToast('QR copiado al portapapeles', 'success');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                showToast('Error al copiar el QR', 'error');
+            });
+        });
+    } catch (error) {
+        console.error('Copy error:', error);
+        showToast('Error al copiar el QR', 'error');
+    }
+}
 
-// Asignar funciones a los botones
-newProjectBtn.addEventListener("click", newProject);
-saveProjectBtn.addEventListener("click", saveProject);
-deleteProjectBtn.addEventListener("click", deleteSelectedProject);
-downloadPatternBtn.addEventListener("click", downloadPattern);
-loadSelectedProjectBtn.addEventListener("click", loadSelectedProject);
+function downloadQRAsPNG() {
+    if (!appState.encryptedData) {
+        showToast('Primero genera un código QR', 'error');
+        return;
+    }
+    
+    try {
+        const link = document.createElement('a');
+        link.download = `mnemoniqr-${Date.now()}.png`;
+        link.href = dom.qrCanvas.toDataURL('image/png');
+        link.click();
+        showToast('QR descargado correctamente', 'success');
+    } catch (error) {
+        console.error('Download error:', error);
+        showToast('Error al descargar el QR', 'error');
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 
+                             type === 'success' ? 'fa-check-circle' : 
+                             type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    dom.toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 5000);
+}
+
+// Funciones para descifrado
+function handleFileSelect(e) {
+    if (e.target.files.length) {
+        handleFile(e.target.files[0]);
+    }
+}
+
+function handleFile(file) {
+    if (!file.type.match('image.*')) {
+        showToast('Por favor, selecciona un archivo de imagen', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        dom.qrPreview.src = e.target.result;
+        dom.qrPreview.style.display = 'block';
+        dom.decryptBtn.style.display = 'block';
+        appState.qrImageData = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function decryptQR() {
+    if (!appState.qrImageData) {
+        showToast('Primero carga un código QR', 'error');
+        return;
+    }
+    
+    if (!appState.password) {
+        showToast('Por favor, ingresa la contraseña', 'error');
+        return;
+    }
+    
+    try {
+        // Decodificar la imagen QR
+        const img = new Image();
+        img.src = appState.qrImageData;
+        
+        await img.decode();
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        
+        if (!code) {
+            throw new Error('No se pudo leer el código QR');
+        }
+        
+        // Descifrar el mensaje
+        const decrypted = await cryptoUtils.decryptMessage(code.data, appState.password);
+        
+        // Mostrar resultado
+        showDecryptedSeed(decrypted);
+        
+    } catch (error) {
+        console.error('Decryption error:', error);
+        showToast(`Error al descifrar: ${error.message}`, 'error');
+    }
+}
+
+function showDecryptedSeed(seedPhrase) {
+    const words = seedPhrase.split(' ');
+    const wordCount = words.length;
+    
+    // Actualizar DOM
+    dom.decryptedSeed.value = seedPhrase;
+    dom.wordCount.textContent = `${wordCount} palabras`;
+    
+    // Generar cuadrícula de palabras
+    dom.seedWordsContainer.innerHTML = '';
+    words.forEach((word, index) => {
+        const wordEl = document.createElement('div');
+        wordEl.className = 'seed-word';
+        wordEl.textContent = word;
+        wordEl.setAttribute('data-index', index + 1);
+        dom.seedWordsContainer.appendChild(wordEl);
+    });
+    
+    // Mostrar modal
+    dom.decryptedModal.style.display = 'flex';
+}
+
+// Utilidades criptográficas
+const cryptoUtils = {
+    async encryptMessage(message, passphrase) {
+        let salt = null;
+        let iv = null;
+        let aesKey = null;
+        let hmacKey = null;
+        
+        try {
+            // Validar entrada
+            if (!message || !passphrase) {
+                throw new Error('Mensaje y contraseña son requeridos');
+            }
+            
+            if (passphrase.length < CONFIG.MIN_PASSPHRASE_LENGTH) {
+                throw new Error(`La contraseña debe tener al menos ${CONFIG.MIN_PASSPHRASE_LENGTH} caracteres`);
+            }
+            
+            // Convertir datos
+            const dataToEncrypt = new TextEncoder().encode(message);
+            
+            // Generar salt e IV
+            salt = crypto.getRandomValues(new Uint8Array(CONFIG.SALT_LENGTH));
+            iv = crypto.getRandomValues(new Uint8Array(CONFIG.IV_LENGTH));
+            
+            // Derivar clave usando PBKDF2
+            const baseKey = await crypto.subtle.importKey(
+                'raw',
+                new TextEncoder().encode(passphrase),
+                { name: 'PBKDF2' },
+                false,
+                ['deriveBits']
+            );
+            
+            const derivedBits = await crypto.subtle.deriveBits(
+                {
+                    name: 'PBKDF2',
+                    salt,
+                    iterations: CONFIG.PBKDF2_ITERATIONS,
+                    hash: 'SHA-256'
+                },
+                baseKey,
+                CONFIG.AES_KEY_LENGTH + CONFIG.HMAC_KEY_LENGTH
+            );
+            
+            const derivedBitsArray = new Uint8Array(derivedBits);
+            const aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
+            const hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
+            
+            // Importar claves
+            aesKey = await crypto.subtle.importKey(
+                'raw',
+                aesKeyBytes,
+                { name: 'AES-GCM' },
+                false,
+                ['encrypt']
+            );
+            
+            hmacKey = await crypto.subtle.importKey(
+                'raw',
+                hmacKeyBytes,
+                {
+                    name: 'HMAC',
+                    hash: { name: 'SHA-256' }
+                },
+                false,
+                ['sign']
+            );
+            
+            // Cifrar con AES-GCM
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv, tagLength: 128 },
+                aesKey,
+                dataToEncrypt
+            );
+            
+            const ciphertext = new Uint8Array(encrypted);
+            
+            // Calcular HMAC del texto cifrado
+            const hmac = await crypto.subtle.sign(
+                'HMAC',
+                hmacKey,
+                ciphertext
+            );
+            
+            // Combinar: salt + iv + ciphertext + hmac
+            const combined = new Uint8Array([
+                ...salt,
+                ...iv,
+                ...ciphertext,
+                ...new Uint8Array(hmac)
+            ]);
+            
+            // Convertir a Base64 para el QR
+            return btoa(String.fromCharCode(...combined));
+        } catch (error) {
+            console.error('Encryption error:', error);
+            throw new Error('Error al cifrar: ' + error.message);
+        }
+    },
+    
+    async decryptMessage(encryptedBase64, passphrase) {
+        try {
+            // Convertir de Base64
+            const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+            
+            // Extraer componentes
+            const salt = encryptedData.slice(0, CONFIG.SALT_LENGTH);
+            const iv = encryptedData.slice(CONFIG.SALT_LENGTH, CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
+            const ciphertext = encryptedData.slice(
+                CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH, 
+                encryptedData.length - CONFIG.HMAC_LENGTH
+            );
+            const hmac = encryptedData.slice(encryptedData.length - CONFIG.HMAC_LENGTH);
+            
+            // Derivar clave usando PBKDF2
+            const baseKey = await crypto.subtle.importKey(
+                'raw',
+                new TextEncoder().encode(passphrase),
+                { name: 'PBKDF2' },
+                false,
+                ['deriveBits']
+            );
+            
+            const derivedBits = await crypto.subtle.deriveBits(
+                {
+                    name: 'PBKDF2',
+                    salt,
+                    iterations: CONFIG.PBKDF2_ITERATIONS,
+                    hash: 'SHA-256'
+                },
+                baseKey,
+                CONFIG.AES_KEY_LENGTH + CONFIG.HMAC_KEY_LENGTH
+            );
+            
+            const derivedBitsArray = new Uint8Array(derivedBits);
+            const aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
+            const hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
+            
+            // Importar claves
+            const aesKey = await crypto.subtle.importKey(
+                'raw',
+                aesKeyBytes,
+                { name: 'AES-GCM' },
+                false,
+                ['decrypt']
+            );
+            
+            const hmacKey = await crypto.subtle.importKey(
+                'raw',
+                hmacKeyBytes,
+                {
+                    name: 'HMAC',
+                    hash: { name: 'SHA-256' }
+                },
+                false,
+                ['verify']
+            );
+            
+            // Verificar HMAC
+            const hmacValid = await crypto.subtle.verify(
+                'HMAC',
+                hmacKey,
+                hmac,
+                ciphertext
+            );
+            
+            if (!hmacValid) {
+                throw new Error('El HMAC no coincide. La contraseña podría ser incorrecta o el archivo está corrupto.');
+            }
+            
+            // Descifrar con AES-GCM
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv, tagLength: 128 },
+                aesKey,
+                ciphertext
+            );
+            
+            // Convertir a texto
+            return new TextDecoder().decode(decrypted);
+            
+        } catch (error) {
+            console.error('Decryption error:', error);
+            throw new Error('Error al descifrar: ' + error.message);
+        }
+    }
+};
 
 // Inicialización
-window.addEventListener("load", () => {
-    createStitchButtons();
-    resizeCanvas();
-    updateSavedProjectsList(); // Cargar la lista de proyectos guardados
+document.addEventListener('DOMContentLoaded', () => {
+    dom.passwordSection.style.display = 'block';
+    
+    // Modificamos el listener para usar la función de descifrado
+    dom.encryptBtn.addEventListener('click', async () => {
+        if (validateInputs()) {
+            try {
+                await encryptSeedPhrase();
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+    });
+    
+    // Nuevo listener para el botón de descifrado
+    dom.decryptBtn.addEventListener('click', async () => {
+        // Mostrar modal para contraseña
+        dom.seedModal.style.display = 'flex';
+        // Cambiar título para descifrado
+        document.querySelector('.modal-title').textContent = "Descifrar Semilla";
+        document.querySelector('.modal-subtitle').textContent = "Ingresa la contraseña para descifrar el código QR";
+        
+        // Ocultar el textarea de semilla
+        dom.seedPhrase.style.display = 'none';
+        dom.wordCounter.style.display = 'none';
+        dom.toggleVisibility.style.display = 'none';
+        document.querySelector('.word-hints').style.display = 'none';
+        
+        // Cambiar el listener del botón de cifrado para que ahora descifre
+        const encryptBtn = document.getElementById('encrypt-btn');
+        encryptBtn.textContent = "Descifrar";
+        encryptBtn.removeEventListener('click', null);
+        encryptBtn.addEventListener('click', async () => {
+            try {
+                await decryptQR();
+                dom.seedModal.style.display = 'none';
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        });
+    });
 });
-
-window.addEventListener("resize", resizeCanvas);
