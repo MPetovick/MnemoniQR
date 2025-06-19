@@ -50,8 +50,8 @@ body {
 
 
 .logo-icon {
-    height: 100px; /* Tamaño fijo si lo prefieres */
-    width: 100px;
+    height: 300px; /* Tamaño fijo si lo prefieres */
+    width: 300px;
     object-fit: contain; /* Mantiene proporciones */
 }
 
