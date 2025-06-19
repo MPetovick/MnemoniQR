@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MnemoniQR - Cifrado y Descifrado de Semillas</title>
+    <title>MnemoniQR - Seed Encryption & Decryption</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
@@ -17,26 +17,26 @@
         </div>
         
         <p class="tagline">
-            Protege tus semillas de criptomonedas con cifrado AES-256-GCM y almacénalas de forma segura en códigos QR
+            Protect your cryptocurrency seeds with AES-256-GCM encryption and store them securely in QR codes
         </p>
         
         <button id="start-btn" class="btn-primary">
-            <i class="fas fa-lock"></i> Cifrar Semilla
+            <i class="fas fa-lock"></i> Encrypt Seed
         </button>
         
         <div class="decrypt-section">
             <h3 class="decrypt-title">
-                <i class="fas fa-unlock"></i> Descifrar Semilla
+                <i class="fas fa-unlock"></i> Decrypt Seed
             </h3>
             <div class="drop-area" id="drop-area">
                 <i class="fas fa-cloud-upload-alt"></i>
-                <p>Arrastra y suelta tu código QR aquí</p>
-                <p class="small">O haz clic para seleccionar una imagen</p>
+                <p>Drag and drop your QR code here</p>
+                <p class="small">Or click to select an image</p>
                 <input type="file" id="qr-file" accept="image/*" style="display: none;">
             </div>
-            <img id="qr-preview" alt="Vista previa del QR">
+            <img id="qr-preview" alt="QR preview">
             <button id="decrypt-btn" class="btn-primary" style="display: none;">
-                <i class="fas fa-key"></i> Descifrar Semilla
+                <i class="fas fa-key"></i> Decrypt Seed
             </button>
         </div>
         
@@ -50,31 +50,31 @@
             
             <div class="qr-actions">
                 <button id="copy-btn" class="btn-secondary">
-                    <i class="fas fa-copy"></i> Copiar QR
+                    <i class="fas fa-copy"></i> Copy QR
                 </button>
                 <button id="download-btn" class="btn-secondary">
-                    <i class="fas fa-download"></i> Descargar PNG
+                    <i class="fas fa-download"></i> Download PNG
                 </button>
                 <button id="pdf-btn" class="btn-primary">
-                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                    <i class="fas fa-file-pdf"></i> Export PDF
                 </button>
             </div>
             
             <div class="security-note">
                 <i class="fas fa-shield-alt"></i>
-                <strong>Importante:</strong> Este QR contiene tu semilla cifrada con AES-256-GCM. 
-                Para descifrar, necesitarás la contraseña que has establecido. Recomendamos almacenar la contraseña 
-                por separado en un gestor de contraseñas seguro.
+                <strong>Important:</strong> This QR contains your seed encrypted with AES-256-GCM. 
+                You'll need the password you set to decrypt it. We recommend storing the password 
+                separately in a secure password manager.
             </div>
         </div>
     </div>
     
-    <!-- Modal para cifrar semilla -->
+    <!-- Seed Encryption Modal -->
     <div id="seed-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Tu Frase Semilla</h2>
-                <p class="modal-subtitle">Ingresa 12, 18 o 24 palabras separadas por espacios</p>
+                <h2 class="modal-title">Your Seed Phrase</h2>
+                <p class="modal-subtitle">Enter 12, 18, or 24 words separated by spaces</p>
                 <div class="close-modal">
                     <i class="fas fa-times"></i>
                 </div>
@@ -82,12 +82,12 @@
             
             <div class="input-group">
                 <label class="input-label" for="seed-phrase">
-                    Frase de recuperación
-                    <span>Máximo 24 palabras</span>
+                    Recovery Phrase
+                    <span>Maximum 24 words</span>
                 </label>
                 <div class="seed-input-container">
-                    <textarea id="seed-phrase" placeholder="Ingresa cada palabra separada por un espacio..."></textarea>
-                    <div class="word-counter" id="word-counter">0 palabras</div>
+                    <textarea id="seed-phrase" placeholder="Enter each word separated by a space..."></textarea>
+                    <div class="word-counter" id="word-counter">0 words</div>
                     <button class="toggle-visibility" id="toggle-visibility">
                         <i class="fas fa-eye"></i>
                     </button>
@@ -95,13 +95,13 @@
                 
                 <div class="word-hints">
                     <div class="word-hint">
-                        <i class="fas fa-check-circle"></i> 12 palabras
+                        <i class="fas fa-check-circle"></i> 12 words
                     </div>
                     <div class="word-hint">
-                        <i class="fas fa-check-circle"></i> 18 palabras
+                        <i class="fas fa-check-circle"></i> 18 words
                     </div>
                     <div class="word-hint">
-                        <i class="fas fa-check-circle"></i> 24 palabras
+                        <i class="fas fa-check-circle"></i> 24 words
                     </div>
                 </div>
             </div>
@@ -109,11 +109,11 @@
             <div class="password-section" id="password-section">
                 <div class="input-group">
                     <label class="input-label" for="password">
-                        Contraseña de cifrado
-                        <span>Mínimo 12 caracteres</span>
+                        Encryption Password
+                        <span>Minimum 12 characters</span>
                     </label>
                     <div class="password-input-container">
-                        <input type="password" id="password" class="password-input" placeholder="Crea una contraseña segura">
+                        <input type="password" id="password" class="password-input" placeholder="Create a strong password">
                         <button class="password-toggle" id="password-toggle">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -121,27 +121,27 @@
                     <div class="password-strength">
                         <div class="password-strength-bar" id="password-strength-bar"></div>
                     </div>
-                    <div class="password-strength-text" id="password-strength-text">Seguridad: Muy débil</div>
+                    <div class="password-strength-text" id="password-strength-text">Security: Very weak</div>
                     
                     <div class="generate-password-btn" id="generate-password">
-                        <i class="fas fa-dice"></i> Generar contraseña segura
+                        <i class="fas fa-dice"></i> Generate secure password
                     </div>
                 </div>
             </div>
             
             <div class="actions">
-                <button class="btn-secondary" id="cancel-btn">Cancelar</button>
-                <button class="btn-primary" id="encrypt-btn">Cifrar Semilla</button>
+                <button class="btn-secondary" id="cancel-btn">Cancel</button>
+                <button class="btn-primary" id="encrypt-btn">Encrypt Seed</button>
             </div>
         </div>
     </div>
     
-    <!-- Modal para mostrar semilla descifrada -->
+    <!-- Decrypted Seed Modal -->
     <div id="decrypted-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Semilla Descifrada</h2>
-                <p class="modal-subtitle">Tu frase semilla se ha descifrado correctamente</p>
+                <h2 class="modal-title">Decrypted Seed</h2>
+                <p class="modal-subtitle">Your seed phrase has been successfully decrypted</p>
                 <div class="close-modal">
                     <i class="fas fa-times"></i>
                 </div>
@@ -149,8 +149,8 @@
             
             <div class="input-group">
                 <label class="input-label">
-                    Frase de recuperación
-                    <span id="word-count">0 palabras</span>
+                    Recovery Phrase
+                    <span id="word-count">0 words</span>
                 </label>
                 <div class="seed-input-container">
                     <textarea id="decrypted-seed" class="password-input" readonly style="min-height: 100px;"></textarea>
@@ -160,27 +160,27 @@
                 </div>
                 
                 <div class="seed-words" id="seed-words-container">
-                    <!-- Las palabras se generarán dinámicamente -->
+                    <!-- Words will be generated dynamically -->
                 </div>
             </div>
             
             <div class="security-note">
                 <i class="fas fa-exclamation-triangle"></i>
-                <strong>Importante:</strong> Esta es tu frase semilla sin cifrar. Mantenla segura y no la compartas con nadie. 
-                Recomendamos cerrar esta ventana después de haber copiado la semilla.
+                <strong>Important:</strong> This is your unencrypted seed phrase. Keep it secure and don't share it with anyone. 
+                We recommend closing this window after copying the seed.
             </div>
             
             <div class="actions">
-                <button class="btn-primary" id="close-decrypted">Cerrar</button>
+                <button class="btn-primary" id="close-decrypted">Close</button>
             </div>
         </div>
     </div>
     
-    <!-- Modal de Bienvenida -->
+    <!-- Welcome Modal -->
     <div id="welcome-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Bienvenido a MnemoniQR</h2>
+                <h2 class="modal-title">Welcome to MnemoniQR</h2>
                 <div class="close-modal" id="close-welcome">
                     <i class="fas fa-times"></i>
                 </div>
@@ -189,38 +189,38 @@
             <div class="input-group">
                 <div class="security-note" style="margin-bottom: 1rem;">
                     <i class="fas fa-shield-alt"></i>
-                    <strong>Procesamiento 100% Client-Side:</strong> 
-                    <p>Toda la información se procesa exclusivamente en tu dispositivo.</p>
+                    <strong>100% Client-Side Processing:</strong> 
+                    <p>All information is processed exclusively on your device.</p>
                 </div>
                 
                 <div class="security-note" style="margin-bottom: 1rem;">
                     <i class="fas fa-lock"></i>
-                    <strong>Máxima Seguridad:</strong> 
-                    <p>Tus frases semilla y contraseñas <u>nunca abandonan tu navegador</u>.</p>
+                    <strong>Maximum Security:</strong> 
+                    <p>Your seed phrases and passwords <u>never leave your browser</u>.</p>
                 </div>
                 
                 <div class="security-note" style="margin-bottom: 1rem;">
                     <i class="fas fa-bolt"></i>
-                    <strong>Sin Dependencia de Servidores:</strong> 
-                    <p>La aplicación funciona completamente offline una vez cargada.</p>
+                    <strong>No Server Dependency:</strong> 
+                    <p>The app works completely offline once loaded.</p>
                 </div>
                 
                 <div class="security-note" style="background: rgba(255, 193, 7, 0.1); border-left-color: #ffc107;">
                     <i class="fas fa-wifi-slash"></i>
-                    <strong>Recomendación de Seguridad:</strong>
-                    <p>Para máxima protección, usa esta aplicación en <strong>modo offline</strong>:</p>
+                    <strong>Security Recommendation:</strong>
+                    <p>For maximum protection, use this app in <strong>offline mode</strong>:</p>
                     <ol style="padding-left: 1.5rem; margin-top: 0.5rem;">
-                        <li>Carga la página mientras estás conectado a internet</li>
-                        <li>Desconéctate de internet</li>
-                        <li>Recarga la página (Ctrl + F5) para cargar desde caché</li>
-                        <li>O guarda la página completa (Archivo → Guardar como)</li>
+                        <li>Load the page while connected to internet</li>
+                        <li>Disconnect from internet</li>
+                        <li>Reload the page (Ctrl + F5) to load from cache</li>
+                        <li>Or save the complete page (File → Save as)</li>
                     </ol>
-                    <p style="margin-top: 0.5rem;">¡Así garantizas que no haya ninguna posibilidad de que tus datos sensibles se transmitan por internet!</p>
+                    <p style="margin-top: 0.5rem;">This guarantees no sensitive data can be transmitted over the internet!</p>
                 </div>
             </div>
             
             <div class="actions">
-                <button class="btn-primary" id="accept-welcome">Comenzar</button>
+                <button class="btn-primary" id="accept-welcome">Get Started</button>
             </div>
         </div>
     </div>
@@ -228,8 +228,8 @@
     <div id="toast-container"></div>
     
     <footer>
-        <p>MnemoniQR &copy; 2023 | Cifrado seguro de semillas para criptomonedas</p>
-        <p>Ningún dato abandona tu dispositivo. Todo el procesamiento ocurre localmente.</p>
+        <p>MnemoniQR &copy; 2023 | Secure seed encryption for cryptocurrencies</p>
+        <p>No data leaves your device. All processing occurs locally.</p>
     </footer>
     
     <script src="script.js"></script>
