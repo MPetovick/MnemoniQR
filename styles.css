@@ -41,18 +41,18 @@ body {
 }
 
 .logo {
-    font-size: 2.2rem;
-    font-weight: 700;
-    margin-bottom: 0.8rem;
-    color: var(--primary-color);
     display: flex;
-    align-items: center;
-    gap: 0.6rem;
+    align-items: center; /* Centra verticalmente */
+    gap: 0.0rem; /* Espacio entre logo y texto */
+    font-size: 2rem; /* Aumenta tamaño del texto */
+    font-weight: bold; /* Texto en negrita */
 }
 
+
 .logo-icon {
-    color: var(--accent-color);
-    font-size: 2rem;
+    height: 100px; /* Tamaño fijo si lo prefieres */
+    width: 100px;
+    object-fit: contain; /* Mantiene proporciones */
 }
 
 .tagline {
