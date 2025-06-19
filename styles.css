@@ -48,7 +48,6 @@ body {
     font-weight: bold;
 }
 
-
 .logo-icon {
     height: 300px;
     width: 300px;
@@ -660,6 +659,73 @@ footer {
     font-size: 1.05rem;
 }
 
+/* Spinner overlay */
+.spinner-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.spinner {
+    border: 8px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 8px solid var(--accent-color);
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* BIP39 Suggestions */
+.bip39-suggestions {
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    transform: translateY(100%);
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.suggestion-item:hover {
+    background: var(--secondary-color);
+}
+
+.suggestion-item i {
+    color: var(--accent-color);
+    font-size: 0.9rem;
+}
+
 /* MEJORA: Modales más grandes para escritorio */
 @media (min-width: 768px) {
     .modal-content {
@@ -786,7 +852,8 @@ footer {
     }
     
     .logo-icon {
-        font-size: 1.8rem;
+        height: 250px;
+        width: 250px;
     }
     
     .modal-content {
