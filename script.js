@@ -1,4 +1,4 @@
-// Configuración compatible
+// Compatible configuration
 const CONFIG = {
     PBKDF2_ITERATIONS: 310000,
     SALT_LENGTH: 32,
@@ -11,7 +11,7 @@ const CONFIG = {
     QR_ERROR_CORRECTION: 'H'
 };
 
-// Referencias a elementos DOM
+// DOM references
 const dom = {
     startBtn: document.getElementById('start-btn'),
     seedModal: document.getElementById('seed-modal'),
@@ -34,7 +34,7 @@ const dom = {
     downloadBtn: document.getElementById('download-btn'),
     toastContainer: document.getElementById('toast-container'),
     
-    // Nuevos elementos para descifrado
+    // Decryption elements
     dropArea: document.getElementById('drop-area'),
     qrFile: document.getElementById('qr-file'),
     qrPreview: document.getElementById('qr-preview'),
@@ -46,13 +46,13 @@ const dom = {
     closeDecrypted: document.getElementById('close-decrypted'),
     wordCount: document.getElementById('word-count'),
     
-    // Modal de bienvenida
+    // Welcome modal
     welcomeModal: document.getElementById('welcome-modal'),
     closeWelcome: document.getElementById('close-welcome'),
     acceptWelcome: document.getElementById('accept-welcome')
 };
 
-// Estado de la aplicación
+// App state
 const appState = {
     wordsVisible: false,
     passwordVisible: false,
@@ -75,12 +75,8 @@ dom.seedPhrase.addEventListener('input', () => {
     const words = dom.seedPhrase.value.trim().split(/\s+/).filter(word => word.length > 0);
     const wordCount = words.length;
     
-    dom.wordCounter.textContent = `${wordCount} palabras`;
-    
-    // Habilitar botón si tenemos un número válido de palabras
+    dom.wordCounter.textContent = `${wordCount} words`;
     dom.encryptBtn.disabled = ![12, 18, 24].includes(wordCount);
-    
-    // Actualizar estado
     appState.seedPhrase = dom.seedPhrase.value;
 });
 
@@ -98,16 +94,6 @@ dom.passwordToggle.addEventListener('click', () => {
         '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
 });
 
-dom.encryptBtn.addEventListener('click', async () => {
-    if (validateInputs()) {
-        try {
-            await encryptSeedPhrase();
-        } catch (error) {
-            showToast(`Error: ${error.message}`, 'error');
-        }
-    }
-});
-
 dom.password.addEventListener('input', () => {
     const strength = calculatePasswordStrength(dom.password.value);
     dom.passwordStrengthBar.style.width = `${strength}%`;
@@ -120,7 +106,7 @@ dom.pdfBtn.addEventListener('click', generatePDF);
 dom.copyBtn.addEventListener('click', copyQRToClipboard);
 dom.downloadBtn.addEventListener('click', downloadQRAsPNG);
 
-// Event Listeners para descifrado
+// Decryption event listeners
 dom.dropArea.addEventListener('click', () => {
     dom.qrFile.click();
 });
@@ -146,25 +132,19 @@ dom.dropArea.addEventListener('drop', (e) => {
     }
 });
 
-dom.decryptBtn.addEventListener('click', () => {
-    dom.seedModal.style.display = 'flex';
-    dom.password.focus();
-});
-
 dom.copySeed.addEventListener('click', () => {
     dom.decryptedSeed.select();
     document.execCommand('copy');
-    showToast('Semilla copiada al portapapeles', 'success');
+    showToast('Seed copied to clipboard', 'success');
 });
 
 dom.closeDecrypted.addEventListener('click', () => {
     dom.decryptedModal.style.display = 'none';
-    // Limpiar datos sensibles
     dom.decryptedSeed.value = '';
     appState.seedPhrase = '';
 });
 
-// Modal de bienvenida
+// Welcome modal
 dom.closeWelcome.addEventListener('click', () => {
     dom.welcomeModal.style.display = 'none';
 });
@@ -173,7 +153,7 @@ dom.acceptWelcome.addEventListener('click', () => {
     dom.welcomeModal.style.display = 'none';
 });
 
-// Funciones principales
+// Main functions
 function closeModal() {
     dom.seedModal.style.display = 'none';
     resetModalState();
@@ -182,7 +162,7 @@ function closeModal() {
 function resetModalState() {
     dom.seedPhrase.value = '';
     dom.password.value = '';
-    dom.wordCounter.textContent = '0 palabras';
+    dom.wordCounter.textContent = '0 words';
     appState.wordsVisible = false;
     appState.passwordVisible = false;
     dom.seedPhrase.type = 'password';
@@ -190,27 +170,25 @@ function resetModalState() {
     dom.toggleVisibility.innerHTML = '<i class="fas fa-eye"></i>';
     dom.passwordToggle.innerHTML = '<i class="fas fa-eye"></i>';
     dom.passwordStrengthBar.style.width = '0%';
-    dom.passwordStrengthText.textContent = 'Seguridad: Muy débil';
+    dom.passwordStrengthText.textContent = 'Security: Very weak';
     dom.encryptBtn.disabled = true;
 }
 
 function validateInputs() {
-    // Validar semilla
     const words = appState.seedPhrase.trim().split(/\s+/);
     if (![12, 18, 24].includes(words.length)) {
-        showToast('La frase semilla debe contener 12, 18 o 24 palabras', 'error');
+        showToast('Seed phrase must contain 12, 18 or 24 words', 'error');
         return false;
     }
     
-    // Validar contraseña
     if (dom.password.value.length < CONFIG.MIN_PASSPHRASE_LENGTH) {
-        showToast(`La contraseña debe tener al menos ${CONFIG.MIN_PASSPHRASE_LENGTH} caracteres`, 'error');
+        showToast(`Password must be at least ${CONFIG.MIN_PASSPHRASE_LENGTH} characters`, 'error');
         return false;
     }
     
     const strength = calculatePasswordStrength(dom.password.value);
     if (strength < 40) {
-        showToast('La contraseña es demasiado débil. Por favor, usa una más segura.', 'warning');
+        showToast('Password is too weak. Please use a stronger one.', 'warning');
         return false;
     }
     
@@ -233,18 +211,18 @@ function calculatePasswordStrength(password) {
 }
 
 function updatePasswordStrengthText(strength) {
-    let text = 'Seguridad: ';
+    let text = 'Security: ';
     
     if (strength < 20) {
-        text += 'Muy débil';
+        text += 'Very weak';
     } else if (strength < 40) {
-        text += 'Débil';
+        text += 'Weak';
     } else if (strength < 60) {
-        text += 'Moderada';
+        text += 'Moderate';
     } else if (strength < 80) {
-        text += 'Fuerte';
+        text += 'Strong';
     } else {
-        text += 'Muy fuerte';
+        text += 'Very strong';
     }
     
     dom.passwordStrengthText.textContent = text;
@@ -254,12 +232,10 @@ function generateSecurePassword() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
     let password = '';
     
-    // Asegurarse de que la contraseña cumple con los requisitos
     for (let i = 0; i < 16; i++) {
         password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     
-    // Asegurar al menos una mayúscula, minúscula, número y símbolo
     if (!/[A-Z]/.test(password)) password = 'A' + password.slice(1);
     if (!/[a-z]/.test(password)) password = password.slice(0, -1) + 'a';
     if (!/[0-9]/.test(password)) password = password.slice(0, -1) + '1';
@@ -270,31 +246,25 @@ function generateSecurePassword() {
     dom.passwordStrengthBar.style.width = `${strength}%`;
     updatePasswordStrengthText(strength);
     
-    showToast('Contraseña segura generada', 'success');
+    showToast('Secure password generated', 'success');
 }
 
 async function encryptSeedPhrase() {
     try {
-        // Validar semilla
         const words = appState.seedPhrase.trim().split(/\s+/);
         if (![12, 18, 24].includes(words.length)) {
-            throw new Error('La frase semilla debe contener 12, 18 o 24 palabras');
+            throw new Error('Seed phrase must contain 12, 18 or 24 words');
         }
         
-        // Convertir a formato seguro
         const seedData = words.join(' ');
-        
-        // Cifrar usando Web Crypto API
         const encrypted = await cryptoUtils.encryptMessage(seedData, appState.password);
         appState.encryptedData = encrypted;
         
-        // Generar QR
         await generateQR(encrypted);
         
-        // Cerrar modal y mostrar resultado
         closeModal();
         dom.qrContainer.style.display = 'flex';
-        showToast('Semilla cifrada correctamente', 'success');
+        showToast('Seed encrypted successfully', 'success');
     } catch (error) {
         showToast(`Error: ${error.message}`, 'error');
         console.error('Encryption error:', error);
@@ -330,7 +300,7 @@ async function generateQR(data) {
 
 function generatePDF() {
     if (!appState.encryptedData) {
-        showToast('Primero genera un código QR', 'error');
+        showToast('First generate a QR code', 'error');
         return;
     }
     
@@ -345,31 +315,31 @@ function generatePDF() {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
         doc.setTextColor(0, 0, 0);
-        doc.text('Respaldo Seguro de Semilla', 105, 15, null, null, 'center');
+        doc.text('Secure Seed Backup', 105, 15, null, null, 'center');
         
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text('Este código QR contiene tu frase semilla cifrada con AES-256-GCM', 105, 22, null, null, 'center');
+        doc.text('This QR code contains your seed encrypted with AES-256-GCM', 105, 22, null, null, 'center');
         
         const qrDataUrl = dom.qrCanvas.toDataURL('image/png');
         doc.addImage(qrDataUrl, 'PNG', 50, 30, 100, 100);
         
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
-        doc.text('Generado por MnemoniQR - ' + new Date().toLocaleDateString(), 105, 145, null, null, 'center');
+        doc.text('Generated by MnemoniQR - ' + new Date().toLocaleDateString(), 105, 145, null, null, 'center');
         
         doc.save(`mnemoniqr-backup-${Date.now()}.pdf`);
-        showToast('PDF generado correctamente', 'success');
+        showToast('PDF generated successfully', 'success');
     } catch (error) {
         console.error('PDF generation error:', error);
-        showToast('Error al generar el PDF', 'error');
+        showToast('Error generating PDF', 'error');
     }
 }
 
 function copyQRToClipboard() {
     if (!appState.encryptedData) {
-        showToast('Primero genera un código QR', 'error');
+        showToast('First generate a QR code', 'error');
         return;
     }
     
@@ -380,21 +350,21 @@ function copyQRToClipboard() {
                     'image/png': blob
                 })
             ]).then(() => {
-                showToast('QR copiado al portapapeles', 'success');
+                showToast('QR copied to clipboard', 'success');
             }).catch(err => {
                 console.error('Failed to copy: ', err);
-                showToast('Error al copiar el QR', 'error');
+                showToast('Error copying QR', 'error');
             });
         });
     } catch (error) {
         console.error('Copy error:', error);
-        showToast('Error al copiar el QR', 'error');
+        showToast('Error copying QR', 'error');
     }
 }
 
 function downloadQRAsPNG() {
     if (!appState.encryptedData) {
-        showToast('Primero genera un código QR', 'error');
+        showToast('First generate a QR code', 'error');
         return;
     }
     
@@ -403,10 +373,10 @@ function downloadQRAsPNG() {
         link.download = `mnemoniqr-${Date.now()}.png`;
         link.href = dom.qrCanvas.toDataURL('image/png');
         link.click();
-        showToast('QR descargado correctamente', 'success');
+        showToast('QR downloaded successfully', 'success');
     } catch (error) {
         console.error('Download error:', error);
-        showToast('Error al descargar el QR', 'error');
+        showToast('Error downloading QR', 'error');
     }
 }
 
@@ -434,7 +404,7 @@ function showToast(message, type = 'info') {
     }, 5000);
 }
 
-// Funciones para descifrado
+// Decryption functions
 function handleFileSelect(e) {
     if (e.target.files.length) {
         handleFile(e.target.files[0]);
@@ -443,7 +413,7 @@ function handleFileSelect(e) {
 
 function handleFile(file) {
     if (!file.type.match('image.*')) {
-        showToast('Por favor, selecciona un archivo de imagen', 'error');
+        showToast('Please select an image file', 'error');
         return;
     }
     
@@ -459,17 +429,16 @@ function handleFile(file) {
 
 async function decryptQR() {
     if (!appState.qrImageData) {
-        showToast('Primero carga un código QR', 'error');
+        showToast('First load a QR code', 'error');
         return;
     }
     
     if (!appState.password) {
-        showToast('Por favor, ingresa la contraseña', 'error');
+        showToast('Please enter the password', 'error');
         return;
     }
     
     try {
-        // Decodificar la imagen QR
         const img = new Image();
         img.src = appState.qrImageData;
         
@@ -485,18 +454,15 @@ async function decryptQR() {
         const code = jsQR(imageData.data, imageData.width, imageData.height);
         
         if (!code) {
-            throw new Error('No se pudo leer el código QR');
+            throw new Error('Could not read QR code');
         }
         
-        // Descifrar el mensaje
         const decrypted = await cryptoUtils.decryptMessage(code.data, appState.password);
-        
-        // Mostrar resultado
         showDecryptedSeed(decrypted);
         
     } catch (error) {
         console.error('Decryption error:', error);
-        showToast(`Error al descifrar: ${error.message}`, 'error');
+        showToast(`Decryption error: ${error.message}`, 'error');
     }
 }
 
@@ -504,11 +470,9 @@ function showDecryptedSeed(seedPhrase) {
     const words = seedPhrase.split(' ');
     const wordCount = words.length;
     
-    // Actualizar DOM
     dom.decryptedSeed.value = seedPhrase;
-    dom.wordCount.textContent = `${wordCount} palabras`;
+    dom.wordCount.textContent = `${wordCount} words`;
     
-    // Generar cuadrícula de palabras
     dom.seedWordsContainer.innerHTML = '';
     words.forEach((word, index) => {
         const wordEl = document.createElement('div');
@@ -518,11 +482,10 @@ function showDecryptedSeed(seedPhrase) {
         dom.seedWordsContainer.appendChild(wordEl);
     });
     
-    // Mostrar modal
     dom.decryptedModal.style.display = 'flex';
 }
 
-// Utilidades criptográficas
+// Crypto utilities
 const cryptoUtils = {
     async encryptMessage(message, passphrase) {
         let salt = null;
@@ -531,23 +494,18 @@ const cryptoUtils = {
         let hmacKey = null;
         
         try {
-            // Validar entrada
             if (!message || !passphrase) {
-                throw new Error('Mensaje y contraseña son requeridos');
+                throw new Error('Message and password are required');
             }
             
             if (passphrase.length < CONFIG.MIN_PASSPHRASE_LENGTH) {
-                throw new Error(`La contraseña debe tener al menos ${CONFIG.MIN_PASSPHRASE_LENGTH} caracteres`);
+                throw new Error(`Password must be at least ${CONFIG.MIN_PASSPHRASE_LENGTH} characters`);
             }
             
-            // Convertir datos
             const dataToEncrypt = new TextEncoder().encode(message);
-            
-            // Generar salt e IV
             salt = crypto.getRandomValues(new Uint8Array(CONFIG.SALT_LENGTH));
             iv = crypto.getRandomValues(new Uint8Array(CONFIG.IV_LENGTH));
             
-            // Derivar clave usando PBKDF2
             const baseKey = await crypto.subtle.importKey(
                 'raw',
                 new TextEncoder().encode(passphrase),
@@ -571,7 +529,6 @@ const cryptoUtils = {
             const aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
             const hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
             
-            // Importar claves
             aesKey = await crypto.subtle.importKey(
                 'raw',
                 aesKeyBytes,
@@ -591,7 +548,6 @@ const cryptoUtils = {
                 ['sign']
             );
             
-            // Cifrar con AES-GCM
             const encrypted = await crypto.subtle.encrypt(
                 { name: 'AES-GCM', iv, tagLength: 128 },
                 aesKey,
@@ -599,15 +555,12 @@ const cryptoUtils = {
             );
             
             const ciphertext = new Uint8Array(encrypted);
-            
-            // Calcular HMAC del texto cifrado
             const hmac = await crypto.subtle.sign(
                 'HMAC',
                 hmacKey,
                 ciphertext
             );
             
-            // Combinar: salt + iv + ciphertext + hmac
             const combined = new Uint8Array([
                 ...salt,
                 ...iv,
@@ -615,20 +568,17 @@ const cryptoUtils = {
                 ...new Uint8Array(hmac)
             ]);
             
-            // Convertir a Base64 para el QR
             return btoa(String.fromCharCode(...combined));
         } catch (error) {
             console.error('Encryption error:', error);
-            throw new Error('Error al cifrar: ' + error.message);
+            throw new Error('Encryption error: ' + error.message);
         }
     },
     
     async decryptMessage(encryptedBase64, passphrase) {
         try {
-            // Convertir de Base64
             const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
             
-            // Extraer componentes
             const salt = encryptedData.slice(0, CONFIG.SALT_LENGTH);
             const iv = encryptedData.slice(CONFIG.SALT_LENGTH, CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
             const ciphertext = encryptedData.slice(
@@ -637,7 +587,6 @@ const cryptoUtils = {
             );
             const hmac = encryptedData.slice(encryptedData.length - CONFIG.HMAC_LENGTH);
             
-            // Derivar clave usando PBKDF2
             const baseKey = await crypto.subtle.importKey(
                 'raw',
                 new TextEncoder().encode(passphrase),
@@ -661,7 +610,6 @@ const cryptoUtils = {
             const aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
             const hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
             
-            // Importar claves
             const aesKey = await crypto.subtle.importKey(
                 'raw',
                 aesKeyBytes,
@@ -681,7 +629,6 @@ const cryptoUtils = {
                 ['verify']
             );
             
-            // Verificar HMAC
             const hmacValid = await crypto.subtle.verify(
                 'HMAC',
                 hmacKey,
@@ -690,50 +637,48 @@ const cryptoUtils = {
             );
             
             if (!hmacValid) {
-                throw new Error('El HMAC no coincide. La contraseña podría ser incorrecta o el archivo está corrupto.');
+                throw new Error('HMAC mismatch. Wrong password or corrupted file.');
             }
             
-            // Descifrar con AES-GCM
             const decrypted = await crypto.subtle.decrypt(
                 { name: 'AES-GCM', iv, tagLength: 128 },
                 aesKey,
                 ciphertext
             );
             
-            // Convertir a texto
             return new TextDecoder().decode(decrypted);
             
         } catch (error) {
             console.error('Decryption error:', error);
-            throw new Error('Error al descifrar: ' + error.message);
+            throw new Error('Decryption error: ' + error.message);
         }
     }
 };
 
-// Mostrar indicador de modo offline
+// Offline mode indicator
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 
 function updateOnlineStatus() {
     if (!navigator.onLine) {
-        showToast('Modo offline activado - Máxima seguridad', 'success');
-        // Crear indicador visual
+        showToast('Offline mode activated - Maximum security', 'success');
         const offlineBadge = document.createElement('div');
         offlineBadge.id = 'offline-badge';
-        offlineBadge.innerHTML = '<i class="fas fa-wifi-slash"></i> Modo Offline';
+        offlineBadge.innerHTML = '<i class="fas fa-wifi-slash"></i> Offline Mode';
         offlineBadge.style.position = 'fixed';
-        offlineBadge.style.bottom = '20px';
-        offlineBadge.style.left = '20px';
+        offlineBadge.style.bottom = '15px';
+        offlineBadge.style.left = '15px';
         offlineBadge.style.background = 'var(--accent-color)';
         offlineBadge.style.color = 'white';
-        offlineBadge.style.padding = '8px 16px';
+        offlineBadge.style.padding = '6px 12px';
         offlineBadge.style.borderRadius = '20px';
         offlineBadge.style.zIndex = '10000';
         offlineBadge.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
         offlineBadge.style.fontWeight = '600';
         offlineBadge.style.display = 'flex';
         offlineBadge.style.alignItems = 'center';
-        offlineBadge.style.gap = '8px';
+        offlineBadge.style.gap = '6px';
+        offlineBadge.style.fontSize = '0.9rem';
         document.body.appendChild(offlineBadge);
     } else {
         const badge = document.getElementById('offline-badge');
@@ -741,14 +686,12 @@ function updateOnlineStatus() {
     }
 }
 
-// Comprobar estado inicial
 updateOnlineStatus();
 
-// Inicialización
+// Initialization
 document.addEventListener('DOMContentLoaded', () => {
     dom.passwordSection.style.display = 'block';
     
-    // Modificamos el listener para usar la función de descifrado
     dom.encryptBtn.addEventListener('click', async () => {
         if (validateInputs()) {
             try {
@@ -759,23 +702,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Nuevo listener para el botón de descifrado
     dom.decryptBtn.addEventListener('click', async () => {
-        // Mostrar modal para contraseña
         dom.seedModal.style.display = 'flex';
-        // Cambiar título para descifrado
-        document.querySelector('.modal-title').textContent = "Descifrar Semilla";
-        document.querySelector('.modal-subtitle').textContent = "Ingresa la contraseña para descifrar el código QR";
+        document.querySelector('.modal-title').textContent = "Decrypt Seed";
+        document.querySelector('.modal-subtitle').textContent = "Enter password to decrypt QR code";
         
-        // Ocultar el textarea de semilla
         dom.seedPhrase.style.display = 'none';
         dom.wordCounter.style.display = 'none';
         dom.toggleVisibility.style.display = 'none';
         document.querySelector('.word-hints').style.display = 'none';
         
-        // Cambiar el listener del botón de cifrado para que ahora descifre
         const encryptBtn = document.getElementById('encrypt-btn');
-        encryptBtn.textContent = "Descifrar";
+        encryptBtn.textContent = "Decrypt";
         encryptBtn.removeEventListener('click', null);
         encryptBtn.addEventListener('click', async () => {
             try {
@@ -787,6 +725,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    // Mostrar modal de bienvenida al cargar
     dom.welcomeModal.style.display = 'flex';
 });
