@@ -433,11 +433,6 @@ async function decryptQR() {
         return;
     }
     
-    if (!appState.password) {
-        showToast('Please enter the password', 'error');
-        return;
-    }
-    
     try {
         const img = new Image();
         img.src = appState.qrImageData;
@@ -457,7 +452,9 @@ async function decryptQR() {
             throw new Error('Could not read QR code');
         }
         
-        const decrypted = await cryptoUtils.decryptMessage(code.data, appState.password);
+        // MEJORA: Usar contraseña del input directamente
+        const password = dom.password.value;
+        const decrypted = await cryptoUtils.decryptMessage(code.data, password);
         showDecryptedSeed(decrypted);
         
     } catch (error) {
