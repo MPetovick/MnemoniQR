@@ -13,7 +13,7 @@
 <body>
     <div class="container">
         <div class="logo">
-            <img src="MQR_logo.png" alt="MnemoniQR Logo" class="logo-icon">
+            <img src="logo_MQR.png" alt="MnemoniQR Logo" class="logo-icon">
         </div>
         
         <p class="tagline">
@@ -91,6 +91,7 @@
                     <button class="toggle-visibility" id="toggle-visibility">
                         <i class="fas fa-eye"></i>
                     </button>
+                    <div id="bip39-suggestions" class="bip39-suggestions"></div>
                 </div>
                 
                 <div class="word-hints">
@@ -171,7 +172,7 @@
             </div>
             
             <div class="actions">
-                <button class="btn-primary">Close</button>
+                <button class="btn-primary" id="close-decrypted-btn">Close</button>
             </div>
         </div>
     </div>
@@ -226,6 +227,12 @@
     </div>
     
     <div id="toast-container"></div>
+    
+    <!-- Spinner overlay -->
+    <div id="spinner-overlay" class="spinner-overlay">
+        <div class="spinner"></div>
+        <p>Processing... Please wait</p>
+    </div>
     
     <footer>
         <p>MnemoniQR &copy; 2023 | Secure seed encryption for cryptocurrencies</p>
