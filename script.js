@@ -33,6 +33,7 @@ const dom = {
     copyBtn: document.getElementById('copy-btn'),
     downloadBtn: document.getElementById('download-btn'),
     toastContainer: document.getElementById('toast-container'),
+    suggestionsContainer: document.getElementById('bip39-suggestions'),
     
     // Decryption elements
     dropArea: document.getElementById('drop-area'),
@@ -44,12 +45,16 @@ const dom = {
     seedWordsContainer: document.getElementById('seed-words-container'),
     copySeed: document.getElementById('copy-seed'),
     closeDecrypted: document.getElementById('close-decrypted'),
+    closeDecryptedBtn: document.getElementById('close-decrypted-btn'),
     wordCount: document.getElementById('word-count'),
     
     // Welcome modal
     welcomeModal: document.getElementById('welcome-modal'),
     closeWelcome: document.getElementById('close-welcome'),
-    acceptWelcome: document.getElementById('accept-welcome')
+    acceptWelcome: document.getElementById('accept-welcome'),
+    
+    // Spinner
+    spinnerOverlay: document.getElementById('spinner-overlay')
 };
 
 // App state
@@ -59,7 +64,11 @@ const appState = {
     seedPhrase: '',
     password: '',
     encryptedData: '',
-    qrImageData: null
+    qrImageData: null,
+    bip39Wordlist: null, // Cache for BIP39 wordlist
+    currentWordIndex: -1,
+    currentWordPartial: '',
+    lastInputPosition: 0
 };
 
 // Event Listeners
@@ -71,14 +80,9 @@ dom.startBtn.addEventListener('click', () => {
 dom.closeModal.addEventListener('click', closeModal);
 dom.cancelBtn.addEventListener('click', closeModal);
 
-dom.seedPhrase.addEventListener('input', () => {
-    const words = dom.seedPhrase.value.trim().split(/\s+/).filter(word => word.length > 0);
-    const wordCount = words.length;
-    
-    dom.wordCounter.textContent = `${wordCount} words`;
-    dom.encryptBtn.disabled = ![12, 18, 24].includes(wordCount);
-    appState.seedPhrase = dom.seedPhrase.value;
-});
+dom.seedPhrase.addEventListener('input', handleSeedInput);
+dom.seedPhrase.addEventListener('click', handleSeedCursorPosition);
+dom.seedPhrase.addEventListener('keyup', handleSeedCursorPosition);
 
 dom.toggleVisibility.addEventListener('click', () => {
     appState.wordsVisible = !appState.wordsVisible;
@@ -139,10 +143,19 @@ dom.copySeed.addEventListener('click', () => {
 });
 
 dom.closeDecrypted.addEventListener('click', () => {
+    closeDecryptedModal();
+});
+
+dom.closeDecryptedBtn.addEventListener('click', () => {
+    closeDecryptedModal();
+});
+
+function closeDecryptedModal() {
     dom.decryptedModal.style.display = 'none';
     dom.decryptedSeed.value = '';
     appState.seedPhrase = '';
-});
+    secureWipe(appState.seedPhrase);
+}
 
 // Welcome modal
 dom.closeWelcome.addEventListener('click', () => {
@@ -152,6 +165,120 @@ dom.closeWelcome.addEventListener('click', () => {
 dom.acceptWelcome.addEventListener('click', () => {
     dom.welcomeModal.style.display = 'none';
 });
+
+// Seed phrase input handling
+function handleSeedInput() {
+    const words = dom.seedPhrase.value.trim().split(/\s+/).filter(word => word.length > 0);
+    const wordCount = words.length;
+    
+    dom.wordCounter.textContent = `${wordCount} words`;
+    dom.encryptBtn.disabled = ![12, 18, 24].includes(wordCount);
+    appState.seedPhrase = dom.seedPhrase.value;
+    
+    // Only show suggestions if user is typing a word
+    if (appState.currentWordIndex >= 0 && appState.currentWordPartial.length > 1) {
+        showBIP39Suggestions(appState.currentWordPartial);
+    } else {
+        hideSuggestions();
+    }
+}
+
+function handleSeedCursorPosition(e) {
+    const cursorPosition = dom.seedPhrase.selectionStart;
+    const text = dom.seedPhrase.value;
+    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+    
+    // Find the word index at cursor position
+    let charCount = 0;
+    let currentWordIndex = -1;
+    let currentWordPartial = '';
+    
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const wordStart = text.indexOf(word, charCount);
+        const wordEnd = wordStart + word.length;
+        
+        if (cursorPosition >= wordStart && cursorPosition <= wordEnd) {
+            currentWordIndex = i;
+            currentWordPartial = word;
+            break;
+        }
+        
+        charCount += word.length + 1; // +1 for space
+    }
+    
+    appState.currentWordIndex = currentWordIndex;
+    appState.currentWordPartial = currentWordPartial;
+    appState.lastInputPosition = cursorPosition;
+    
+    // Show suggestions if we're in a word and it's partially typed
+    if (currentWordIndex >= 0 && currentWordPartial.length > 1) {
+        showBIP39Suggestions(currentWordPartial);
+    } else {
+        hideSuggestions();
+    }
+}
+
+// BIP39 suggestions
+function showBIP39Suggestions(partialWord) {
+    if (!appState.bip39Wordlist || partialWord.length < 2) {
+        hideSuggestions();
+        return;
+    }
+    
+    const lowerPartial = partialWord.toLowerCase();
+    const suggestions = appState.bip39Wordlist
+        .filter(word => word.toLowerCase().startsWith(lowerPartial))
+        .slice(0, 5); // Limit to 5 suggestions
+    
+    if (suggestions.length === 0) {
+        hideSuggestions();
+        return;
+    }
+    
+    dom.suggestionsContainer.innerHTML = '';
+    suggestions.forEach(word => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.innerHTML = `<i class="fas fa-lightbulb"></i> ${word}`;
+        item.addEventListener('click', () => {
+            selectSuggestion(word);
+        });
+        dom.suggestionsContainer.appendChild(item);
+    });
+    
+    dom.suggestionsContainer.style.display = 'block';
+}
+
+function hideSuggestions() {
+    dom.suggestionsContainer.style.display = 'none';
+}
+
+function selectSuggestion(word) {
+    const text = dom.seedPhrase.value;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    
+    if (appState.currentWordIndex >= 0 && appState.currentWordIndex < words.length) {
+        words[appState.currentWordIndex] = word;
+        dom.seedPhrase.value = words.join(' ');
+        
+        // Set cursor position after the word
+        const newText = words.join(' ');
+        let newCursorPosition = 0;
+        for (let i = 0; i < appState.currentWordIndex; i++) {
+            newCursorPosition += words[i].length + 1; // +1 for space
+        }
+        newCursorPosition += word.length;
+        
+        dom.seedPhrase.setSelectionRange(newCursorPosition, newCursorPosition);
+        
+        // Trigger input event to update word count
+        const event = new Event('input', { bubbles: true });
+        dom.seedPhrase.dispatchEvent(event);
+    }
+    
+    hideSuggestions();
+}
 
 // Main functions
 function closeModal() {
@@ -172,13 +299,27 @@ function resetModalState() {
     dom.passwordStrengthBar.style.width = '0%';
     dom.passwordStrengthText.textContent = 'Security: Very weak';
     dom.encryptBtn.disabled = true;
+    hideSuggestions();
 }
 
 function validateInputs() {
     const words = appState.seedPhrase.trim().split(/\s+/);
-    if (![12, 18, 24].includes(words.length)) {
-        showToast('Seed phrase must contain 12, 18 or 24 words', 'error');
-        return false;
+    
+    // Only validate seed phrase during encryption
+    if (dom.seedPhrase.style.display !== 'none') {
+        if (![12, 18, 24].includes(words.length)) {
+            showToast('Seed phrase must contain 12, 18 or 24 words', 'error');
+            return false;
+        }
+        
+        // Validate BIP39 words if wordlist is loaded
+        if (appState.bip39Wordlist) {
+            const invalidWords = words.filter(word => !appState.bip39Wordlist.includes(word));
+            if (invalidWords.length > 0) {
+                showToast(`Invalid BIP39 words: ${invalidWords.slice(0, 5).join(', ')}${invalidWords.length > 5 ? '...' : ''}`, 'error');
+                return false;
+            }
+        }
     }
     
     if (dom.password.value.length < CONFIG.MIN_PASSPHRASE_LENGTH) {
@@ -256,7 +397,16 @@ async function encryptSeedPhrase() {
             throw new Error('Seed phrase must contain 12, 18 or 24 words');
         }
         
+        // Validate against BIP39 wordlist
+        if (appState.bip39Wordlist) {
+            const invalidWords = words.filter(word => !appState.bip39Wordlist.includes(word));
+            if (invalidWords.length > 0) {
+                throw new Error(`Invalid BIP39 words: ${invalidWords.slice(0, 5).join(', ')}${invalidWords.length > 5 ? '...' : ''}`);
+            }
+        }
+        
         const seedData = words.join(' ');
+        showSpinner(true);
         const encrypted = await cryptoUtils.encryptMessage(seedData, appState.password);
         appState.encryptedData = encrypted;
         
@@ -268,6 +418,8 @@ async function encryptSeedPhrase() {
     } catch (error) {
         showToast(`Error: ${error.message}`, 'error');
         console.error('Encryption error:', error);
+    } finally {
+        showSpinner(false);
     }
 }
 
@@ -404,6 +556,54 @@ function showToast(message, type = 'info') {
     }, 5000);
 }
 
+// Spinner functions
+function showSpinner(show) {
+    dom.spinnerOverlay.style.display = show ? 'flex' : 'none';
+}
+
+// Secure memory wipe
+function secureWipe(buffer) {
+    if (buffer) {
+        if (buffer instanceof ArrayBuffer) {
+            const view = new Uint8Array(buffer);
+            view.fill(0);
+        } else if (Array.isArray(buffer)) {
+            buffer.fill(0);
+        } else if (typeof buffer === 'string') {
+            // Strings are immutable, so we can't wipe them. But we can overwrite the variable.
+            buffer = '';
+        }
+    }
+}
+
+// Load BIP39 wordlist
+async function loadBIP39Wordlist() {
+    const STORAGE_KEY = 'bip39-wordlist';
+    try {
+        // Check if wordlist is in localStorage
+        const cachedWordlist = localStorage.getItem(STORAGE_KEY);
+        if (cachedWordlist) {
+            appState.bip39Wordlist = JSON.parse(cachedWordlist);
+            console.log('BIP39 wordlist loaded from cache');
+            return;
+        }
+
+        // Fetch from GitHub
+        const response = await fetch('https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt');
+        if (!response.ok) throw new Error('Failed to fetch BIP39 wordlist');
+        const text = await response.text();
+        const wordlist = text.split('\n').map(word => word.trim()).filter(word => word);
+        appState.bip39Wordlist = wordlist;
+        
+        // Cache in localStorage
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(wordlist));
+        console.log('BIP39 wordlist loaded and cached');
+    } catch (error) {
+        console.error('Error loading BIP39 wordlist:', error);
+        showToast('Warning: BIP39 validation not available', 'warning');
+    }
+}
+
 // Decryption functions
 function handleFileSelect(e) {
     if (e.target.files.length) {
@@ -452,14 +652,16 @@ async function decryptQR() {
             throw new Error('Could not read QR code');
         }
         
-        // MEJORA: Usar contraseña del input directamente
         const password = dom.password.value;
+        showSpinner(true);
         const decrypted = await cryptoUtils.decryptMessage(code.data, password);
         showDecryptedSeed(decrypted);
         
     } catch (error) {
         console.error('Decryption error:', error);
         showToast(`Decryption error: ${error.message}`, 'error');
+    } finally {
+        showSpinner(false);
     }
 }
 
@@ -489,6 +691,8 @@ const cryptoUtils = {
         let iv = null;
         let aesKey = null;
         let hmacKey = null;
+        let aesKeyBytes = null;
+        let hmacKeyBytes = null;
         
         try {
             if (!message || !passphrase) {
@@ -523,8 +727,8 @@ const cryptoUtils = {
             );
             
             const derivedBitsArray = new Uint8Array(derivedBits);
-            const aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
-            const hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
+            aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
+            hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
             
             aesKey = await crypto.subtle.importKey(
                 'raw',
@@ -569,20 +773,29 @@ const cryptoUtils = {
         } catch (error) {
             console.error('Encryption error:', error);
             throw new Error('Encryption error: ' + error.message);
+        } finally {
+            // Secure wipe of sensitive data
+            if (salt) secureWipe(salt);
+            if (iv) secureWipe(iv);
+            if (aesKeyBytes) secureWipe(aesKeyBytes);
+            if (hmacKeyBytes) secureWipe(hmacKeyBytes);
         }
     },
     
     async decryptMessage(encryptedBase64, passphrase) {
+        let salt, iv, ciphertext, hmac;
+        let aesKeyBytes, hmacKeyBytes;
+        
         try {
             const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
             
-            const salt = encryptedData.slice(0, CONFIG.SALT_LENGTH);
-            const iv = encryptedData.slice(CONFIG.SALT_LENGTH, CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
-            const ciphertext = encryptedData.slice(
+            salt = encryptedData.slice(0, CONFIG.SALT_LENGTH);
+            iv = encryptedData.slice(CONFIG.SALT_LENGTH, CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
+            ciphertext = encryptedData.slice(
                 CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH, 
                 encryptedData.length - CONFIG.HMAC_LENGTH
             );
-            const hmac = encryptedData.slice(encryptedData.length - CONFIG.HMAC_LENGTH);
+            hmac = encryptedData.slice(encryptedData.length - CONFIG.HMAC_LENGTH);
             
             const baseKey = await crypto.subtle.importKey(
                 'raw',
@@ -604,8 +817,8 @@ const cryptoUtils = {
             );
             
             const derivedBitsArray = new Uint8Array(derivedBits);
-            const aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
-            const hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
+            aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
+            hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
             
             const aesKey = await crypto.subtle.importKey(
                 'raw',
@@ -648,6 +861,10 @@ const cryptoUtils = {
         } catch (error) {
             console.error('Decryption error:', error);
             throw new Error('Decryption error: ' + error.message);
+        } finally {
+            // Secure wipe of sensitive data
+            if (aesKeyBytes) secureWipe(aesKeyBytes);
+            if (hmacKeyBytes) secureWipe(hmacKeyBytes);
         }
     }
 };
@@ -689,6 +906,9 @@ updateOnlineStatus();
 document.addEventListener('DOMContentLoaded', () => {
     dom.passwordSection.style.display = 'block';
     
+    // Load BIP39 wordlist on startup
+    loadBIP39Wordlist();
+    
     dom.encryptBtn.addEventListener('click', async () => {
         if (validateInputs()) {
             try {
@@ -704,10 +924,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('.modal-title').textContent = "Decrypt Seed";
         document.querySelector('.modal-subtitle').textContent = "Enter password to decrypt QR code";
         
+        // Hide unnecessary elements for decryption
         dom.seedPhrase.style.display = 'none';
         dom.wordCounter.style.display = 'none';
         dom.toggleVisibility.style.display = 'none';
         document.querySelector('.word-hints').style.display = 'none';
+        dom.generatePassword.style.display = 'none'; // Hide password generator
         
         const encryptBtn = document.getElementById('encrypt-btn');
         encryptBtn.textContent = "Decrypt";
@@ -723,4 +945,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     dom.welcomeModal.style.display = 'flex';
+    
+    // Close suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!dom.seedPhrase.contains(e.target) && 
+            !dom.suggestionsContainer.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
 });
