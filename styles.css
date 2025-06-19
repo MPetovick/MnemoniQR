@@ -42,17 +42,17 @@ body {
 
 .logo {
     display: flex;
-    align-items: center; /* Centra verticalmente */
-    gap: 0.0rem; /* Espacio entre logo y texto */
-    font-size: 2rem; /* Aumenta tamaño del texto */
-    font-weight: bold; /* Texto en negrita */
+    align-items: center;
+    gap: 0.0rem;
+    font-size: 2rem;
+    font-weight: bold;
 }
 
 
 .logo-icon {
-    height: 300px; /* Tamaño fijo si lo prefieres */
+    height: 300px;
     width: 300px;
-    object-fit: contain; /* Mantiene proporciones */
+    object-fit: contain;
 }
 
 .tagline {
@@ -658,6 +658,33 @@ footer {
     top: -7px;
     right: -7px;
     font-size: 1.05rem;
+}
+
+/* MEJORA: Modales más grandes para escritorio */
+@media (min-width: 768px) {
+    .modal-content {
+        max-width: 600px;
+        padding: 2rem;
+    }
+    
+    #decrypted-modal .modal-content {
+        max-width: 600px;
+    }
+    
+    #seed-phrase {
+        min-height: 180px;
+        font-size: 1.05rem;
+    }
+    
+    .seed-words {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.8rem;
+    }
+    
+    .seed-word {
+        padding: 0.8rem 0.5rem;
+        font-size: 0.95rem;
+    }
 }
 
 /* Responsive optimizations */
