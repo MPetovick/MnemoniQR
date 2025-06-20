@@ -4,6 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MnemoniQR - Secure Seed Encryption</title>
+    
+    <!-- PWA Essentials -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00cc99">
+    
+    <!-- Favicons -->
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="script.js" as="script">
+    
+    <!-- External resources -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
@@ -14,7 +29,7 @@
 <body>
     <div class="container">
         <div class="logo">
-            <img src="MQR_logo.png" alt="MnemoniQR Logo" class="logo-icon">
+            <img src="/assets/logo/MQR_logo.png" alt="MnemoniQR Logo" class="logo-icon">
         </div>
         
         <p class="tagline">
@@ -283,5 +298,46 @@
     </footer>
     
     <script src="script.js"></script>
+    
+    <!-- PWA Installation Handler -->
+    <script>
+        // Registrar el evento para instalar la PWA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevenir la notificación automática
+            e.preventDefault();
+            
+            // Guardar el evento para usarlo después
+            const deferredPrompt = e;
+            
+            // Crear un botón de instalación
+            const installButton = document.createElement('button');
+            installButton.textContent = 'Install App';
+            installButton.className = 'btn-primary';
+            installButton.style.marginTop = '1rem';
+            installButton.style.marginBottom = '1rem';
+            installButton.id = 'install-button';
+            
+            // Añadir el botón al contenedor principal
+            document.querySelector('.container').appendChild(installButton);
+            
+            // Evento para instalar cuando se haga clic
+            installButton.addEventListener('click', () => {
+                // Mostrar el prompt de instalación
+                deferredPrompt.prompt();
+                
+                // Esperar a que el usuario responda
+                deferredPrompt.userChoice.then(choiceResult => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Usuario aceptó instalar la PWA');
+                    } else {
+                        console.log('Usuario rechazó instalar la PWA');
+                    }
+                    
+                    // Eliminar el botón después de la elección
+                    installButton.remove();
+                });
+            });
+        });
+    </script>
 </body>
 </html>
