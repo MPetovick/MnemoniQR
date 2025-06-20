@@ -1,3 +1,4 @@
+
 // Compatible configuration
 const CONFIG = {
     PBKDF2_ITERATIONS: 310000,
@@ -114,12 +115,6 @@ function initEventListeners() {
     // Online/offline
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
-
-    // Hide download buttons in Telegram
-    if (isTelegram()) {
-        dom.downloadBtn.style.display = 'none';
-        dom.pdfBtn.style.display = 'none';
-    }
 }
 
 // Modal functions
