@@ -62,19 +62,6 @@ body {
     line-height: 1.6;
 }
 
-.compatibility-badge {
-    background: rgba(0, 204, 153, 0.1);
-    color: #00664d;
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin: 0.4rem 0;
-    font-size: 0.85rem;
-    border: 1px solid rgba(0, 204, 153, 0.3);
-}
-
 .btn-primary {
     background: var(--primary-color);
     color: white;
@@ -724,33 +711,6 @@ footer {
 .suggestion-item i {
     color: var(--accent-color);
     font-size: 0.9rem;
-}
-
-/* MEJORA: Modales más grandes para escritorio */
-@media (min-width: 768px) {
-    .modal-content {
-        max-width: 600px;
-        padding: 2rem;
-    }
-    
-    #decrypted-modal .modal-content {
-        max-width: 600px;
-    }
-    
-    #seed-phrase {
-        min-height: 180px;
-        font-size: 1.05rem;
-    }
-    
-    .seed-words {
-        grid-template-columns: repeat(6, 1fr);
-        gap: 0.8rem;
-    }
-    
-    .seed-word {
-        padding: 0.8rem 0.5rem;
-        font-size: 0.95rem;
-    }
 }
 
 /* Responsive optimizations */
