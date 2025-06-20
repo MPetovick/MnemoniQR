@@ -34,37 +34,10 @@
                 <p class="small">Or click to select an image</p>
                 <input type="file" id="qr-file" accept="image/*" style="display: none;">
             </div>
-            <img id="qr-preview" alt="QR preview">
-            <button id="decrypt-btn" class="btn-primary" style="display: none;">
+            <img id="qr-preview" alt="QR preview" style="display: none;">
+            <button id="decrypt-btn" class="btn-primary" style="display: none; margin-top: 15px;">
                 <i class="fas fa-key"></i> Decrypt Seed
             </button>
-        </div>
-        
-        <div id="qr-container">
-            <div class="qr-wrapper">
-                <div class="hushbox-compatible">
-                    <i class="fas fa-shield-alt"></i> HUSHBOX Compatible
-                </div>
-                <canvas id="qr-canvas"></canvas>
-            </div>
-            
-            <div class="qr-actions">
-                <button id="copy-btn" class="btn-secondary">
-                    <i class="fas fa-copy"></i> Copy QR
-                </button>
-                <button id="download-btn" class="btn-secondary">
-                    <i class="fas fa-download"></i> Download PNG
-                </button>
-                <button id="pdf-btn" class="btn-primary">
-                    <i class="fas fa-file-pdf"></i> Export PDF
-                </button>
-            </div>
-            
-            <div class="security-note">
-                <i class="fas fa-shield-alt"></i>
-                <strong>Important:</strong> QR contains AES-256-GCM encrypted seed. 
-                Store password separately in a secure manager.
-            </div>
         </div>
     </div>
     
@@ -256,6 +229,46 @@
         </div>
     </div>
     
+    <!-- QR Result Modal -->
+    <div id="qr-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Encrypted Seed QR</h2>
+                <p class="modal-subtitle">Store this QR code securely</p>
+                <div class="close-modal" id="close-qr-modal">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            
+            <div id="qr-container">
+                <div class="qr-wrapper">
+                    <div class="hushbox-compatible">
+                        <i class="fas fa-shield-alt"></i> HUSHBOX Compatible
+                    </div>
+                    <canvas id="qr-canvas"></canvas>
+                </div>
+                
+                <div class="qr-actions">
+                    <button id="copy-btn" class="btn-secondary">
+                        <i class="fas fa-copy"></i> Copy QR
+                    </button>
+                    <button id="download-btn" class="btn-secondary">
+                        <i class="fas fa-download"></i> Download PNG
+                    </button>
+                    <button id="pdf-btn" class="btn-primary">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </button>
+                </div>
+                
+                <div class="security-note">
+                    <i class="fas fa-shield-alt"></i>
+                    <strong>Important:</strong> QR contains AES-256-GCM encrypted seed. 
+                    Store password separately in a secure manager.
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div id="toast-container"></div>
     
     <!-- Spinner overlay -->
@@ -265,7 +278,7 @@
     </div>
     
     <footer>
-        <p>MnemoniQR &copy; 2025 | Secure seed encryption for cryptocurrencies</p>
+        <p>MnemoniQR &copy; 2023 | Secure seed encryption for cryptocurrencies</p>
         <p>No data leaves your device. All processing occurs locally.</p>
     </footer>
     
