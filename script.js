@@ -1,6 +1,6 @@
 // Compatible configuration
 const CONFIG = {
-    PBKDF2_ITERATIONS: 1000000,
+    PBKDF2_ITERATIONS: 310000,
     SALT_LENGTH: 32,
     IV_LENGTH: 16,
     AES_KEY_LENGTH: 256,
@@ -53,7 +53,9 @@ const dom = {
     decryptPasswordToggle: document.getElementById('decrypt-password-toggle'),
     decryptSeedBtn: document.getElementById('decrypt-seed-btn'),
     cancelDecryptBtn: document.getElementById('cancel-decrypt-btn'),
-    closePasswordModal: document.getElementById('close-password-modal')
+    closePasswordModal: document.getElementById('close-password-modal'),
+    qrModal: document.getElementById('qr-modal'),
+    closeQRModal: document.getElementById('close-qr-modal')
 };
 
 // App state
@@ -95,6 +97,7 @@ function initEventListeners() {
     dom.cancelDecryptBtn.addEventListener('click', closePasswordModal);
     dom.closePasswordModal.addEventListener('click', closePasswordModal);
     dom.decryptPasswordToggle.addEventListener('click', toggleDecryptPasswordVisibility);
+    dom.closeQRModal.addEventListener('click', closeQRModal);
     
     // Drag and drop
     dom.dropArea.addEventListener('dragover', handleDragOver);
@@ -158,6 +161,21 @@ function closeDecryptedModal() {
 
 function closeWelcomeModal() {
     dom.welcomeModal.style.display = 'none';
+}
+
+function closeQRModal() {
+    dom.qrModal.style.display = 'none';
+    clearQRData();
+}
+
+function clearQRData() {
+    // Clear canvas
+    const ctx = dom.qrCanvas.getContext('2d');
+    ctx.clearRect(0, 0, dom.qrCanvas.width, dom.qrCanvas.height);
+    
+    // Clear sensitive data
+    appState.encryptedData = '';
+    appState.password = '';
 }
 
 // Seed input handling
@@ -335,7 +353,7 @@ async function startEncryption() {
         await generateQR(encrypted);
         
         closeModal();
-        dom.qrContainer.style.display = 'flex';
+        dom.qrModal.style.display = 'flex';
         showToast('Seed encrypted successfully', 'success');
     } catch (error) {
         showToast(`Error: ${error.message}`, 'error');
@@ -505,6 +523,10 @@ function handleFile(file) {
     
     const reader = new FileReader();
     reader.onload = (e) => {
+        // Hide drop area
+        dom.dropArea.style.display = 'none';
+        
+        // Show preview and decrypt button
         dom.qrPreview.src = e.target.result;
         dom.qrPreview.style.display = 'block';
         dom.decryptBtn.style.display = 'block';
