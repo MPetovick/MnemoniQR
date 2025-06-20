@@ -35,7 +35,6 @@ const dom = {
     suggestionsContainer: document.getElementById('bip39-suggestions'),
     dropArea: document.getElementById('drop-area'),
     qrFile: document.getElementById('qr-file'),
-    qrPreview: document.getElementById('qr-preview'),
     decryptBtn: document.getElementById('decrypt-btn'),
     decryptedModal: document.getElementById('decrypted-modal'),
     decryptedSeed: document.getElementById('decrypted-seed'),
@@ -523,14 +522,16 @@ function handleFile(file) {
     
     const reader = new FileReader();
     reader.onload = (e) => {
-        // Hide drop area
-        dom.dropArea.style.display = 'none';
-        
-        // Show preview and decrypt button
-        dom.qrPreview.src = e.target.result;
-        dom.qrPreview.style.display = 'block';
-        dom.decryptBtn.style.display = 'block';
+        // Reset drop area appearance
+        dom.dropArea.classList.remove('drag-over');
         appState.qrImageData = e.target.result;
+        
+        // Reset file input
+        dom.qrFile.value = '';
+        
+        // Show password modal directly
+        showToast('QR code loaded. Enter password to decrypt.', 'success');
+        showPasswordModal();
     };
     reader.readAsDataURL(file);
 }
