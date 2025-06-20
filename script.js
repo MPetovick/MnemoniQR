@@ -1,6 +1,6 @@
 // Compatible configuration
 const CONFIG = {
-    PBKDF2_ITERATIONS: 310000,
+    PBKDF2_ITERATIONS: 1000000,
     SALT_LENGTH: 32,
     IV_LENGTH: 16,
     AES_KEY_LENGTH: 256,
