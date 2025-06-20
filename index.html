@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MnemoniQR - Seed Encryption & Decryption</title>
+    <title>MnemoniQR - Secure Seed Encryption</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
@@ -17,7 +17,7 @@
         </div>
         
         <p class="tagline">
-            Protect your cryptocurrency seeds with AES-256-GCM encryption and store them securely in QR codes
+            Protect your cryptocurrency seeds with AES-256-GCM encryption
         </p>
         
         <button id="start-btn" class="btn-primary">
@@ -62,9 +62,8 @@
             
             <div class="security-note">
                 <i class="fas fa-shield-alt"></i>
-                <strong>Important:</strong> This QR contains your seed encrypted with AES-256-GCM. 
-                You'll need the password you set to decrypt it. We recommend storing the password 
-                separately in a secure password manager.
+                <strong>Important:</strong> QR contains AES-256-GCM encrypted seed. 
+                Store password separately in a secure manager.
             </div>
         </div>
     </div>
@@ -73,7 +72,7 @@
     <div id="seed-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Your Seed Phrase</h2>
+                <h2 class="modal-title">Encrypt Seed Phrase</h2>
                 <p class="modal-subtitle">Enter 12, 18, or 24 words separated by spaces</p>
                 <div class="close-modal">
                     <i class="fas fa-times"></i>
@@ -137,6 +136,38 @@
         </div>
     </div>
     
+    <!-- Password Input Modal -->
+    <div id="password-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Decrypt Seed Phrase</h2>
+                <p class="modal-subtitle">Enter password to decrypt QR code</p>
+                <div class="close-modal" id="close-password-modal">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            
+            <div class="password-section">
+                <div class="input-group">
+                    <label class="input-label" for="decrypt-password">
+                        Encryption Password
+                    </label>
+                    <div class="password-input-container">
+                        <input type="password" id="decrypt-password" class="password-input" placeholder="Enter your password">
+                        <button class="password-toggle" id="decrypt-password-toggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn-secondary" id="cancel-decrypt-btn">Cancel</button>
+                <button class="btn-primary" id="decrypt-seed-btn">Decrypt Seed</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Decrypted Seed Modal -->
     <div id="decrypted-modal" class="modal">
         <div class="modal-content">
@@ -168,7 +199,6 @@
             <div class="security-note">
                 <i class="fas fa-exclamation-triangle"></i>
                 <strong>Important:</strong> This is your unencrypted seed phrase. Keep it secure and don't share it with anyone. 
-                We recommend closing this window after copying the seed.
             </div>
             
             <div class="actions">
