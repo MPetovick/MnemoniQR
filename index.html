@@ -301,43 +301,57 @@
     
     <!-- PWA Installation Handler -->
     <script>
-        // Registrar el evento para instalar la PWA
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevenir la notificación automática
-            e.preventDefault();
-            
-            // Guardar el evento para usarlo después
-            const deferredPrompt = e;
-            
-            // Crear un botón de instalación
-            const installButton = document.createElement('button');
-            installButton.textContent = 'Install App';
-            installButton.className = 'btn-primary';
-            installButton.style.marginTop = '1rem';
-            installButton.style.marginBottom = '1rem';
-            installButton.id = 'install-button';
-            
-            // Añadir el botón al contenedor principal
-            document.querySelector('.container').appendChild(installButton);
-            
-            // Evento para instalar cuando se haga clic
-            installButton.addEventListener('click', () => {
-                // Mostrar el prompt de instalación
-                deferredPrompt.prompt();
-                
-                // Esperar a que el usuario responda
-                deferredPrompt.userChoice.then(choiceResult => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('Usuario aceptó instalar la PWA');
-                    } else {
-                        console.log('Usuario rechazó instalar la PWA');
-                    }
-                    
-                    // Eliminar el botón después de la elección
-                    installButton.remove();
-                });
-            });
+    // Registrar Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registrado con éxito: ', registration.scope);
+          })
+          .catch(error => {
+            console.log('Error al registrar ServiceWorker: ', error);
+          });
+      });
+    }
+
+    // Manejar la instalación PWA
+    let deferredPrompt;
+    const installButton = document.createElement('button');
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Crear botón de instalación
+      installButton.textContent = 'Install App';
+      installButton.className = 'btn-primary';
+      installButton.style.marginTop = '1rem';
+      installButton.style.marginBottom = '1rem';
+      installButton.id = 'install-button';
+      
+      // Agregar botón al contenedor principal
+      document.querySelector('.container').appendChild(installButton);
+      
+      // Evento para instalar
+      installButton.addEventListener('click', () => {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(choiceResult => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('Usuario aceptó instalar la PWA');
+          } else {
+            console.log('Usuario rechazó instalar la PWA');
+          }
+          installButton.remove();
+          deferredPrompt = null;
         });
-    </script>
+      });
+    });
+
+    // Detectar cuando la app está instalada
+    window.addEventListener('appinstalled', () => {
+      console.log('Aplicación instalada con éxito');
+      if (installButton) installButton.remove();
+    });
+</script>
 </body>
 </html>
