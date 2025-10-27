@@ -156,66 +156,31 @@ function resetModalState() {
     hideSuggestions();
 }
 
-// Scanner functions - MEJORADO
+// Scanner functions
 function openScannerModal() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showToast('Camera not supported in this browser. Please use the file upload instead.', 'error');
+        showToast('Camera not supported in this browser', 'error');
         return;
     }
 
     dom.scannerModal.style.display = 'flex';
-    
-    // Opciones mejoradas para la cámara
-    const constraints = {
+    navigator.mediaDevices.getUserMedia({ 
         video: { 
             facingMode: 'environment',
             width: { ideal: 1280 },
             height: { ideal: 720 }
-        },
-        audio: false
-    };
-    
-    // Intentar primero con la cámara trasera, si falla intentar con cualquier cámara
-    navigator.mediaDevices.getUserMedia(constraints)
+        } 
+    })
     .then(stream => {
         appState.videoTrack = stream.getVideoTracks()[0];
         dom.cameraStream.srcObject = stream;
         appState.scannerActive = true;
         startScanningLoop();
-        showToast('Camera activated. Point at QR code.', 'success');
+        showToast('Camera activated - Point at QR code', 'success');
     })
     .catch(err => {
         console.error('Camera error:', err);
-        let errorMessage = 'Could not access camera. ';
-        
-        if (err.name === 'NotAllowedError') {
-            errorMessage += 'Please allow camera permissions and try again.';
-        } else if (err.name === 'NotFoundError') {
-            errorMessage += 'No camera found on this device.';
-        } else if (err.name === 'NotSupportedError') {
-            errorMessage += 'Camera not supported. Please use the file upload.';
-        } else if (err.name === 'OverconstrainedError') {
-            // Intentar con cámara frontal si la trasera no está disponible
-            constraints.video.facingMode = 'user';
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(stream => {
-                    appState.videoTrack = stream.getVideoTracks()[0];
-                    dom.cameraStream.srcObject = stream;
-                    appState.scannerActive = true;
-                    startScanningLoop();
-                    showToast('Camera activated (front camera). Point at QR code.', 'success');
-                })
-                .catch(err2 => {
-                    errorMessage += 'Please use the file upload option.';
-                    showToast(errorMessage, 'error');
-                    closeScannerModal();
-                });
-            return;
-        } else {
-            errorMessage += 'Please use the file upload option.';
-        }
-        
-        showToast(errorMessage, 'error');
+        showToast('Could not access camera: ' + err.message, 'error');
         closeScannerModal();
     });
 }
@@ -232,12 +197,8 @@ function closeScannerModal() {
     appState.scannerActive = false;
     dom.scannerModal.style.display = 'none';
     
-    // Limpieza completa del stream de video
+    // Clear video stream
     if (dom.cameraStream.srcObject) {
-        const tracks = dom.cameraStream.srcObject.getTracks();
-        tracks.forEach(track => {
-            track.stop();
-        });
         dom.cameraStream.srcObject = null;
     }
 }
@@ -252,10 +213,8 @@ function startScanningLoop() {
         const video = dom.cameraStream;
         if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
-        // Usar dimensiones reales del video
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(imageData.data, canvas.width, canvas.height);
@@ -263,44 +222,15 @@ function startScanningLoop() {
         if (code) {
             handleScannedData(code.data);
         }
-    }, 500); // Reducido a 2 escaneos por segundo para mejor performance
+    }, 300); // ~3 scans per second
 }
 
 async function handleScannedData(encryptedBase64) {
-    // Validar que sea un código QR válido de MnemoniQR
-    if (!encryptedBase64 || typeof encryptedBase64 !== 'string') {
-        showToast('Invalid QR code format', 'error');
-        return;
-    }
-    
-    // Validar formato básico (debería ser base64 y tener longitud mínima)
-    if (encryptedBase64.length < 50) {
-        showToast('Invalid QR code: too short', 'error');
-        return;
-    }
-    
-    // Validar que sea base64 válido
-    try {
-        // Intentar decodificar para verificar que es base64 válido
-        const testDecode = atob(encryptedBase64);
-        if (testDecode.length < 32) { // Longitud mínima esperada para datos cifrados
-            showToast('Invalid QR code format', 'error');
-            return;
-        }
-    } catch (e) {
-        showToast('Invalid QR code: not valid base64', 'error');
-        return;
-    }
-    
     closeScannerModal();
     appState.qrImageData = null;
     appState.encryptedData = encryptedBase64;
-    showToast('QR code scanned successfully! Enter password to decrypt.', 'success');
-    
-    // Pequeño delay para que el usuario vea el mensaje
-    setTimeout(() => {
-        showPasswordModal();
-    }, 1000);
+    showToast('QR code scanned successfully', 'success');
+    showPasswordModal();
 }
 
 function showPasswordModal() {
