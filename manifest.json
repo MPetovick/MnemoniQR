@@ -27,5 +27,6 @@
       "type": "image/png"
     }
   ],
-  "features": ["Offline", "Fast", "Secure"]
+  "features": ["Offline", "Fast", "Secure"],
+  "permissions": ["camera"]
 }

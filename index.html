@@ -36,20 +36,34 @@
             Protect your cryptocurrency seeds with AES-256-GCM encryption
         </p>
         
-        <button id="start-btn" class="btn-primary">
-            <i class="fas fa-lock"></i> Encrypt Seed
-        </button>
+        <div class="action-buttons">
+            <button id="start-btn" class="btn-primary">
+                <i class="fas fa-lock"></i> Encrypt Seed
+            </button>
+        </div>
         
         <div class="decrypt-section">
             <h3 class="decrypt-title">
                 <i class="fas fa-unlock"></i> Decrypt Seed
             </h3>
+            
+            <div class="decrypt-options">
+                <button id="scan-btn" class="btn-primary btn-scan">
+                    <i class="fas fa-camera"></i> Scan QR Code
+                </button>
+                
+                <div class="or-divider">
+                    <span>or</span>
+                </div>
+            </div>
+            
             <div class="drop-area" id="drop-area">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <p>Drag and drop your QR code here</p>
                 <p class="small">Or click to select an image</p>
                 <input type="file" id="qr-file" accept="image/*" style="display: none;">
             </div>
+            
             <button id="decrypt-btn" class="btn-primary" style="display: none; margin-top: 15px;">
                 <i class="fas fa-key"></i> Decrypt Seed
             </button>
@@ -284,6 +298,34 @@
         </div>
     </div>
     
+    <!-- Scanner Modal -->
+    <div id="scanner-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Scan QR Code</h2>
+                <p class="modal-subtitle">Point your camera at the QR code</p>
+                <div class="close-modal" id="close-scanner">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            
+            <div class="scanner-container">
+                <video id="camera-stream" autoplay playsinline muted></video>
+            </div>
+            
+            <div class="scanner-actions">
+                <button id="stop-scan-btn" class="btn-secondary">
+                    <i class="fas fa-stop"></i> Stop Scanner
+                </button>
+            </div>
+            
+            <div class="security-note">
+                <i class="fas fa-info-circle"></i>
+                The camera feed is processed locally and never leaves your device.
+            </div>
+        </div>
+    </div>
+    
     <div id="toast-container"></div>
     
     <!-- Spinner overlay -->
@@ -352,6 +394,6 @@
       console.log('Aplicación instalada con éxito');
       if (installButton) installButton.remove();
     });
-</script>
+    </script>
 </body>
 </html>

@@ -62,6 +62,14 @@ body {
     line-height: 1.6;
 }
 
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
 .btn-primary {
     background: var(--primary-color);
     color: white;
@@ -511,12 +519,46 @@ footer {
 
 .decrypt-title {
     font-size: 1.3rem;
-    margin-bottom: 0.8rem;
+    margin-bottom: 1.2rem;
     color: var(--primary-color);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.6rem;
+}
+
+.decrypt-options {
+    margin-bottom: 1.5rem;
+}
+
+.btn-scan {
+    background: var(--accent-color);
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.btn-scan:hover {
+    background: #009977;
+}
+
+.or-divider {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.or-divider::before,
+.or-divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.or-divider span {
+    padding: 0 1rem;
 }
 
 .drop-area {
@@ -637,6 +679,40 @@ footer {
     font-size: 1.05rem;
 }
 
+/* Scanner Modal Styles - CORREGIDO */
+#scanner-modal .modal-content {
+    max-width: 400px;
+    text-align: center;
+}
+
+.scanner-container {
+    position: relative;
+    width: 100%;
+    margin: 1rem 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#camera-stream {
+    width: 100%;
+    max-width: 300px;
+    height: 300px;
+    border-radius: 8px;
+    background: #000;
+    border: 2px solid var(--accent-color);
+    object-fit: cover;
+}
+
+/* QUITAMOS EL OVERLAY QUE OBSTRUÍA LA VISTA */
+.scanner-overlay {
+    display: none; /* Eliminamos el overlay problemático */
+}
+
+.scanner-actions {
+    margin-top: 1rem;
+}
+
 /* Spinner overlay */
 .spinner-overlay {
     display: none;
@@ -719,6 +795,16 @@ footer {
         padding: 0 0.5rem;
     }
     
+    .action-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+    
     .modal-content {
         padding: 1.2rem;
         width: 95%;
@@ -735,11 +821,6 @@ footer {
     .actions, .qr-actions {
         flex-direction: column;
         width: 100%;
-    }
-    
-    .btn-primary, .btn-secondary {
-        width: 100%;
-        justify-content: center;
     }
     
     .seed-words {
@@ -795,6 +876,16 @@ footer {
         top: -6px;
         right: -6px;
     }
+    
+    /* Scanner mobile adjustments */
+    #scanner-modal .modal-content {
+        padding: 1rem;
+    }
+    
+    #camera-stream {
+        max-width: 280px;
+        height: 280px;
+    }
 }
 
 @media (max-width: 400px) {
@@ -826,5 +917,11 @@ footer {
     .word-hint {
         font-size: 0.78rem;
         padding: 0.2rem 0.6rem;
+    }
+    
+    /* Scanner small mobile */
+    #camera-stream {
+        max-width: 250px;
+        height: 250px;
     }
 }

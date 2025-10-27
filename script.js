@@ -1,4 +1,3 @@
-
 // Compatible configuration
 const CONFIG = {
     PBKDF2_ITERATIONS: 310000,
@@ -15,7 +14,9 @@ const CONFIG = {
 // DOM references
 const dom = {
     startBtn: document.getElementById('start-btn'),
+    scanBtn: document.getElementById('scan-btn'),
     seedModal: document.getElementById('seed-modal'),
+    scannerModal: document.getElementById('scanner-modal'),
     closeModal: document.querySelector('.close-modal'),
     cancelBtn: document.getElementById('cancel-btn'),
     seedPhrase: document.getElementById('seed-phrase'),
@@ -55,7 +56,10 @@ const dom = {
     cancelDecryptBtn: document.getElementById('cancel-decrypt-btn'),
     closePasswordModal: document.getElementById('close-password-modal'),
     qrModal: document.getElementById('qr-modal'),
-    closeQRModal: document.getElementById('close-qr-modal')
+    closeQRModal: document.getElementById('close-qr-modal'),
+    cameraStream: document.getElementById('camera-stream'),
+    closeScanner: document.getElementById('close-scanner'),
+    stopScanBtn: document.getElementById('stop-scan-btn')
 };
 
 // App state
@@ -68,7 +72,10 @@ const appState = {
     qrImageData: null,
     bip39Wordlist: null,
     currentWordIndex: -1,
-    currentWordPartial: ''
+    currentWordPartial: '',
+    scannerActive: false,
+    videoTrack: null,
+    scanInterval: null
 };
 
 // Check if running in Telegram
@@ -79,6 +86,7 @@ function isTelegram() {
 // Event Listeners
 function initEventListeners() {
     dom.startBtn.addEventListener('click', showSeedModal);
+    dom.scanBtn.addEventListener('click', openScannerModal);
     dom.closeModal.addEventListener('click', closeModal);
     dom.cancelBtn.addEventListener('click', closeModal);
     dom.seedPhrase.addEventListener('input', handleSeedInput);
@@ -103,6 +111,10 @@ function initEventListeners() {
     dom.closePasswordModal.addEventListener('click', closePasswordModal);
     dom.decryptPasswordToggle.addEventListener('click', toggleDecryptPasswordVisibility);
     dom.closeQRModal.addEventListener('click', closeQRModal);
+    
+    // Scanner events
+    dom.closeScanner.addEventListener('click', closeScannerModal);
+    dom.stopScanBtn.addEventListener('click', closeScannerModal);
     
     // Drag and drop
     dom.dropArea.addEventListener('dragover', handleDragOver);
@@ -144,8 +156,155 @@ function resetModalState() {
     hideSuggestions();
 }
 
+// Scanner functions - MEJORADO
+function openScannerModal() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Camera not supported in this browser. Please use the file upload instead.', 'error');
+        return;
+    }
+
+    dom.scannerModal.style.display = 'flex';
+    
+    // Opciones mejoradas para la cámara
+    const constraints = {
+        video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        },
+        audio: false
+    };
+    
+    // Intentar primero con la cámara trasera, si falla intentar con cualquier cámara
+    navigator.mediaDevices.getUserMedia(constraints)
+    .then(stream => {
+        appState.videoTrack = stream.getVideoTracks()[0];
+        dom.cameraStream.srcObject = stream;
+        appState.scannerActive = true;
+        startScanningLoop();
+        showToast('Camera activated. Point at QR code.', 'success');
+    })
+    .catch(err => {
+        console.error('Camera error:', err);
+        let errorMessage = 'Could not access camera. ';
+        
+        if (err.name === 'NotAllowedError') {
+            errorMessage += 'Please allow camera permissions and try again.';
+        } else if (err.name === 'NotFoundError') {
+            errorMessage += 'No camera found on this device.';
+        } else if (err.name === 'NotSupportedError') {
+            errorMessage += 'Camera not supported. Please use the file upload.';
+        } else if (err.name === 'OverconstrainedError') {
+            // Intentar con cámara frontal si la trasera no está disponible
+            constraints.video.facingMode = 'user';
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    appState.videoTrack = stream.getVideoTracks()[0];
+                    dom.cameraStream.srcObject = stream;
+                    appState.scannerActive = true;
+                    startScanningLoop();
+                    showToast('Camera activated (front camera). Point at QR code.', 'success');
+                })
+                .catch(err2 => {
+                    errorMessage += 'Please use the file upload option.';
+                    showToast(errorMessage, 'error');
+                    closeScannerModal();
+                });
+            return;
+        } else {
+            errorMessage += 'Please use the file upload option.';
+        }
+        
+        showToast(errorMessage, 'error');
+        closeScannerModal();
+    });
+}
+
+function closeScannerModal() {
+    if (appState.videoTrack) {
+        appState.videoTrack.stop();
+        appState.videoTrack = null;
+    }
+    if (appState.scanInterval) {
+        clearInterval(appState.scanInterval);
+        appState.scanInterval = null;
+    }
+    appState.scannerActive = false;
+    dom.scannerModal.style.display = 'none';
+    
+    // Limpieza completa del stream de video
+    if (dom.cameraStream.srcObject) {
+        const tracks = dom.cameraStream.srcObject.getTracks();
+        tracks.forEach(track => {
+            track.stop();
+        });
+        dom.cameraStream.srcObject = null;
+    }
+}
+
+function startScanningLoop() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    appState.scanInterval = setInterval(() => {
+        if (!appState.scannerActive) return;
+
+        const video = dom.cameraStream;
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+        // Usar dimensiones reales del video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+        if (code) {
+            handleScannedData(code.data);
+        }
+    }, 500); // Reducido a 2 escaneos por segundo para mejor performance
+}
+
+async function handleScannedData(encryptedBase64) {
+    // Validar que sea un código QR válido de MnemoniQR
+    if (!encryptedBase64 || typeof encryptedBase64 !== 'string') {
+        showToast('Invalid QR code format', 'error');
+        return;
+    }
+    
+    // Validar formato básico (debería ser base64 y tener longitud mínima)
+    if (encryptedBase64.length < 50) {
+        showToast('Invalid QR code: too short', 'error');
+        return;
+    }
+    
+    // Validar que sea base64 válido
+    try {
+        // Intentar decodificar para verificar que es base64 válido
+        const testDecode = atob(encryptedBase64);
+        if (testDecode.length < 32) { // Longitud mínima esperada para datos cifrados
+            showToast('Invalid QR code format', 'error');
+            return;
+        }
+    } catch (e) {
+        showToast('Invalid QR code: not valid base64', 'error');
+        return;
+    }
+    
+    closeScannerModal();
+    appState.qrImageData = null;
+    appState.encryptedData = encryptedBase64;
+    showToast('QR code scanned successfully! Enter password to decrypt.', 'success');
+    
+    // Pequeño delay para que el usuario vea el mensaje
+    setTimeout(() => {
+        showPasswordModal();
+    }, 1000);
+}
+
 function showPasswordModal() {
-    if (!appState.qrImageData) {
+    if (!appState.encryptedData && !appState.qrImageData) {
         showToast('First load a QR code', 'error');
         return;
     }
@@ -597,25 +756,31 @@ function handleFile(file) {
 
 async function decryptQR() {
     try {
-        if (!appState.qrImageData) {
+        if (!appState.encryptedData && !appState.qrImageData) {
             throw new Error('First load a QR code');
         }
+
+        let encryptedData = appState.encryptedData;
         
-        const img = new Image();
-        img.src = appState.qrImageData;
-        await img.decode();
-        
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-        
-        if (!code) {
-            throw new Error('Could not read QR code');
+        // If we have image data but no encrypted data, scan the image
+        if (appState.qrImageData && !encryptedData) {
+            const img = new Image();
+            img.src = appState.qrImageData;
+            await img.decode();
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            
+            if (!code) {
+                throw new Error('Could not read QR code');
+            }
+            encryptedData = code.data;
         }
         
         const password = dom.decryptPassword.value;
@@ -624,7 +789,7 @@ async function decryptQR() {
         }
         
         showSpinner(true);
-        const decrypted = await cryptoUtils.decryptMessage(code.data, password);
+        const decrypted = await cryptoUtils.decryptMessage(encryptedData, password);
         showDecryptedSeed(decrypted);
         closePasswordModal();
         
