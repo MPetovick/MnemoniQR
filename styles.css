@@ -679,7 +679,7 @@ footer {
     font-size: 1.05rem;
 }
 
-/* Scanner Modal Styles - CORREGIDO */
+/* Scanner Modal Styles */
 #scanner-modal .modal-content {
     max-width: 400px;
     text-align: center;
@@ -704,9 +704,8 @@ footer {
     object-fit: cover;
 }
 
-/* QUITAMOS EL OVERLAY QUE OBSTRUÍA LA VISTA */
 .scanner-overlay {
-    display: none; /* Eliminamos el overlay problemático */
+    display: none;
 }
 
 .scanner-actions {
@@ -778,6 +777,233 @@ footer {
 .suggestion-item i {
     color: var(--accent-color);
     font-size: 0.9rem;
+}
+
+/* Security Verification Section */
+.security-verification {
+    background: rgba(0, 204, 153, 0.05);
+    border: 1px solid rgba(0, 204, 153, 0.2);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.verification-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+}
+
+.verification-step {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.verification-step.verified i {
+    color: var(--success-color);
+}
+
+.verification-step.pending i {
+    color: var(--warning-color);
+}
+
+.hmac-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.8rem;
+    font-size: 0.9rem;
+}
+
+.info-item {
+    padding: 0.5rem;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-color);
+}
+
+/* Integrity Badge */
+.integrity-badge {
+    background: linear-gradient(135deg, var(--success-color), #00a87e);
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 25px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 204, 153, 0.3);
+}
+
+/* Enhanced Security Notes */
+.security-note.success {
+    background: rgba(0, 204, 153, 0.1);
+    border-left-color: var(--success-color);
+}
+
+.security-note.warning {
+    background: rgba(243, 156, 18, 0.1);
+    border-left-color: var(--warning-color);
+}
+
+.security-note.error {
+    background: rgba(231, 76, 60, 0.1);
+    border-left-color: var(--error-color);
+}
+
+/* User Message Section */
+.user-message-section {
+    margin: 1.5rem 0;
+    padding: 1.2rem;
+    background: rgba(0, 204, 153, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 204, 153, 0.2);
+}
+
+.message-counter {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.4rem;
+}
+
+/* Metadata Section */
+.metadata-section {
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 8px;
+    padding: 1.2rem;
+    margin: 1.5rem 0;
+    border: 1px solid var(--border-color);
+}
+
+.metadata-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.8rem;
+}
+
+.metadata-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.metadata-item strong {
+    color: var(--text-color);
+}
+
+.user-message-content {
+    grid-column: 1 / -1;
+    background: white;
+    padding: 0.8rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-color);
+    font-style: italic;
+    color: #555;
+}
+
+/* Modification History */
+.modification-history {
+    margin-top: 1rem;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    margin: 0.3rem 0;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.history-count {
+    background: var(--accent-color);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+/* Warning for high modification count */
+.high-modification-warning {
+    background: rgba(243, 156, 18, 0.1);
+    border-left: 4px solid var(--warning-color);
+    padding: 0.8rem;
+    border-radius: 6px;
+    margin-top: 0.8rem;
+    font-size: 0.85rem;
+}
+
+/* Failed attempts warning */
+.failed-attempts-warning {
+    background: rgba(231, 76, 60, 0.1);
+    border-left: 4px solid var(--error-color);
+    padding: 0.8rem;
+    border-radius: 6px;
+    margin-top: 0.8rem;
+    font-size: 0.85rem;
+}
+
+/* HMAC Progress Indicator */
+.hmac-progress {
+    width: 100%;
+    height: 4px;
+    background: #eee;
+    border-radius: 2px;
+    margin: 0.5rem 0;
+    overflow: hidden;
+}
+
+.hmac-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-color), var(--success-color));
+    transition: width 0.3s ease;
+    border-radius: 2px;
+}
+
+/* Technical Details Expandable */
+.technical-details {
+    margin-top: 1rem;
+}
+
+.details-toggle {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.8rem;
+}
+
+.details-content {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-family: monospace;
+    font-size: 0.8rem;
+    overflow-x: auto;
+    display: none;
+}
+
+.details-content.show {
+    display: block;
 }
 
 /* Responsive optimizations */
@@ -885,6 +1111,41 @@ footer {
     #camera-stream {
         max-width: 280px;
         height: 280px;
+    }
+    
+    /* Metadata responsive */
+    .security-verification {
+        padding: 1rem;
+    }
+    
+    .hmac-info {
+        grid-template-columns: 1fr;
+    }
+    
+    .verification-step {
+        font-size: 0.85rem;
+    }
+    
+    .integrity-badge {
+        font-size: 0.8rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .metadata-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .metadata-item {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+    
+    .user-message-section {
+        padding: 1rem;
+    }
+    
+    .user-message-content {
+        grid-column: 1;
     }
 }
 

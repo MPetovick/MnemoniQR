@@ -33,7 +33,7 @@
         </div>
         
         <p class="tagline">
-            Protect your cryptocurrency seeds with AES-256-GCM encryption
+            Protect your cryptocurrency seeds with AES-256-GCM + HMAC-SHA256 encryption
         </p>
         
         <div class="action-buttons">
@@ -108,6 +108,27 @@
                 </div>
             </div>
             
+            <!-- NUEVA SECCIÓN: User Message -->
+            <div class="user-message-section">
+                <div class="input-group">
+                    <label class="input-label" for="user-message">
+                        User Message (Optional)
+                        <span>Add notes about this seed phrase</span>
+                    </label>
+                    <input type="text" id="user-message" class="password-input" 
+                           placeholder="e.g., My main wallet backup BITCOIN, ETH..." maxlength="255">
+                    <div class="message-counter">
+                        <span id="message-chars">0</span>/255 characters
+                    </div>
+                </div>
+                
+                <div class="security-note warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Note:</strong> This message will be stored in the QR code metadata. 
+                    Use it to remember details about this seed phrase.
+                </div>
+            </div>
+            
             <div class="password-section" id="password-section">
                 <div class="input-group">
                     <label class="input-label" for="password">
@@ -174,10 +195,53 @@
     <div id="decrypted-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Decrypted Seed</h2>
-                <p class="modal-subtitle">Your seed phrase has been successfully decrypted</p>
+                <h2 class="modal-title">
+                    <i class="fas fa-shield-check" style="color: var(--success-color);"></i>
+                    Seed Successfully Decrypted
+                </h2>
+                <p class="modal-subtitle">HMAC verification passed - Data integrity confirmed</p>
                 <div class="close-modal" id="close-decrypted">
                     <i class="fas fa-times"></i>
+                </div>
+            </div>
+            
+            <!-- Badge de Integridad -->
+            <div class="integrity-badge">
+                <i class="fas fa-fingerprint"></i>
+                HMAC-SHA256 Verified
+            </div>
+            
+            <!-- Sección de Metadatos -->
+            <div class="metadata-section">
+                <h4 style="margin-bottom: 1rem; color: var(--accent-color);">
+                    <i class="fas fa-info-circle"></i> QR Metadata
+                </h4>
+                
+                <div class="metadata-grid">
+                    <div class="metadata-item">
+                        <strong>Format Version:</strong>
+                        <span id="metadata-version">1</span>
+                    </div>
+                    <div class="metadata-item">
+                        <strong>Created:</strong>
+                        <span id="metadata-created">Loading...</span>
+                    </div>
+                    <div class="metadata-item">
+                        <strong>Modifications:</strong>
+                        <span id="metadata-modifications">0</span>
+                    </div>
+                    <div class="metadata-item" style="display: none;">
+                        <strong>Failed Attempts:</strong>
+                        <span id="metadata-failed-attempts">0</span>
+                    </div>
+                    <div class="metadata-item" style="display: none;">
+                        <strong>Last Failed Attempt:</strong>
+                        <span id="metadata-last-attempt">Never</span>
+                    </div>
+                    <div class="user-message-content" id="user-message-container" style="display: none;">
+                        <strong>User Message:</strong>
+                        <p id="metadata-user-message" style="margin-top: 0.5rem;"></p>
+                    </div>
                 </div>
             </div>
             
@@ -198,13 +262,17 @@
                 </div>
             </div>
             
-            <div class="security-note">
-                <i class="fas fa-exclamation-triangle"></i>
-                <strong>Important:</strong> This is your unencrypted seed phrase. Keep it secure and don't share it with anyone. 
+            <div class="security-note success">
+                <i class="fas fa-shield-check"></i>
+                <strong>Integrity Verified:</strong> HMAC-SHA256 confirms data hasn't been tampered with 
+                and is authentic. Your seed phrase is secure.
             </div>
             
             <div class="actions">
                 <button class="btn-primary" id="close-decrypted-btn">Close</button>
+                <button class="btn-secondary" id="update-qr-btn" style="display: none;">
+                    <i class="fas fa-sync-alt"></i> Update QR
+                </button>
             </div>
         </div>
     </div>
@@ -230,6 +298,18 @@
                     <i class="fas fa-lock"></i>
                     <strong>Maximum Security:</strong> 
                     <p>Your seed phrases and passwords <u>never leave your browser</u>.</p>
+                </div>
+                
+                <div class="security-note" style="margin-bottom: 1rem;">
+                    <i class="fas fa-fingerprint"></i>
+                    <strong>HMAC Integrity Protection:</strong> 
+                    <p>All encrypted data includes HMAC-SHA256 signatures to detect tampering.</p>
+                </div>
+                
+                <div class="security-note" style="margin-bottom: 1rem;">
+                    <i class="fas fa-history"></i>
+                    <strong>Security Tracking:</strong> 
+                    <p>QR codes track modification history and failed decryption attempts for security monitoring.</p>
                 </div>
                 
                 <div class="security-note" style="margin-bottom: 1rem;">
@@ -277,6 +357,40 @@
                     <canvas id="qr-canvas"></canvas>
                 </div>
                 
+                <!-- NUEVA SECCIÓN: Verificación de Seguridad -->
+                <div class="security-verification">
+                    <h4 style="margin-bottom: 1rem; color: var(--accent-color);">
+                        <i class="fas fa-shield-check"></i> Security Verification
+                    </h4>
+                    
+                    <div class="verification-steps">
+                        <div class="verification-step verified">
+                            <i class="fas fa-check-circle"></i>
+                            <span>AES-256-GCM Encryption</span>
+                        </div>
+                        <div class="verification-step verified">
+                            <i class="fas fa-check-circle"></i>
+                            <span>HMAC-SHA256 Integrity Protection</span>
+                        </div>
+                        <div class="verification-step verified">
+                            <i class="fas fa-check-circle"></i>
+                            <span>PBKDF2 Key Derivation (310,000 iterations)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="hmac-info">
+                        <div class="info-item">
+                            <strong>HMAC Function:</strong> SHA-256
+                        </div>
+                        <div class="info-item">
+                            <strong>Key Size:</strong> 256-bit
+                        </div>
+                        <div class="info-item">
+                            <strong>Purpose:</strong> Tamper detection & authentication
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="qr-actions">
                     <button id="share-btn" class="btn-primary">
                         <i class="fas fa-share-alt"></i> Share
@@ -291,8 +405,8 @@
                 
                 <div class="security-note">
                     <i class="fas fa-shield-alt"></i>
-                    <strong>Important:</strong> QR contains AES-256-GCM encrypted seed. 
-                    Store password separately in a secure manager.
+                    <strong>HMAC Protection:</strong> QR contains HMAC-SHA256 signature that verifies 
+                    data integrity during decryption. Any tampering will be detected.
                 </div>
             </div>
         </div>

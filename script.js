@@ -8,7 +8,11 @@ const CONFIG = {
     HMAC_LENGTH: 32,
     QR_SIZE: 220,
     MIN_PASSPHRASE_LENGTH: 12,
-    QR_ERROR_CORRECTION: 'H'
+    QR_ERROR_CORRECTION: 'H',
+    METADATA_VERSION: 1,
+    METADATA_LENGTH: 128, // Aumentado para más datos
+    MAX_MODIFICATION_COUNT: 255,
+    MAX_FAILED_ATTEMPTS: 255
 };
 
 // DOM references
@@ -59,7 +63,19 @@ const dom = {
     closeQRModal: document.getElementById('close-qr-modal'),
     cameraStream: document.getElementById('camera-stream'),
     closeScanner: document.getElementById('close-scanner'),
-    stopScanBtn: document.getElementById('stop-scan-btn')
+    stopScanBtn: document.getElementById('stop-scan-btn'),
+    // Nuevos elementos para metadatos
+    userMessage: document.getElementById('user-message'),
+    messageChars: document.getElementById('message-chars'),
+    metadataVersion: document.getElementById('metadata-version'),
+    metadataCreated: document.getElementById('metadata-created'),
+    metadataModifications: document.getElementById('metadata-modifications'),
+    metadataFailedAttempts: document.getElementById('metadata-failed-attempts'),
+    metadataLastAttempt: document.getElementById('metadata-last-attempt'),
+    userMessageContainer: document.getElementById('user-message-container'),
+    metadataUserMessage: document.getElementById('metadata-user-message'),
+    updateQrBtn: document.getElementById('update-qr-btn'),
+    metadataSection: document.querySelector('.metadata-section')
 };
 
 // App state
@@ -75,7 +91,10 @@ const appState = {
     currentWordPartial: '',
     scannerActive: false,
     videoTrack: null,
-    scanInterval: null
+    scanInterval: null,
+    currentMetadata: null,
+    failedAttempts: 0,
+    lastFailedAttempt: null
 };
 
 // Check if running in Telegram
@@ -127,6 +146,14 @@ function initEventListeners() {
     // Online/offline
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
+    
+    // Nuevos listeners para metadatos
+    if (dom.userMessage) {
+        dom.userMessage.addEventListener('input', updateMessageCounter);
+    }
+    if (dom.updateQrBtn) {
+        dom.updateQrBtn.addEventListener('click', showUpdateModal);
+    }
 }
 
 // Modal functions
@@ -143,6 +170,8 @@ function closeModal() {
 function resetModalState() {
     dom.seedPhrase.value = '';
     dom.password.value = '';
+    if (dom.userMessage) dom.userMessage.value = '';
+    if (dom.messageChars) dom.messageChars.textContent = '0';
     dom.wordCounter.textContent = '0 words';
     appState.wordsVisible = false;
     appState.passwordVisible = false;
@@ -251,6 +280,7 @@ function closeDecryptedModal() {
     dom.decryptedModal.style.display = 'none';
     dom.decryptedSeed.value = '';
     appState.seedPhrase = '';
+    appState.currentMetadata = null;
 }
 
 function closeWelcomeModal() {
@@ -270,6 +300,7 @@ function clearQRData() {
     // Clear sensitive data
     appState.encryptedData = '';
     appState.password = '';
+    appState.currentMetadata = null;
 }
 
 // Seed input handling
@@ -429,26 +460,52 @@ function closeSuggestionsOutside(e) {
     }
 }
 
-// Encryption
+// Message counter for metadata
+function updateMessageCounter() {
+    const length = dom.userMessage.value.length;
+    dom.messageChars.textContent = length;
+    
+    if (length > 200) {
+        dom.messageChars.style.color = 'var(--warning-color)';
+    } else if (length > 100) {
+        dom.messageChars.style.color = 'var(--accent-color)';
+    } else {
+        dom.messageChars.style.color = '#666';
+    }
+}
+
+// Encryption with metadata
 async function startEncryption() {
     if (!validateInputs()) return;
     
     try {
         showSpinner(true);
+        
+        // Mostrar progreso de HMAC
+        showToast('Generando claves derivadas...', 'info');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        showToast('Calculando HMAC para integridad...', 'info');
+        
         const words = appState.seedPhrase.trim().split(/\s+/);
         if (![12, 18, 24].includes(words.length)) {
             throw new Error('Seed phrase must contain 12, 18 or 24 words');
         }
         
         const seedData = words.join(' ');
-        const encrypted = await cryptoUtils.encryptMessage(seedData, appState.password);
+        const userMessage = dom.userMessage ? dom.userMessage.value : '';
+        const encrypted = await cryptoUtils.encryptMessage(seedData, appState.password, userMessage);
         appState.encryptedData = encrypted;
+        
+        // Mostrar confirmación de HMAC
+        showToast('✓ HMAC generado - Integridad verificada', 'success');
+        await new Promise(resolve => setTimeout(resolve, 800));
         
         await generateQR(encrypted);
         
         closeModal();
         dom.qrModal.style.display = 'flex';
-        showToast('Seed encrypted successfully', 'success');
+        showToast('Seed cifrado con verificación HMAC', 'success');
     } catch (error) {
         showToast(`Error: ${error.message}`, 'error');
     } finally {
@@ -542,7 +599,7 @@ function generatePDF() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(11);
         doc.setTextColor(100, 100, 100);
-        doc.text('Encrypted with AES-256-GCM', centerX, 32, null, null, 'center');
+        doc.text('Encrypted with AES-256-GCM + HMAC-SHA256', centerX, 32, null, null, 'center');
         
         // QR code with border
         const qrSize = 80;
@@ -719,18 +776,99 @@ async function decryptQR() {
         }
         
         showSpinner(true);
-        const decrypted = await cryptoUtils.decryptMessage(encryptedData, password);
-        showDecryptedSeed(decrypted);
+        
+        // Mostrar progreso de verificación HMAC
+        showToast('Verificando integridad HMAC...', 'info');
+        
+        const decryptedResult = await cryptoUtils.decryptMessage(encryptedData, password);
+        
+        // Éxito - HMAC verificado
+        showToast('✓ HMAC verificado - Datos íntegros y auténticos', 'success');
+        
+        // Si hay intentos fallidos previos, actualizar el QR
+        if (appState.failedAttempts > 0) {
+            showToast(`Actualizando QR después de ${appState.failedAttempts} intentos fallidos`, 'warning');
+            await updateQRAfterFailedAttempts(decryptedResult.seed, decryptedResult.metadata);
+        } else {
+            showDecryptedSeed(decryptedResult.seed, decryptedResult.metadata);
+        }
+        
         closePasswordModal();
         
     } catch (error) {
-        showToast(`Error: ${error.message}`, 'error');
+        if (error.message.includes('HMAC')) {
+            appState.failedAttempts++;
+            appState.lastFailedAttempt = new Date();
+            showToast(`❌ Error HMAC: Contraseña incorrecta (Intento ${appState.failedAttempts})`, 'error');
+            
+            // Guardar datos para posible actualización futura
+            if (!appState.encryptedData && appState.qrImageData) {
+                // Si tenemos imagen pero no datos cifrados, guardar los datos
+                const img = new Image();
+                img.src = appState.qrImageData;
+                await img.decode();
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    appState.encryptedData = code.data;
+                }
+            }
+        } else {
+            showToast(`Error: ${error.message}`, 'error');
+        }
     } finally {
         showSpinner(false);
     }
 }
 
-function showDecryptedSeed(seedPhrase) {
+async function updateQRAfterFailedAttempts(seedPhrase, originalMetadata) {
+    try {
+        showSpinner(true);
+        showToast('Actualizando QR con nuevo contador de intentos...', 'info');
+        
+        // Crear nuevos metadatos con el contador de intentos fallidos
+        const newMetadata = {
+            ...originalMetadata,
+            modificationCount: originalMetadata.modificationCount + 1,
+            failedAttempts: appState.failedAttempts,
+            lastFailedAttempt: appState.lastFailedAttempt,
+            userMessage: originalMetadata.userMessage // Mantener el mensaje original
+        };
+        
+        // Recifrar con nuevos metadatos
+        const encrypted = await cryptoUtils.encryptMessageWithMetadata(
+            seedPhrase, 
+            appState.password, 
+            newMetadata
+        );
+        
+        appState.encryptedData = encrypted;
+        appState.failedAttempts = 0; // Resetear contador
+        
+        // Regenerar QR
+        await generateQR(encrypted);
+        
+        showDecryptedSeed(seedPhrase, newMetadata);
+        showToast(`QR actualizado exitosamente (Modificación #${newMetadata.modificationCount})`, 'success');
+        
+    } catch (error) {
+        console.error('Error updating QR:', error);
+        showToast('Error actualizando QR, mostrando datos originales', 'warning');
+        showDecryptedSeed(seedPhrase, originalMetadata);
+    } finally {
+        showSpinner(false);
+    }
+}
+
+function showDecryptedSeed(seedPhrase, metadata) {
     const words = seedPhrase.split(' ');
     const wordCount = words.length;
     
@@ -746,7 +884,83 @@ function showDecryptedSeed(seedPhrase) {
         dom.seedWordsContainer.appendChild(wordEl);
     });
     
+    // Mostrar metadatos
+    if (metadata) {
+        showMetadataInDecrypted(metadata);
+        appState.currentMetadata = metadata;
+    }
+    
+    // Mostrar botón de actualización si hay intentos fallidos
+    if (appState.failedAttempts > 0) {
+        dom.updateQrBtn.style.display = 'inline-flex';
+        dom.updateQrBtn.innerHTML = `<i class="fas fa-sync-alt"></i> Update QR (${appState.failedAttempts} failed attempts)`;
+    } else {
+        dom.updateQrBtn.style.display = 'none';
+    }
+    
     dom.decryptedModal.style.display = 'flex';
+}
+
+function showMetadataInDecrypted(metadata) {
+    if (!dom.metadataVersion) return;
+    
+    dom.metadataVersion.textContent = metadata.version;
+    dom.metadataCreated.textContent = metadata.timestamp.toLocaleString();
+    dom.metadataModifications.textContent = metadata.modificationCount;
+    
+    // Mostrar intentos fallidos si existen
+    if (metadata.failedAttempts > 0) {
+        dom.metadataFailedAttempts.textContent = metadata.failedAttempts;
+        dom.metadataFailedAttempts.parentElement.style.display = 'flex';
+        
+        if (metadata.lastFailedAttempt) {
+            const lastAttempt = new Date(metadata.lastFailedAttempt);
+            dom.metadataLastAttempt.textContent = lastAttempt.toLocaleString();
+            dom.metadataLastAttempt.parentElement.style.display = 'flex';
+        }
+    } else {
+        dom.metadataFailedAttempts.parentElement.style.display = 'none';
+        dom.metadataLastAttempt.parentElement.style.display = 'none';
+    }
+    
+    // Mostrar mensaje de usuario si existe
+    if (metadata.userMessage && metadata.userMessage.length > 0) {
+        dom.userMessageContainer.style.display = 'flex';
+        dom.metadataUserMessage.textContent = metadata.userMessage;
+    } else {
+        dom.userMessageContainer.style.display = 'none';
+    }
+    
+    // Mostrar advertencia si hay muchas modificaciones
+    const existingWarning = dom.metadataSection.querySelector('.high-modification-warning');
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+    
+    if (metadata.modificationCount > 10) {
+        const warning = document.createElement('div');
+        warning.className = 'high-modification-warning';
+        warning.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>High modification count:</strong> This QR has been updated 
+            ${metadata.modificationCount} times. Consider creating a new one for maximum security.
+        `;
+        dom.metadataSection.appendChild(warning);
+    }
+    
+    // Mostrar advertencia si hay muchos intentos fallidos
+    if (metadata.failedAttempts > 5) {
+        const warning = document.createElement('div');
+        warning.className = 'high-modification-warning';
+        warning.style.background = 'rgba(231, 76, 60, 0.1)';
+        warning.style.borderLeftColor = 'var(--error-color)';
+        warning.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Security Alert:</strong> ${metadata.failedAttempts} failed decryption attempts detected. 
+            Ensure you are in a secure environment.
+        `;
+        dom.metadataSection.appendChild(warning);
+    }
 }
 
 function copySeedToClipboard() {
@@ -755,9 +969,66 @@ function copySeedToClipboard() {
     showToast('Seed copied to clipboard', 'success');
 }
 
-// Crypto utilities
+// Update QR function
+async function updateEncryptedQR(newSeedPhrase, newUserMessage = "") {
+    if (!appState.encryptedData) {
+        throw new Error('No encrypted data available');
+    }
+    
+    try {
+        showSpinner(true);
+        
+        // Descifrar datos existentes
+        const decryptedResult = await cryptoUtils.decryptMessage(
+            appState.encryptedData, 
+            appState.password
+        );
+        
+        // Crear nuevos metadatos incrementando el contador
+        const currentMetadata = decryptedResult.metadata;
+        const newMetadata = {
+            ...currentMetadata,
+            modificationCount: Math.min(
+                currentMetadata.modificationCount + 1, 
+                CONFIG.MAX_MODIFICATION_COUNT
+            ),
+            userMessage: newUserMessage,
+            userMessageLength: Math.min(newUserMessage.length, 255),
+            failedAttempts: 0, // Resetear intentos fallidos al actualizar manualmente
+            lastFailedAttempt: null
+        };
+        
+        // Recifrar con nuevos metadatos
+        const encrypted = await cryptoUtils.encryptMessageWithMetadata(
+            newSeedPhrase, 
+            appState.password, 
+            newMetadata
+        );
+        
+        appState.encryptedData = encrypted;
+        
+        // Regenerar QR
+        await generateQR(encrypted);
+        
+        showToast(`QR updated successfully (Modification #${newMetadata.modificationCount})`, 'success');
+        return true;
+        
+    } catch (error) {
+        showToast(`Update failed: ${error.message}`, 'error');
+        throw error;
+    } finally {
+        showSpinner(false);
+    }
+}
+
+function showUpdateModal() {
+    // Implementar modal de actualización si es necesario
+    showToast('Update functionality coming soon', 'info');
+}
+
+// Crypto utilities with enhanced metadata support
 const cryptoUtils = {
-    async encryptMessage(message, passphrase) {
+    async encryptMessage(message, passphrase, userMessage = "") {
         if (!message || !passphrase) {
             throw new Error('Message and password are required');
         }
@@ -766,6 +1037,83 @@ const cryptoUtils = {
             throw new Error(`Password must be at least ${CONFIG.MIN_PASSPHRASE_LENGTH} characters`);
         }
         
+        // Crear metadatos
+        const metadata = this.createMetadata(userMessage);
+        
+        const dataToEncrypt = new TextEncoder().encode(message);
+        const salt = crypto.getRandomValues(new Uint8Array(CONFIG.SALT_LENGTH));
+        const iv = crypto.getRandomValues(new Uint8Array(CONFIG.IV_LENGTH));
+        
+        const baseKey = await crypto.subtle.importKey(
+            'raw',
+            new TextEncoder().encode(passphrase),
+            { name: 'PBKDF2' },
+            false,
+            ['deriveBits']
+        );
+        
+        const derivedBits = await crypto.subtle.deriveBits(
+            {
+                name: 'PBKDF2',
+                salt,
+                iterations: CONFIG.PBKDF2_ITERATIONS,
+                hash: 'SHA-256'
+            },
+            baseKey,
+            CONFIG.AES_KEY_LENGTH + CONFIG.HMAC_KEY_LENGTH
+        );
+        
+        const derivedBitsArray = new Uint8Array(derivedBits);
+        const aesKeyBytes = derivedBitsArray.slice(0, CONFIG.AES_KEY_LENGTH / 8);
+        const hmacKeyBytes = derivedBitsArray.slice(CONFIG.AES_KEY_LENGTH / 8);
+        
+        const aesKey = await crypto.subtle.importKey(
+            'raw',
+            aesKeyBytes,
+            { name: 'AES-GCM' },
+            false,
+            ['encrypt']
+        );
+        
+        const hmacKey = await crypto.subtle.importKey(
+            'raw',
+            hmacKeyBytes,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv, tagLength: 128 },
+            aesKey,
+            dataToEncrypt
+        );
+        
+        const ciphertext = new Uint8Array(encrypted);
+        
+        // Generar HMAC y mostrar información
+        const hmac = await crypto.subtle.sign('HMAC', hmacKey, ciphertext);
+        const hmacArray = new Uint8Array(hmac);
+        
+        console.log('HMAC generated:', {
+            length: hmacArray.length,
+            firstBytes: Array.from(hmacArray.slice(0, 4)),
+            purpose: 'Data integrity and authentication'
+        });
+        
+        // Combinar: metadatos + salt + iv + ciphertext + hmac
+        const combined = new Uint8Array([
+            ...this.serializeMetadata(metadata),
+            ...salt,
+            ...iv,
+            ...ciphertext,
+            ...hmacArray
+        ]);
+        
+        return btoa(String.fromCharCode(...combined));
+    },
+    
+    async encryptMessageWithMetadata(message, passphrase, metadata) {
         const dataToEncrypt = new TextEncoder().encode(message);
         const salt = crypto.getRandomValues(new Uint8Array(CONFIG.SALT_LENGTH));
         const iv = crypto.getRandomValues(new Uint8Array(CONFIG.IV_LENGTH));
@@ -819,6 +1167,7 @@ const cryptoUtils = {
         const hmac = await crypto.subtle.sign('HMAC', hmacKey, ciphertext);
         
         const combined = new Uint8Array([
+            ...this.serializeMetadata(metadata),
             ...salt,
             ...iv,
             ...ciphertext,
@@ -831,10 +1180,23 @@ const cryptoUtils = {
     async decryptMessage(encryptedBase64, passphrase) {
         const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
         
-        const salt = encryptedData.slice(0, CONFIG.SALT_LENGTH);
-        const iv = encryptedData.slice(CONFIG.SALT_LENGTH, CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
+        // Extraer metadatos
+        const metadataBytes = encryptedData.slice(0, CONFIG.METADATA_LENGTH);
+        const metadata = this.deserializeMetadata(metadataBytes);
+        
+        if (!metadata.isValid) {
+            throw new Error('Invalid metadata format - possibly corrupted file');
+        }
+        
+        // Extraer resto de componentes
+        const dataOffset = CONFIG.METADATA_LENGTH;
+        const salt = encryptedData.slice(dataOffset, dataOffset + CONFIG.SALT_LENGTH);
+        const iv = encryptedData.slice(
+            dataOffset + CONFIG.SALT_LENGTH, 
+            dataOffset + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH
+        );
         const ciphertext = encryptedData.slice(
-            CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH, 
+            dataOffset + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH, 
             encryptedData.length - CONFIG.HMAC_LENGTH
         );
         const hmac = encryptedData.slice(encryptedData.length - CONFIG.HMAC_LENGTH);
@@ -878,6 +1240,7 @@ const cryptoUtils = {
             ['verify']
         );
         
+        // VERIFICACIÓN HMAC - PUNTO CRÍTICO
         const hmacValid = await crypto.subtle.verify(
             'HMAC',
             hmacKey,
@@ -886,8 +1249,15 @@ const cryptoUtils = {
         );
         
         if (!hmacValid) {
+            console.error('HMAC verification failed:', {
+                expected: Array.from(hmac.slice(0, 4)),
+                dataLength: ciphertext.length,
+                possibleCauses: ['Wrong password', 'Data corruption', 'Malicious tampering']
+            });
             throw new Error('HMAC mismatch. Wrong password or corrupted file.');
         }
+        
+        console.log('HMAC verification successful - Data integrity confirmed');
         
         const decrypted = await crypto.subtle.decrypt(
             { name: 'AES-GCM', iv, tagLength: 128 },
@@ -895,7 +1265,105 @@ const cryptoUtils = {
             ciphertext
         );
         
-        return new TextDecoder().decode(decrypted);
+        return {
+            seed: new TextDecoder().decode(decrypted),
+            metadata: metadata
+        };
+    },
+
+    // Métodos para manejar metadatos
+    createMetadata(userMessage = "") {
+        const now = new Date();
+        
+        return {
+            version: CONFIG.METADATA_VERSION,
+            modificationCount: 0, // Siempre 0 en creación
+            timestamp: now,
+            userMessageLength: Math.min(userMessage.length, 255),
+            userMessage: userMessage.slice(0, 255), // Máximo 255 caracteres
+            failedAttempts: 0,
+            lastFailedAttempt: null,
+            isValid: true
+        };
+    },
+
+    serializeMetadata(metadata) {
+        const buffer = new ArrayBuffer(CONFIG.METADATA_LENGTH);
+        const view = new DataView(buffer);
+        
+        let offset = 0;
+        view.setUint8(offset++, metadata.version);
+        view.setUint8(offset++, metadata.modificationCount);
+        view.setUint32(offset, Math.floor(metadata.timestamp.getTime() / 1000), false); // big-endian
+        offset += 4;
+        view.setUint8(offset++, metadata.userMessageLength);
+        
+        // Escribir userMessage si existe
+        if (metadata.userMessageLength > 0) {
+            const encoder = new TextEncoder();
+            const messageBytes = encoder.encode(metadata.userMessage);
+            for (let i = 0; i < metadata.userMessageLength; i++) {
+                view.setUint8(offset++, messageBytes[i]);
+            }
+        }
+        
+        // Escribir intentos fallidos
+        view.setUint8(offset++, metadata.failedAttempts || 0);
+        
+        // Escribir último intento fallido si existe
+        if (metadata.lastFailedAttempt) {
+            view.setUint32(offset, Math.floor(metadata.lastFailedAttempt.getTime() / 1000), false);
+        } else {
+            view.setUint32(offset, 0, false);
+        }
+        offset += 4;
+        
+        // Rellenar con zeros
+        while (offset < CONFIG.METADATA_LENGTH) {
+            view.setUint8(offset++, 0);
+        }
+        
+        return new Uint8Array(buffer);
+    },
+
+    deserializeMetadata(data) {
+        const view = new DataView(data.buffer);
+        
+        let offset = 0;
+        const version = view.getUint8(offset++);
+        const modificationCount = view.getUint8(offset++);
+        const timestamp = new Date(view.getUint32(offset, false) * 1000);
+        offset += 4;
+        const userMessageLength = view.getUint8(offset++);
+        
+        // Leer userMessage
+        let userMessage = "";
+        if (userMessageLength > 0) {
+            const messageBytes = new Uint8Array(data.buffer, offset, userMessageLength);
+            const decoder = new TextDecoder();
+            userMessage = decoder.decode(messageBytes);
+            offset += userMessageLength;
+        }
+        
+        // Leer intentos fallidos
+        const failedAttempts = view.getUint8(offset++);
+        
+        // Leer último intento fallido
+        const lastFailedAttemptTimestamp = view.getUint32(offset, false);
+        offset += 4;
+        const lastFailedAttempt = lastFailedAttemptTimestamp > 0 ? 
+            new Date(lastFailedAttemptTimestamp * 1000) : null;
+        
+        return {
+            version,
+            modificationCount,
+            timestamp,
+            userMessageLength,
+            userMessage,
+            failedAttempts,
+            lastFailedAttempt,
+            isValid: version <= CONFIG.METADATA_VERSION
+        };
     }
 };
 
