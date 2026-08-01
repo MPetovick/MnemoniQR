@@ -1,20 +1,24 @@
 // ============================================================
-// MnemoniQR – Secure Seed Backup (AAA edition - corrected)
+// MnemoniQR - Script Principal (CORREGIDO - VERSION FINAL)
 // ============================================================
+
+// ============ CONFIGURATION ============
 const CONFIG = {
     PBKDF2_ITERATIONS: 310000,
     SALT_LENGTH: 32,
     IV_LENGTH: 16,
     AES_KEY_LENGTH: 256,
-    QR_SIZE: 220,
-    MIN_PASSPHRASE_LENGTH: 12,
-    QR_ERROR_CORRECTION: 'H',
-    METADATA_VERSION: 2,
-    METADATA_LENGTH: 128,
-    MAX_USERMSG_BYTES: 116,
-    MAX_MODIFICATION_COUNT: 255
+    QR_SIZE: 280,
+    MIN_PASSWORD_LENGTH: 12,
+    DECRYPTION_DELAY: 1200,
+    MAX_SUGGESTIONS: 5,
+    AUTO_HIDE_SECONDS: 60,
+    MAX_DECRYPT_ATTEMPTS: 5,
+    BIP39_CACHE_MAX_SIZE: 100,
+    TOAST_PERSISTENT_ERRORS: true
 };
 
+// ============ BIP39 WORD LIST ============
 const BIP39_WORDS = [
     "abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse",
     "access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act",
@@ -151,8 +155,8 @@ const BIP39_WORDS = [
     "pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate",
     "play","please","pledge","pluck","plug","plunge","poem","poet","point","polar",
     "pole","police","pond","pony","pool","popular","portion","position","possible","post",
-    "potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare",
-    "present","pretty","prevent","price","pride","primary","print","priority","prison","private",
+    "potato","pottery","poverty","powder","power","practice","praise","predict","prefer","present",
+    "pretty","prevent","price","pride","primary","print","priority","prison","private",
     "prize","problem","process","produce","profit","program","project","promote","proof","property",
     "prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin",
     "punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle",
@@ -223,700 +227,1636 @@ const BIP39_WORDS = [
     "yellow","you","young","youth","zebra","zero","zone","zoo"
 ];
 
-// ============ DOM References ============
-const dom = {
-    startBtn: document.getElementById('start-btn'),
+// ============ DOM REFERENCES ============
+const DOM = {
+    // Main
+    encryptBtn: document.getElementById('encrypt-btn-main'),
     scanBtn: document.getElementById('scan-btn'),
-    seedModal: document.getElementById('seed-modal'),
-    scannerModal: document.getElementById('scanner-modal'),
-    closeModalBtns: document.querySelectorAll('.close-modal'),
-    cancelBtn: document.getElementById('cancel-btn'),
-    seedPhrase: document.getElementById('seed-phrase'),
-    wordCounter: document.getElementById('word-counter'),
-    toggleVisibility: document.getElementById('toggle-visibility'),
-    encryptBtn: document.getElementById('encrypt-btn'),
-    password: document.getElementById('password'),
-    passwordToggle: document.getElementById('password-toggle'),
-    passwordStrengthBar: document.getElementById('password-strength-bar'),
-    passwordStrengthText: document.getElementById('password-strength-text'),
-    generatePassword: document.getElementById('generate-password'),
-    qrCanvas: document.getElementById('qr-canvas'),
-    pdfBtn: document.getElementById('pdf-btn'),
-    shareBtn: document.getElementById('share-btn'),
-    downloadBtn: document.getElementById('download-btn'),
-    toastContainer: document.getElementById('toast-container'),
-    suggestionsContainer: document.getElementById('bip39-suggestions'),
-    dropArea: document.getElementById('drop-area'),
+    uploadArea: document.getElementById('upload-area'),
     qrFile: document.getElementById('qr-file'),
-    decryptSeedBtn: document.getElementById('decrypt-seed-btn'),
-    decryptedModal: document.getElementById('decrypted-modal'),
-    decryptedSeed: document.getElementById('decrypted-seed'),
-    seedWordsContainer: document.getElementById('seed-words-container'),
-    copySeed: document.getElementById('copy-seed'),
-    closeDecrypted: document.getElementById('close-decrypted'),
-    closeDecryptedBtn: document.getElementById('close-decrypted-btn'),
-    wordCount: document.getElementById('word-count'),
-    welcomeModal: document.getElementById('welcome-modal'),
-    closeWelcome: document.getElementById('close-welcome'),
-    acceptWelcome: document.getElementById('accept-welcome'),
+    aboutBtn: document.getElementById('about-btn'),
+    
+    // Steps
+    stepSeed: document.getElementById('step-seed'),
+    stepMessage: document.getElementById('step-message'),
+    stepPassword: document.getElementById('step-password'),
+    stepQR: document.getElementById('step-qr'),
+    stepDecrypted: document.getElementById('step-decrypted'),
+    
+    // Seed
+    seedInput: document.getElementById('seed-input'),
+    wordCounter: document.getElementById('word-counter'),
+    bip39Status: document.getElementById('bip39-status'),
+    suggestions: document.getElementById('suggestions'),
+    seedNext: document.getElementById('seed-next'),
+    
+    // Message
+    messageInput: document.getElementById('message-input'),
+    charCounter: document.getElementById('char-counter'),
+    messageNext: document.getElementById('message-next'),
+    messageSkip: document.getElementById('message-skip'),
+    
+    // Password
+    passwordInput: document.getElementById('password-input'),
+    showPassword: document.getElementById('show-password'),
+    strengthFill: document.getElementById('strength-fill'),
+    strengthLabel: document.getElementById('strength-label'),
+    passwordGenerate: document.getElementById('password-generate'),
+    passwordNext: document.getElementById('password-next'),
+    requirements: document.querySelectorAll('.req-item'),
+    
+    // QR
+    qrCanvas: document.getElementById('qr-canvas'),
+    qrDownload: document.getElementById('qr-download'),
+    qrPdf: document.getElementById('qr-pdf'),
+    qrShare: document.getElementById('qr-share'),
+    qrDone: document.getElementById('qr-done'),
+    
+    // Decrypted
+    seedGrid: document.getElementById('seed-grid'),
+    decryptedCount: document.getElementById('decrypted-count'),
+    decryptedCopy: document.getElementById('decrypted-copy'),
+    decryptedHide: document.getElementById('decrypted-hide'),
+    decryptedDone: document.getElementById('decrypted-done'),
+    timerFill: document.getElementById('timer-fill'),
+    timerLabel: document.getElementById('timer-label'),
+    
+    // Modals
+    passwordModal: document.getElementById('password'),
+    decryptPassword: document.getElementById('decrypt-password'),
+    decryptShowPassword: document.getElementById('decrypt-show-password'),
+    decryptStatus: document.getElementById('decrypt-status'),
+    decryptCancel: document.getElementById('decrypt-cancel'),
+    decryptConfirm: document.getElementById('decrypt-confirm'),
+    scannerPreviewContainer: document.getElementById('scanner-preview-container'),
+    scannerVideo: document.getElementById('scanner-video'),
+    scannerStatus: document.querySelector('.scanner-status'),
+    
+    aboutModal: document.getElementById('about'),
+    aboutClose: document.getElementById('about-close'),
+    aboutGotIt: document.getElementById('about-got-it'),
+    
+    // Toast & Spinner
+    toastContainer: document.getElementById('toast-container'),
     spinnerOverlay: document.getElementById('spinner-overlay'),
     spinnerMessage: document.getElementById('spinner-message'),
-    passwordModal: document.getElementById('password-modal'),
-    decryptPassword: document.getElementById('decrypt-password'),
-    decryptPasswordToggle: document.getElementById('decrypt-password-toggle'),
-    cancelDecryptBtn: document.getElementById('cancel-decrypt-btn'),
-    closePasswordModal: document.getElementById('close-password-modal'),
-    qrModal: document.getElementById('qr-modal'),
-    closeQRModal: document.getElementById('close-qr-modal'),
-    cameraStream: document.getElementById('camera-stream'),
-    closeScanner: document.getElementById('close-scanner'),
-    stopScanBtn: document.getElementById('stop-scan-btn'),
-    switchCameraBtn: document.getElementById('switch-camera-btn'),
-    userMessage: document.getElementById('user-message'),
-    messageChars: document.getElementById('message-chars'),
-    metadataVersion: document.getElementById('metadata-version'),
-    metadataCreated: document.getElementById('metadata-created'),
-    metadataModifications: document.getElementById('metadata-modifications'),
-    metadataFailedAttempts: document.getElementById('metadata-failed-attempts'),
-    metadataLastAttempt: document.getElementById('metadata-last-attempt'),
-    userMessageContainer: document.getElementById('user-message-container'),
-    metadataUserMessage: document.getElementById('metadata-user-message'),
-    updateQrBtn: document.getElementById('update-qr-btn'),
-    bip39Warning: document.getElementById('bip39-warning'),
-    failedAttemptsContainer: document.getElementById('failed-attempts-container'),
-    lastFailedContainer: document.getElementById('last-failed-container'),
-    qrWrapper: document.getElementById('qr-wrapper'),
-    themeToggleIcon: document.querySelector('#theme-toggle i')  // añadido aquí para initTheme
+    
+    // Back buttons
+    backButtons: document.querySelectorAll('.btn-back')
 };
 
-// ============ App State ============
-const appState = {
-    wordsVisible: false,
-    passwordVisible: false,
-    seedPhrase: '',
+// ============ STATE ============
+const STATE = {
+    step: 'main',
+    seed: '',
+    message: '',
     password: '',
     encryptedData: '',
     qrImageData: null,
-    currentMetadata: null,
-    scannerActive: false,
-    scanTimer: null,
-    videoTrack: null,
-    facingMode: 'environment',
+    decryptedSeed: '',
     decryptionAttempts: 0,
+    timerInterval: null,
+    timerRemaining: CONFIG.AUTO_HIDE_SECONDS,
+    isProcessing: false,
     currentWordIndex: -1,
-    currentWordPartial: ''
+    currentWordPartial: '',
+    seedValid: false,
+    scannerActive: false,
+    scannerTimer: null,
+    scannerVideoTrack: null,
+    isPaused: false
 };
 
-// ============ Crypto Utils ============
-const cryptoUtils = {
+// ============ CRYPTO ============
+const CryptoUtils = {
+    _keyCache: new Map(),
+    
     async _deriveKey(passphrase, salt) {
-        const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), { name: 'PBKDF2' }, false, ['deriveBits']);
+        const cacheKey = `${passphrase}:${Array.from(salt).join(',')}`;
+        if (this._keyCache.has(cacheKey)) {
+            return this._keyCache.get(cacheKey);
+        }
+        
+        const baseKey = await crypto.subtle.importKey(
+            'raw',
+            new TextEncoder().encode(passphrase),
+            { name: 'PBKDF2' },
+            false,
+            ['deriveBits']
+        );
+        
         const derivedBits = await crypto.subtle.deriveBits(
-            { name: 'PBKDF2', salt, iterations: CONFIG.PBKDF2_ITERATIONS, hash: 'SHA-256' },
+            {
+                name: 'PBKDF2',
+                salt: salt,
+                iterations: CONFIG.PBKDF2_ITERATIONS,
+                hash: 'SHA-256'
+            },
             baseKey,
             CONFIG.AES_KEY_LENGTH
         );
-        return crypto.subtle.importKey('raw', derivedBits, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+        
+        const key = await crypto.subtle.importKey(
+            'raw',
+            derivedBits,
+            { name: 'AES-GCM' },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        
+        this._keyCache.set(cacheKey, key);
+        setTimeout(() => this._keyCache.delete(cacheKey), 300000);
+        
+        return key;
     },
+
     createMetadata(userMessage = '') {
         const now = new Date();
-        return { version: CONFIG.METADATA_VERSION, modificationCount: 0, timestamp: now, userMessage: userMessage.slice(0, 255), failedAttempts: 0, lastFailedAttempt: null };
+        return {
+            version: 2,
+            modificationCount: 0,
+            timestamp: now,
+            userMessage: userMessage.slice(0, 255).replace(/[<>]/g, ''),
+            failedAttempts: 0,
+            lastFailedAttempt: null,
+            isValid: true
+        };
     },
+
     serializeMetadata(metadata) {
-        const buf = new ArrayBuffer(CONFIG.METADATA_LENGTH);
+        const buf = new ArrayBuffer(128);
         const view = new DataView(buf);
         let offset = 0;
+        
         view.setUint8(offset++, metadata.version);
         view.setUint8(offset++, metadata.modificationCount);
         view.setUint32(offset, Math.floor(metadata.timestamp.getTime() / 1000), false);
         offset += 4;
+        
         const encoder = new TextEncoder();
         let msgBytes = encoder.encode(metadata.userMessage || '');
-        if (msgBytes.length > CONFIG.MAX_USERMSG_BYTES) msgBytes = msgBytes.slice(0, CONFIG.MAX_USERMSG_BYTES);
+        if (msgBytes.length > 116) msgBytes = msgBytes.slice(0, 116);
+        
         view.setUint8(offset++, msgBytes.length);
         view.setUint8(offset++, metadata.failedAttempts || 0);
         view.setUint32(offset, metadata.lastFailedAttempt ? Math.floor(metadata.lastFailedAttempt.getTime() / 1000) : 0, false);
         offset += 4;
-        for (let i = 0; i < msgBytes.length; i++) view.setUint8(offset++, msgBytes[i]);
-        while (offset < CONFIG.METADATA_LENGTH) view.setUint8(offset++, 0);
+        
+        for (let i = 0; i < msgBytes.length; i++) {
+            view.setUint8(offset++, msgBytes[i]);
+        }
+        
+        while (offset < 128) {
+            view.setUint8(offset++, 0);
+        }
+        
         return new Uint8Array(buf);
     },
+
     deserializeMetadata(data) {
-        const view = new DataView(data.buffer, data.byteOffset, CONFIG.METADATA_LENGTH);
-        let offset = 0;
-        const version = view.getUint8(offset++);
-        if (version > CONFIG.METADATA_VERSION) throw new Error('Unsupported metadata version');
-        const modificationCount = view.getUint8(offset++);
-        const timestamp = new Date(view.getUint32(offset, false) * 1000); offset += 4;
-        const userMessageLength = view.getUint8(offset++);
-        const failedAttempts = view.getUint8(offset++);
-        const lastFailedAttemptTimestamp = view.getUint32(offset, false); offset += 4;
-        const msgBytes = new Uint8Array(data.buffer, data.byteOffset + offset, userMessageLength);
-        const userMessage = new TextDecoder().decode(msgBytes);
-        return { version, modificationCount, timestamp, userMessage, userMessageLength, failedAttempts, lastFailedAttempt: lastFailedAttemptTimestamp ? new Date(lastFailedAttemptTimestamp * 1000) : null, isValid: true };
+        try {
+            const view = new DataView(data.buffer, data.byteOffset, 128);
+            let offset = 0;
+            
+            const version = view.getUint8(offset++);
+            if (version > 2) throw new Error('Unsupported metadata version');
+            
+            const modificationCount = view.getUint8(offset++);
+            const timestampValue = view.getUint32(offset, false);
+            const timestamp = timestampValue > 0 ? new Date(timestampValue * 1000) : new Date();
+            offset += 4;
+            
+            const userMessageLength = view.getUint8(offset++);
+            const failedAttempts = view.getUint8(offset++);
+            const lastFailedAttemptTimestamp = view.getUint32(offset, false);
+            offset += 4;
+            
+            const maxLen = Math.min(userMessageLength, 116);
+            const msgBytes = new Uint8Array(data.buffer, data.byteOffset + offset, maxLen);
+            const userMessage = new TextDecoder().decode(msgBytes);
+            
+            return {
+                version,
+                modificationCount,
+                timestamp,
+                userMessage,
+                failedAttempts,
+                lastFailedAttempt: lastFailedAttemptTimestamp > 0 ? new Date(lastFailedAttemptTimestamp * 1000) : null,
+                isValid: true
+            };
+        } catch (error) {
+            throw new Error('Failed to read metadata: ' + error.message);
+        }
     },
+
     async encryptMessage(message, passphrase, userMessage = '') {
         const metadata = this.createMetadata(userMessage);
         const salt = crypto.getRandomValues(new Uint8Array(CONFIG.SALT_LENGTH));
         const iv = crypto.getRandomValues(new Uint8Array(CONFIG.IV_LENGTH));
         const aesKey = await this._deriveKey(passphrase, salt);
         const metadataBytes = this.serializeMetadata(metadata);
-        const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: metadataBytes, tagLength: 128 }, aesKey, new TextEncoder().encode(message));
+        
+        const payload = JSON.stringify({
+            seed: message,
+            userMessage: this.createMetadata(userMessage).userMessage
+        });
+        
+        const encrypted = await crypto.subtle.encrypt(
+            {
+                name: 'AES-GCM',
+                iv: iv,
+                additionalData: metadataBytes,
+                tagLength: 128
+            },
+            aesKey,
+            new TextEncoder().encode(payload)
+        );
+        
         const ciphertext = new Uint8Array(encrypted);
-        const combined = new Uint8Array(CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH + ciphertext.length);
+        const combined = new Uint8Array(128 + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH + ciphertext.length);
+        
         combined.set(metadataBytes, 0);
-        combined.set(salt, CONFIG.METADATA_LENGTH);
-        combined.set(iv, CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH);
-        combined.set(ciphertext, CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
+        combined.set(salt, 128);
+        combined.set(iv, 128 + CONFIG.SALT_LENGTH);
+        combined.set(ciphertext, 128 + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
+        
         return btoa(String.fromCharCode(...combined));
     },
+
     async decryptMessage(encryptedBase64, passphrase) {
-        const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-        const metadataBytes = encryptedData.slice(0, CONFIG.METADATA_LENGTH);
-        const salt = encryptedData.slice(CONFIG.METADATA_LENGTH, CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH);
-        const iv = encryptedData.slice(CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH, CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
-        const ciphertext = encryptedData.slice(CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
-        const aesKey = await this._deriveKey(passphrase, salt);
-        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: metadataBytes, tagLength: 128 }, aesKey, ciphertext);
-        const seed = new TextDecoder().decode(decrypted);
-        const metadata = this.deserializeMetadata(metadataBytes);
-        return { seed, metadata };
-    },
-    async encryptWithMetadata(message, passphrase, metadata) {
-        const salt = crypto.getRandomValues(new Uint8Array(CONFIG.SALT_LENGTH));
-        const iv = crypto.getRandomValues(new Uint8Array(CONFIG.IV_LENGTH));
-        const aesKey = await this._deriveKey(passphrase, salt);
-        const metadataBytes = this.serializeMetadata(metadata);
-        const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: metadataBytes, tagLength: 128 }, aesKey, new TextEncoder().encode(message));
-        const ciphertext = new Uint8Array(encrypted);
-        const combined = new Uint8Array(CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH + ciphertext.length);
-        combined.set(metadataBytes, 0);
-        combined.set(salt, CONFIG.METADATA_LENGTH);
-        combined.set(iv, CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH);
-        combined.set(ciphertext, CONFIG.METADATA_LENGTH + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
-        return btoa(String.fromCharCode(...combined));
+        try {
+            const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+            
+            if (encryptedData.length < 128 + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH) {
+                throw new Error('Invalid encrypted data format');
+            }
+            
+            const metadataBytes = encryptedData.slice(0, 128);
+            const salt = encryptedData.slice(128, 128 + CONFIG.SALT_LENGTH);
+            const iv = encryptedData.slice(128 + CONFIG.SALT_LENGTH, 128 + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
+            const ciphertext = encryptedData.slice(128 + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
+            
+            const aesKey = await this._deriveKey(passphrase, salt);
+            
+            const decrypted = await crypto.subtle.decrypt(
+                {
+                    name: 'AES-GCM',
+                    iv: iv,
+                    additionalData: metadataBytes,
+                    tagLength: 128
+                },
+                aesKey,
+                ciphertext
+            );
+            
+            const payload = JSON.parse(new TextDecoder().decode(decrypted));
+            const metadata = this.deserializeMetadata(metadataBytes);
+            
+            return {
+                seed: payload.seed || '',
+                userMessage: payload.userMessage || '',
+                metadata: metadata
+            };
+        } catch (error) {
+            // Distinguir entre error de contraseña y otros errores
+            if (error.message.includes('bad decrypt') || error.message.includes('decryption failed')) {
+                throw new Error('Incorrect password');
+            }
+            throw new Error('Decryption failed: ' + error.message);
+        }
     }
 };
 
-// ============ BIP39 Checksum Validation ============
-function validateBIP39Checksum(words) {
-    if (![12,18,24].includes(words.length)) return false;
-    const bits = words.map(w => BIP39_WORDS.indexOf(w).toString(2).padStart(11, '0')).join('');
-    const cs = words.length / 3;
-    const entropyBits = bits.slice(0, -cs);
-    const checksumBits = bits.slice(-cs);
-    const entropyBytes = new Uint8Array(entropyBits.match(/.{1,8}/g).map(b => parseInt(b, 2)));
-    return crypto.subtle.digest('SHA-256', entropyBytes).then(hash => {
-        const hashBytes = new Uint8Array(hash);
-        const firstByte = hashBytes[0];
-        const computedChecksum = firstByte.toString(2).padStart(8, '0').slice(0, cs);
-        return computedChecksum === checksumBits;
-    });
-}
+// ============ BIP39 ============
+const BIP39 = {
+    _checksumCache: new Map(),
+    _cacheOrder: [],
+    
+    _evictCache() {
+        while (this._cacheOrder.length > CONFIG.BIP39_CACHE_MAX_SIZE) {
+            const oldest = this._cacheOrder.shift();
+            this._checksumCache.delete(oldest);
+        }
+    },
+    
+    async validateChecksum(words) {
+        if (![12, 18, 24].includes(words.length)) {
+            return false;
+        }
+        
+        const key = words.join(' ');
+        if (this._checksumCache.has(key)) {
+            return this._checksumCache.get(key);
+        }
+        
+        try {
+            for (const word of words) {
+                if (!BIP39_WORDS.includes(word)) {
+                    this._checksumCache.set(key, false);
+                    this._cacheOrder.push(key);
+                    this._evictCache();
+                    return false;
+                }
+            }
+            
+            const bits = words.map(w => {
+                const index = BIP39_WORDS.indexOf(w);
+                return index.toString(2).padStart(11, '0');
+            });
+            
+            const cs = words.length / 3;
+            const entropyBits = bits.join('').slice(0, -cs);
+            const checksumBits = bits.join('').slice(-cs);
+            
+            if (entropyBits.length % 8 !== 0) {
+                this._checksumCache.set(key, false);
+                this._cacheOrder.push(key);
+                this._evictCache();
+                return false;
+            }
+            
+            const entropyBytes = new Uint8Array(
+                entropyBits.match(/.{1,8}/g).map(b => parseInt(b, 2))
+            );
+            
+            const hash = await crypto.subtle.digest('SHA-256', entropyBytes);
+            const hashBytes = new Uint8Array(hash);
+            const computedChecksum = hashBytes[0].toString(2).padStart(8, '0').slice(0, cs);
+            
+            const result = computedChecksum === checksumBits;
+            this._checksumCache.set(key, result);
+            this._cacheOrder.push(key);
+            this._evictCache();
+            return result;
+        } catch (error) {
+            console.error('BIP39 validation error:', error);
+            this._checksumCache.set(key, false);
+            this._cacheOrder.push(key);
+            this._evictCache();
+            return false;
+        }
+    },
+    
+    validateWords(words) {
+        if (![12, 18, 24].includes(words.length)) {
+            return false;
+        }
+        return words.every(w => BIP39_WORDS.includes(w));
+    },
+    
+    getSuggestions(partial) {
+        if (partial.length < 2) return [];
+        const lower = partial.toLowerCase();
+        return BIP39_WORDS
+            .filter(w => w.startsWith(lower))
+            .slice(0, CONFIG.MAX_SUGGESTIONS);
+    }
+};
 
-// ============ UI Helpers ============
+// ============ QR ============
+const QR = {
+    async _ensureQRCodeLoaded() {
+        if (typeof window === 'undefined') throw new Error('No window object (not running in browser)');
+        if (window.QRCode || window.qrcode) return;
+        
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
+            s.onload = () => {
+                setTimeout(() => resolve(), 0);
+            };
+            s.onerror = (e) => {
+                reject(new Error('Failed to load qrcode library dynamically'));
+            };
+            document.head.appendChild(s);
+        });
+    },
+
+    async generate(data) {
+        if (!DOM.qrCanvas) throw new Error('Canvas element not found');
+        DOM.qrCanvas.width = CONFIG.QR_SIZE;
+        DOM.qrCanvas.height = CONFIG.QR_SIZE;
+        const canvas = DOM.qrCanvas;
+
+        let lib = window.QRCode || window.qrcode;
+        if (!lib) {
+            try {
+                await this._ensureQRCodeLoaded();
+                lib = window.QRCode || window.qrcode;
+            } catch (err) {
+                lib = null;
+            }
+        }
+
+        if (lib && typeof lib.toCanvas === 'function') {
+            return new Promise((resolve, reject) => {
+                try {
+                    lib.toCanvas(canvas, data, {
+                        width: CONFIG.QR_SIZE,
+                        margin: 2,
+                        color: { dark: '#1a2a3a', light: '#ffffff' },
+                        errorCorrectionLevel: 'H'
+                    }, error => {
+                        if (error) reject(error);
+                        else resolve();
+                    });
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        if (lib && typeof lib.toDataURL === 'function') {
+            return new Promise((resolve, reject) => {
+                try {
+                    lib.toDataURL(data, { width: CONFIG.QR_SIZE, margin: 2, errorCorrectionLevel: 'H' }, (err, url) => {
+                        if (err) return reject(err);
+                        const img = new Image();
+                        img.onload = () => {
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            resolve();
+                        };
+                        img.onerror = () => reject(new Error('Failed to load QR image from library'));
+                        img.src = url;
+                    });
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // Fallback
+        try {
+            const chartUrl = `https://chart.googleapis.com/chart?cht=qr&chs=${CONFIG.QR_SIZE}x${CONFIG.QR_SIZE}&chld=H|0&chl=${encodeURIComponent(data)}`;
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    try {
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve();
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                img.onerror = () => reject(new Error('Failed to load QR image from fallback service'));
+                img.src = chartUrl;
+            });
+        } catch (err) {
+            throw new Error('No QR generator available: ' + err.message);
+        }
+    },
+    
+    async extract(imageData) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = imageData;
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const jsqr = window.jsQR || window.jsqr || window.JSQR;
+                    if (typeof jsqr === 'function') {
+                        const code = jsqr(data.data, canvas.width, canvas.height);
+                        if (code) resolve(code.data);
+                        else reject(new Error('No QR code found in image'));
+                    } else if (typeof jsQR === 'function') {
+                        const code = jsQR(data.data, canvas.width, canvas.height);
+                        if (code) resolve(code.data);
+                        else reject(new Error('No QR code found in image'));
+                    } else {
+                        reject(new Error('jsQR library is not available'));
+                    }
+                } catch (error) {
+                    reject(new Error('Failed to process image: ' + error.message));
+                }
+            };
+            img.onerror = () => reject(new Error('Failed to load image'));
+        });
+    }
+};
+
+// ============ UI HELPERS ============
 function showToast(message, type = 'info') {
-    const icons = { error: 'fa-exclamation-circle', success: 'fa-check-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+    const icons = {
+        error: 'fa-exclamation-circle',
+        success: 'fa-check-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<i class="fas ${icons[type]}"></i><span>${message}</span>`;
-    dom.toastContainer.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
+    toast.innerHTML = `<i class="fas ${icons[type] || 'fa-info-circle'}" aria-hidden="true"></i> ${message}`;
+    
+    if (type === 'error' && CONFIG.TOAST_PERSISTENT_ERRORS) {
+        toast.style.cursor = 'pointer';
+        toast.title = 'Click to dismiss';
+        toast.addEventListener('click', () => dismissToast(toast));
+    }
+    
+    DOM.toastContainer.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+    
+    // Los toasts de error persisten hasta que el usuario haga clic
+    if (type !== 'error' || !CONFIG.TOAST_PERSISTENT_ERRORS) {
+        setTimeout(() => {
+            dismissToast(toast);
+        }, type === 'error' ? 8000 : 4000);
+    }
+}
+
+function dismissToast(toast) {
+    if (!toast || !toast.parentNode) return;
+    toast.classList.remove('show');
+    setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+    }, 300);
 }
 
 function showSpinner(show, message = 'Processing…') {
-    dom.spinnerOverlay.style.display = show ? 'flex' : 'none';
-    if (message) dom.spinnerMessage.textContent = message;
+    if (!DOM.spinnerOverlay) return;
+    DOM.spinnerOverlay.style.display = show ? 'flex' : 'none';
+    if (message && DOM.spinnerMessage) {
+        DOM.spinnerMessage.textContent = message;
+    }
 }
 
-function updateSpinnerMessage(msg) {
-    dom.spinnerMessage.textContent = msg;
+function showStep(stepId) {
+    const steps = ['step-seed', 'step-message', 'step-password', 'step-qr', 'step-decrypted'];
+    steps.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === stepId ? 'block' : 'none';
+    });
+    STATE.step = stepId.replace('step-', '');
 }
 
-function sanitizeAndWipe() {
-    appState.seedPhrase = '';
-    appState.password = '';
-    appState.encryptedData = '';
-    if (dom.decryptedSeed) dom.decryptedSeed.value = '';
-    if (dom.password) dom.password.value = '';
-    if (dom.decryptPassword) dom.decryptPassword.value = '';
+function goToStep(step) {
+    showStep(`step-${step}`);
+    if (step === 'main') {
+        const container = document.querySelector('.container');
+        if (container) container.style.display = 'flex';
+    } else {
+        const container = document.querySelector('.container');
+        if (container) container.style.display = 'none';
+    }
 }
 
-// ============ Modals (with Escape support) ============
-function openModal(modal) {
-    modal.style.display = 'flex';
-    document.addEventListener('keydown', onEscapeKey);
+// ============ MODALS ============
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.style.display = 'flex';
+        document.addEventListener('keydown', handleModalEscape);
+        
+        // Si es el modal de password, enfocar el input
+        if (id === 'password' && DOM.decryptPassword) {
+            setTimeout(() => DOM.decryptPassword.focus(), 100);
+        }
+    }
 }
-function closeModal(modal) {
-    modal.style.display = 'none';
-    document.removeEventListener('keydown', onEscapeKey);
-    sanitizeAndWipe();
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.style.display = 'none';
+        document.removeEventListener('keydown', handleModalEscape);
+        
+        // Limpiar estado si es el modal de password
+        if (id === 'password') {
+            stopScanner();
+            STATE.decryptionAttempts = 0;
+            STATE.encryptedData = '';
+            STATE.qrImageData = null;
+            if (DOM.decryptPassword) DOM.decryptPassword.value = '';
+            if (DOM.decryptStatus) {
+                DOM.decryptStatus.style.display = 'none';
+                DOM.decryptStatus.className = 'decrypt-status';
+            }
+        }
+    }
 }
-function onEscapeKey(e) {
+
+function handleModalEscape(e) {
     if (e.key === 'Escape') {
-        const visibleModal = document.querySelector('.modal[style*="display: flex"]');
-        if (visibleModal) closeModal(visibleModal);
+        // Cerrar cualquier modal abierto
+        const openModals = document.querySelectorAll('.modal[style*="display: flex"]');
+        if (openModals.length) {
+            const id = openModals[openModals.length - 1].id;
+            closeModal(id);
+        }
     }
 }
 
-function resetModalState() {
-    dom.seedPhrase.value = '';
-    dom.password.value = '';
-    dom.userMessage.value = '';
-    dom.messageChars.textContent = '0';
-    dom.wordCounter.textContent = '0 words';
-    dom.encryptBtn.disabled = true;
-    dom.passwordStrengthBar.style.width = '0%';
-    dom.passwordStrengthText.textContent = 'Security: Very weak';
-    hideSuggestions();
-}
+// ============ SUGGESTIONS ============
+let suggestionTimeout = null;
 
-// ============ Theme Toggle ============
-function initTheme() {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-        document.body.setAttribute('data-theme', 'dark');
-        dom.themeToggleIcon.className = 'fas fa-sun';
-    } else {
-        document.body.removeAttribute('data-theme');
-        dom.themeToggleIcon.className = 'fas fa-moon';
-    }
-}
-function toggleTheme() {
-    const isDark = document.body.hasAttribute('data-theme');
-    if (isDark) {
-        document.body.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-        dom.themeToggleIcon.className = 'fas fa-moon';
-    } else {
-        document.body.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-        dom.themeToggleIcon.className = 'fas fa-sun';
-    }
-}
-
-// ============ Seed Input & Suggestions ============
-function handleSeedInput() {
-    const text = dom.seedPhrase.value;
+function updateSuggestions() {
+    const text = DOM.seedInput.value;
     const words = text.trim().split(/\s+/).filter(w => w.length > 0);
-    dom.wordCounter.textContent = `${words.length} words`;
-    const validCounts = [12,18,24].includes(words.length);
-    dom.encryptBtn.disabled = !validCounts;
-
-    if (validCounts) {
-        validateBIP39Checksum(words).then(valid => {
-            dom.bip39Warning.style.display = valid ? 'none' : 'flex';
+    
+    DOM.wordCounter.textContent = `${words.length} words`;
+    
+    const allWordsValid = words.every(w => BIP39_WORDS.includes(w));
+    const isValidCount = [12, 18, 24].includes(words.length);
+    
+    if (words.length > 0 && !allWordsValid) {
+        DOM.bip39Status.textContent = '⚠️ Invalid word(s)';
+        DOM.bip39Status.className = 'status-invalid';
+        DOM.seedNext.disabled = true;
+        STATE.seedValid = false;
+    } else if (isValidCount && allWordsValid) {
+        BIP39.validateChecksum(words).then(valid => {
+            if (valid) {
+                DOM.bip39Status.textContent = '✓ BIP39 Valid';
+                DOM.bip39Status.className = 'status-valid';
+                DOM.seedNext.disabled = false;
+                STATE.seedValid = true;
+            } else {
+                DOM.bip39Status.textContent = '⚠️ Invalid checksum';
+                DOM.bip39Status.className = 'status-invalid';
+                DOM.seedNext.disabled = true;
+                STATE.seedValid = false;
+            }
         });
     } else {
-        dom.bip39Warning.style.display = 'none';
+        DOM.bip39Status.textContent = isValidCount && allWordsValid ? '✓ BIP39' : '✓ BIP39';
+        DOM.bip39Status.className = 'status-valid';
+        DOM.seedNext.disabled = !(isValidCount && allWordsValid);
+        STATE.seedValid = isValidCount && allWordsValid;
     }
-
-    const pos = dom.seedPhrase.selectionStart;
-    let idx = 0, charCount = 0;
+    
+    const pos = DOM.seedInput.selectionStart;
+    let idx = 0;
+    let charCount = 0;
     for (let i = 0; i < words.length; i++) {
         charCount += words[i].length + 1;
-        if (pos <= charCount) { idx = i; break; }
+        if (pos <= charCount) {
+            idx = i;
+            break;
+        }
     }
-    appState.currentWordPartial = words[idx] || '';
-    if (appState.currentWordPartial.length > 1) {
-        showBIP39Suggestions(appState.currentWordPartial);
+    
+    STATE.currentWordIndex = idx >= 0 && idx < words.length ? idx : words.length - 1;
+    STATE.currentWordPartial = words[STATE.currentWordIndex] || '';
+    
+    if (STATE.currentWordPartial.length > 1) {
+        const matches = BIP39.getSuggestions(STATE.currentWordPartial);
+        if (matches.length > 0) {
+            DOM.suggestions.innerHTML = matches.map(word => `
+                <div class="suggestion-item" data-word="${word}" tabindex="0" role="option">
+                    <i class="fas fa-lightbulb" aria-hidden="true"></i> ${word}
+                </div>
+            `).join('');
+            
+            DOM.suggestions.style.display = 'block';
+            DOM.suggestions.setAttribute('role', 'listbox');
+            
+            DOM.suggestions.querySelectorAll('.suggestion-item').forEach(el => {
+                el.addEventListener('click', () => selectSuggestion(el.dataset.word));
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') selectSuggestion(el.dataset.word);
+                    if (e.key === 'Escape') DOM.suggestions.style.display = 'none';
+                });
+            });
+        } else {
+            DOM.suggestions.style.display = 'none';
+        }
     } else {
-        hideSuggestions();
+        DOM.suggestions.style.display = 'none';
     }
-}
-
-function showBIP39Suggestions(partial) {
-    if (partial.length < 2) { hideSuggestions(); return; }
-    const lower = partial.toLowerCase();
-    const matches = BIP39_WORDS.filter(w => w.startsWith(lower)).slice(0, 5);
-    if (matches.length === 0) { hideSuggestions(); return; }
-    dom.suggestionsContainer.innerHTML = '';
-    matches.forEach(word => {
-        const item = document.createElement('div');
-        item.className = 'suggestion-item';
-        item.innerHTML = `<i class="fas fa-lightbulb"></i> ${word}`;
-        item.addEventListener('click', () => selectSuggestion(word));
-        dom.suggestionsContainer.appendChild(item);
-    });
-    dom.suggestionsContainer.style.display = 'block';
-}
-
-function hideSuggestions() {
-    dom.suggestionsContainer.style.display = 'none';
 }
 
 function selectSuggestion(word) {
-    const words = dom.seedPhrase.value.trim().split(/\s+/);
-    const idx = appState.currentWordIndex >= 0 ? appState.currentWordIndex : words.length - 1;
+    const text = DOM.seedInput.value;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    const idx = STATE.currentWordIndex >= 0 && STATE.currentWordIndex < words.length 
+        ? STATE.currentWordIndex 
+        : words.length - 1;
+    
     if (idx >= 0 && idx < words.length) {
         words[idx] = word;
-        dom.seedPhrase.value = words.join(' ');
-        dom.seedPhrase.dispatchEvent(new Event('input', { bubbles: true }));
+        let newText = words.join(' ');
+        if (words.length < 24) {
+            newText += ' ';
+        }
+        DOM.seedInput.value = newText;
+        DOM.seedInput.selectionStart = DOM.seedInput.selectionEnd = newText.length;
+        DOM.seedInput.focus();
+        updateSuggestions();
     }
-    hideSuggestions();
+    DOM.suggestions.style.display = 'none';
 }
 
-// ============ Password Strength ============
+// ============ PASSWORD STRENGTH ============
 function updatePasswordStrength() {
-    const pwd = dom.password.value;
+    const pwd = DOM.passwordInput.value;
     let strength = 0;
-    strength += Math.min(pwd.length * 4, 40);
-    if (/[A-Z]/.test(pwd)) strength += 10;
-    if (/[a-z]/.test(pwd)) strength += 10;
-    if (/[0-9]/.test(pwd)) strength += 10;
-    if (/[^A-Za-z0-9]/.test(pwd)) strength += 15;
-    strength = Math.min(100, Math.max(0, strength));
-    dom.passwordStrengthBar.style.width = `${strength}%`;
-    const levels = [{ min: 80, text: 'Very strong' }, { min: 60, text: 'Strong' }, { min: 40, text: 'Moderate' }];
-    const level = levels.find(l => strength >= l.min)?.text || 'Very weak';
-    dom.passwordStrengthText.textContent = `Security: ${level}`;
-}
-
-function generateSecurePassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
-    const array = new Uint8Array(16);
-    crypto.getRandomValues(array);
-    let pwd = '';
-    for (let i = 0; i < array.length; i++) pwd += chars[array[i] % chars.length];
-    if (!/[A-Z]/.test(pwd)) pwd = 'A' + pwd.slice(1);
-    if (!/[a-z]/.test(pwd)) pwd = pwd.slice(0, -1) + 'a';
-    if (!/[0-9]/.test(pwd)) pwd = pwd.slice(0, -1) + '1';
-    if (!/[^A-Za-z0-9]/.test(pwd)) pwd = pwd.slice(0, -1) + '!';
-    dom.password.value = pwd;
-    updatePasswordStrength();
-    showToast('Secure password generated', 'success');
-}
-
-// ============ Encryption Flow ============
-async function startEncryption() {
-    const words = dom.seedPhrase.value.trim().split(/\s+/);
-    if (![12,18,24].includes(words.length)) return showToast('Seed must be 12, 18 or 24 words', 'error');
-    if (dom.password.value.length < CONFIG.MIN_PASSPHRASE_LENGTH) return showToast(`Password min ${CONFIG.MIN_PASSPHRASE_LENGTH} chars`, 'error');
-
-    appState.seedPhrase = words.join(' ');
-    appState.password = dom.password.value;
-
-    try {
-        showSpinner(true, 'Deriving encryption key…');
-        await new Promise(resolve => setTimeout(resolve, 100));
-        updateSpinnerMessage('Encrypting seed phrase…');
-        const userMessage = dom.userMessage ? dom.userMessage.value : '';
-        const encrypted = await cryptoUtils.encryptMessage(appState.seedPhrase, appState.password, userMessage);
-        updateSpinnerMessage('Generating QR code…');
-        appState.encryptedData = encrypted;
-        await generateQR(encrypted);
-        closeModal(dom.seedModal);
-        openModal(dom.qrModal);
-        showToast('Seed encrypted successfully', 'success');
-    } catch (e) {
-        showToast('Encryption failed: ' + e.message, 'error');
-    } finally {
-        showSpinner(false);
-    }
-}
-
-function generateQR(data) {
-    return new Promise(resolve => {
-        dom.qrCanvas.width = CONFIG.QR_SIZE;
-        dom.qrCanvas.height = CONFIG.QR_SIZE;
-        QRCode.toCanvas(dom.qrCanvas, data, {
-            width: CONFIG.QR_SIZE,
-            margin: 2,
-            color: { dark: '#000', light: '#fff' },
-            errorCorrectionLevel: CONFIG.QR_ERROR_CORRECTION
-        }, resolve);
-    });
-}
-
-// ============ Decryption ============
-function showPasswordModal() {
-    if (!appState.encryptedData && !appState.qrImageData) return showToast('First load a QR code', 'error');
-    openModal(dom.passwordModal);
-    dom.decryptPassword.focus();
-}
-
-async function decryptQR() {
-    const password = dom.decryptPassword.value;
-    if (!password) return showToast('Password required', 'error');
-
-    let encrypted = appState.encryptedData;
-    if (!encrypted && appState.qrImageData) {
-        const img = new Image();
-        img.src = appState.qrImageData;
-        await img.decode();
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width; canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, canvas.width, canvas.height);
-        if (!code) throw new Error('No QR code found');
-        encrypted = code.data;
-    }
-    if (!encrypted) throw new Error('No QR data');
-
-    const delay = Math.min(100 * Math.pow(2, appState.decryptionAttempts), 3000);
-    await new Promise(res => setTimeout(res, delay));
-
-    try {
-        showSpinner(true, 'Decrypting…');
-        const result = await cryptoUtils.decryptMessage(encrypted, password);
-        appState.decryptionAttempts = 0;
-        showDecryptedSeed(result.seed, result.metadata);
-        closeModal(dom.passwordModal);
-        showToast('Decryption successful', 'success');
-    } catch (e) {
-        appState.decryptionAttempts++;
-        showToast('Decryption failed: ' + e.message, 'error');
-    } finally {
-        showSpinner(false);
-    }
-}
-
-function showDecryptedSeed(seed, metadata) {
-    const words = seed.split(' ');
-    dom.decryptedSeed.value = seed;
-    dom.wordCount.textContent = `${words.length} words`;
-    dom.seedWordsContainer.innerHTML = words.map((w,i) => `<div class="seed-word" data-index="${i+1}">${w}</div>`).join('');
-
-    if (metadata) {
-        dom.metadataVersion.textContent = metadata.version;
-        dom.metadataCreated.textContent = metadata.timestamp.toLocaleString();
-        dom.metadataModifications.textContent = metadata.modificationCount;
-        dom.failedAttemptsContainer.style.display = metadata.failedAttempts > 0 ? 'flex' : 'none';
-        dom.metadataFailedAttempts.textContent = metadata.failedAttempts;
-        dom.lastFailedContainer.style.display = metadata.lastFailedAttempt ? 'flex' : 'none';
-        dom.metadataLastAttempt.textContent = metadata.lastFailedAttempt?.toLocaleString() || '';
-        dom.userMessageContainer.style.display = metadata.userMessage ? 'flex' : 'none';
-        dom.metadataUserMessage.textContent = metadata.userMessage;
-        appState.currentMetadata = metadata;
-    }
-    openModal(dom.decryptedModal);
-}
-
-async function copySeedToClipboard() {
-    try {
-        await navigator.clipboard.writeText(dom.decryptedSeed.value);
-        showToast('Seed copied to clipboard', 'success');
-    } catch {
-        showToast('Copy failed', 'error');
-    }
-}
-
-// ============ Update QR ============
-async function updateEncryptedQR(newSeed, newMessage = '') {
-    if (!appState.encryptedData || !appState.password) throw new Error('No active QR session');
-    try {
-        showSpinner(true, 'Updating QR…');
-        const oldResult = await cryptoUtils.decryptMessage(appState.encryptedData, appState.password);
-        const newMetadata = { ...oldResult.metadata, modificationCount: Math.min(oldResult.metadata.modificationCount+1, 255), userMessage: newMessage, failedAttempts: 0, lastFailedAttempt: null };
-        const encrypted = await cryptoUtils.encryptWithMetadata(newSeed, appState.password, newMetadata);
-        appState.encryptedData = encrypted;
-        await generateQR(encrypted);
-        showToast(`QR updated (v${newMetadata.modificationCount})`, 'success');
-    } catch (e) {
-        showToast('Update failed: ' + e.message, 'error');
-        throw e;
-    } finally {
-        showSpinner(false);
-    }
-}
-
-// ============ QR Export ============
-function downloadQRAsPNG() {
-    if (!appState.encryptedData) return showToast('No QR generated', 'error');
-    const link = document.createElement('a');
-    link.download = `mnemoniqr-${Date.now()}.png`;
-    link.href = dom.qrCanvas.toDataURL('image/png');
-    link.click();
-    showToast('QR downloaded', 'success');
-}
-
-async function shareQR() {
-    if (!appState.encryptedData) return;
-    dom.qrCanvas.toBlob(async blob => {
-        if (navigator.share) {
-            try { await navigator.share({ files: [new File([blob], 'seed-backup.png', { type: 'image/png' })] }); } catch {}
+    const checks = {
+        length: pwd.length >= CONFIG.MIN_PASSWORD_LENGTH,
+        uppercase: /[A-Z]/.test(pwd),
+        lowercase: /[a-z]/.test(pwd),
+        number: /[0-9]/.test(pwd),
+        symbol: /[^A-Za-z0-9]/.test(pwd)
+    };
+    
+    DOM.requirements.forEach(el => {
+        const req = el.dataset.req;
+        const isMet = checks[req];
+        if (isMet) {
+            el.classList.add('met');
+            el.classList.remove('failing');
+            el.querySelector('i').className = 'fas fa-check-circle';
         } else {
-            try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); showToast('QR copied to clipboard', 'success'); } catch { showToast('Sharing not supported', 'warning'); }
+            el.classList.remove('met');
+            if (pwd.length > 0) {
+                el.classList.add('failing');
+                setTimeout(() => el.classList.remove('failing'), 500);
+            }
+            el.querySelector('i').className = 'fas fa-circle';
         }
     });
+    
+    if (checks.length) strength += 20;
+    if (checks.uppercase) strength += 20;
+    if (checks.lowercase) strength += 20;
+    if (checks.number) strength += 20;
+    if (checks.symbol) strength += 20;
+    
+    const levels = [
+        { min: 80, label: 'Strong', color: '#2ecc71' },
+        { min: 60, label: 'Good', color: '#3498db' },
+        { min: 40, label: 'Fair', color: '#f39c12' },
+        { min: 0, label: 'Weak', color: '#e74c3c' }
+    ];
+    
+    const level = levels.find(l => strength >= l.min);
+    
+    if (DOM.strengthFill) {
+        DOM.strengthFill.style.width = `${strength}%`;
+        DOM.strengthFill.style.background = level.color;
+        DOM.strengthFill.parentElement.setAttribute('aria-valuenow', strength);
+    }
+    if (DOM.strengthLabel) {
+        DOM.strengthLabel.textContent = level.label;
+        DOM.strengthLabel.style.color = level.color;
+    }
+    
+    if (DOM.passwordNext) DOM.passwordNext.disabled = pwd.length < CONFIG.MIN_PASSWORD_LENGTH;
 }
 
-function generatePDF() {
-    if (!appState.encryptedData) return;
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
-    const w = doc.internal.pageSize.getWidth(), cx = w/2;
-    doc.setFillColor(245,245,245); doc.rect(0,0,w,doc.internal.pageSize.getHeight(),'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('Secure Seed Backup', cx, 25, null, null, 'center');
-    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.text('AES-256-GCM encrypted', cx, 32, null, null, 'center');
-    const qrData = dom.qrCanvas.toDataURL('image/png');
-    doc.addImage(qrData, 'PNG', cx-40, 50, 80, 80);
-    doc.setFontSize(9); doc.text('Password required for decryption', cx, 50+80+15, null, null, 'center');
-    doc.save(`mnemoniqr-backup-${Date.now()}.pdf`);
-    showToast('PDF generated', 'success');
+// ============ TIMER ============
+function startTimer() {
+    STATE.timerRemaining = CONFIG.AUTO_HIDE_SECONDS;
+    if (DOM.timerFill) DOM.timerFill.style.width = '100%';
+    if (DOM.timerLabel) DOM.timerLabel.textContent = `Auto-hide in ${STATE.timerRemaining}s`;
+    
+    if (STATE.timerInterval) {
+        clearInterval(STATE.timerInterval);
+    }
+    
+    STATE.timerInterval = setInterval(() => {
+        if (STATE.isPaused) return;
+        
+        STATE.timerRemaining--;
+        const pct = Math.max(0, (STATE.timerRemaining / CONFIG.AUTO_HIDE_SECONDS) * 100);
+        if (DOM.timerFill) {
+            DOM.timerFill.style.width = `${pct}%`;
+            DOM.timerFill.parentElement.setAttribute('aria-valuenow', pct);
+        }
+        if (DOM.timerLabel) DOM.timerLabel.textContent = `Auto-hide in ${STATE.timerRemaining}s`;
+        
+        if (STATE.timerRemaining <= 0) {
+            clearInterval(STATE.timerInterval);
+            STATE.timerInterval = null;
+            hideDecryptedSeed();
+        }
+    }, 1000);
 }
 
-// ============ File Handling ============
-function triggerFileSelect() { dom.qrFile.click(); }
-function handleFileSelect(e) { if (e.target.files.length) processFile(e.target.files[0]); }
-function handleDragOver(e) { e.preventDefault(); dom.dropArea.classList.add('drag-over'); }
-function handleDragLeave() { dom.dropArea.classList.remove('drag-over'); }
-function handleDrop(e) {
-    e.preventDefault();
-    dom.dropArea.classList.remove('drag-over');
-    if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
-}
-function processFile(file) {
-    if (!file.type.match('image.*')) return showToast('Please select an image', 'error');
-    const reader = new FileReader();
-    reader.onload = e => {
-        appState.qrImageData = e.target.result;
-        appState.encryptedData = '';
-        dom.qrFile.value = '';
-        showToast('Image loaded', 'success');
-        showPasswordModal();
-    };
-    reader.readAsDataURL(file);
+function stopTimer() {
+    if (STATE.timerInterval) {
+        clearInterval(STATE.timerInterval);
+        STATE.timerInterval = null;
+    }
 }
 
-// ============ Scanner ============
-function openScannerModal() {
-    if (!navigator.mediaDevices?.getUserMedia) return showToast('Camera not supported', 'error');
-    openModal(dom.scannerModal);
-    startScanner(appState.facingMode);
+function hideDecryptedSeed() {
+    stopTimer();
+    showToast('Seed auto-hidden for security', 'warning');
+    goToStep('main');
+    if (DOM.seedGrid) DOM.seedGrid.innerHTML = '';
+    STATE.decryptedSeed = '';
 }
 
-async function startScanner(facingMode) {
-    if (appState.videoTrack) appState.videoTrack.stop();
+// ============ SCANNER ============
+function initScanner() {
+    // El scanner ahora usa el contenedor en el modal
+    if (DOM.scannerVideo) {
+        DOM.scannerVideo.autoplay = true;
+        DOM.scannerVideo.playsInline = true;
+        DOM.scannerVideo.muted = true;
+    }
+}
+
+async function startScanner() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Camera not supported on this device', 'error');
+        return;
+    }
+    
+    initScanner();
+    STATE.scannerActive = true;
+    
+    // Mostrar el contenedor del scanner
+    if (DOM.scannerPreviewContainer) {
+        DOM.scannerPreviewContainer.style.display = 'block';
+    }
+    
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } } });
-        appState.videoTrack = stream.getVideoTracks()[0];
-        dom.cameraStream.srcObject = stream;
-        appState.scannerActive = true;
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'environment',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        });
+        
+        STATE.scannerVideoTrack = stream.getVideoTracks()[0];
+        
+        if (DOM.scannerVideo) {
+            DOM.scannerVideo.srcObject = stream;
+            await DOM.scannerVideo.play();
+        }
+        
+        // Actualizar estado del scanner
+        if (DOM.scannerStatus) {
+            DOM.scannerStatus.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Looking for QR...';
+        }
+        
         scanLoop();
         showToast('Camera activated', 'success');
-    } catch (e) {
-        showToast('Camera error: ' + e.message, 'error');
-        closeScannerModal();
+        
+    } catch (error) {
+        STATE.scannerActive = false;
+        if (DOM.scannerPreviewContainer) {
+            DOM.scannerPreviewContainer.style.display = 'none';
+        }
+        showToast('Camera error: ' + error.message, 'error');
     }
 }
 
 function scanLoop() {
-    if (!appState.scannerActive) return;
-    const video = dom.cameraStream;
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) { requestAnimationFrame(scanLoop); return; }
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth * 0.5;
-    canvas.height = video.videoHeight * 0.5;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, canvas.width, canvas.height);
-    if (code) {
-        handleScannedData(code.data);
+    if (!STATE.scannerActive || !DOM.scannerVideo) return;
+    
+    const video = DOM.scannerVideo;
+    
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        STATE.scannerTimer = requestAnimationFrame(scanLoop);
         return;
     }
-    appState.scanTimer = requestAnimationFrame(scanLoop);
+    
+    try {
+        const width = Math.floor(video.videoWidth * 0.5) || 320;
+        const height = Math.floor(video.videoHeight * 0.5) || 240;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, width, height);
+        
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const jsqr = window.jsQR || window.jsqr || window.JSQR || window.jsQr;
+        let code = null;
+        if (typeof jsqr === 'function') {
+            code = jsqr(imageData.data, width, height);
+        } else if (typeof jsQR === 'function') {
+            code = jsQR(imageData.data, width, height);
+        }
+        
+        if (code && code.data && code.data.length > 100) {
+            stopScanner();
+            STATE.encryptedData = code.data;
+            STATE.qrImageData = null;
+            
+            // Actualizar estado visual
+            if (DOM.scannerStatus) {
+                DOM.scannerStatus.innerHTML = '<i class="fas fa-check-circle" aria-hidden="true"></i> QR Found!';
+                DOM.scannerStatus.style.background = 'rgba(46,204,113,0.8)';
+            }
+            
+            showToast('QR scanned successfully', 'success');
+            setTimeout(() => {
+                if (DOM.decryptPassword) DOM.decryptPassword.focus();
+            }, 300);
+            return;
+        }
+    } catch (error) {
+        // Silently continue scanning
+    }
+    
+    STATE.scannerTimer = requestAnimationFrame(scanLoop);
 }
 
-function handleScannedData(encryptedBase64) {
-    closeScannerModal();
-    appState.qrImageData = null;
-    appState.encryptedData = encryptedBase64;
-    showToast('QR scanned', 'success');
-    showPasswordModal();
+function stopScanner() {
+    STATE.scannerActive = false;
+    if (STATE.scannerTimer) {
+        cancelAnimationFrame(STATE.scannerTimer);
+        STATE.scannerTimer = null;
+    }
+    if (STATE.scannerVideoTrack) {
+        try { 
+            STATE.scannerVideoTrack.stop(); 
+        } catch (e) {}
+        STATE.scannerVideoTrack = null;
+    }
+    if (DOM.scannerVideo && DOM.scannerVideo.srcObject) {
+        try {
+            DOM.scannerVideo.srcObject.getTracks().forEach(t => t.stop());
+            DOM.scannerVideo.srcObject = null;
+        } catch (e) {}
+    }
+    if (DOM.scannerPreviewContainer) {
+        DOM.scannerPreviewContainer.style.display = 'none';
+    }
+    if (DOM.scannerStatus) {
+        DOM.scannerStatus.innerHTML = '<i class="fas fa-camera" aria-hidden="true"></i> Camera ready';
+        DOM.scannerStatus.style.background = 'rgba(0,0,0,0.7)';
+    }
 }
 
-function closeScannerModal() {
-    appState.scannerActive = false;
-    if (appState.scanTimer) cancelAnimationFrame(appState.scanTimer);
-    if (appState.videoTrack) { appState.videoTrack.stop(); appState.videoTrack = null; }
-    dom.cameraStream.srcObject = null;
-    closeModal(dom.scannerModal);
+// ============ ENCRYPT FLOW ============
+async function startEncryption() {
+    if (STATE.isProcessing) return;
+    
+    STATE.seed = DOM.seedInput.value.trim();
+    STATE.message = DOM.messageInput.value.trim();
+    STATE.password = DOM.passwordInput.value;
+    
+    const words = STATE.seed.split(/\s+/);
+    
+    if (![12, 18, 24].includes(words.length)) {
+        showToast('Seed must be 12, 18 or 24 words', 'error');
+        return;
+    }
+    
+    for (const word of words) {
+        if (!BIP39_WORDS.includes(word)) {
+            showToast(`Invalid word: "${word}"`, 'error');
+            return;
+        }
+    }
+    
+    const isValidChecksum = await BIP39.validateChecksum(words);
+    if (!isValidChecksum) {
+        showToast('⚠️ Invalid BIP39 checksum. Proceed with caution.', 'warning');
+    }
+    
+    if (STATE.password.length < CONFIG.MIN_PASSWORD_LENGTH) {
+        showToast(`Password must be at least ${CONFIG.MIN_PASSWORD_LENGTH} characters`, 'error');
+        return;
+    }
+    
+    STATE.isProcessing = true;
+    showSpinner(true, 'Encrypting seed…');
+    
+    try {
+        const encrypted = await CryptoUtils.encryptMessage(STATE.seed, STATE.password, STATE.message);
+        STATE.encryptedData = encrypted;
+        
+        showSpinner(true, 'Generating QR code…');
+        try {
+            await QR.generate(encrypted);
+        } catch (qrErr) {
+            throw new Error('QR generation failed: ' + qrErr.message);
+        }
+        
+        showSpinner(false);
+        goToStep('qr');
+        showToast('Seed encrypted successfully', 'success');
+        
+        // Limpiar datos sensibles
+        STATE.seed = '';
+        STATE.password = '';
+        if (DOM.passwordInput) DOM.passwordInput.value = '';
+        if (DOM.seedInput) DOM.seedInput.value = '';
+        
+    } catch (error) {
+        showSpinner(false);
+        showToast('Encryption failed: ' + error.message, 'error');
+        console.error('Encryption error:', error);
+    } finally {
+        STATE.isProcessing = false;
+    }
 }
 
-function switchCamera() {
-    appState.facingMode = appState.facingMode === 'environment' ? 'user' : 'environment';
-    startScanner(appState.facingMode);
+// ============ DECRYPT FLOW ============
+async function decryptQR() {
+    if (STATE.isProcessing) return;
+    
+    const password = DOM.decryptPassword.value;
+    if (!password) {
+        showToast('Password required', 'error');
+        return;
+    }
+    
+    STATE.isProcessing = true;
+    showSpinner(true, 'Decrypting…');
+    
+    try {
+        let encrypted = STATE.encryptedData;
+        
+        if (!encrypted && STATE.qrImageData) {
+            showSpinner(true, 'Reading QR from image…');
+            encrypted = await QR.extract(STATE.qrImageData);
+        }
+        
+        if (!encrypted) {
+            throw new Error('No QR data available. Please scan or upload a QR code first.');
+        }
+        
+        const result = await CryptoUtils.decryptMessage(encrypted, password);
+        STATE.decryptedSeed = result.seed;
+        STATE.decryptionAttempts = 0;
+        
+        showSpinner(false);
+        closeModal('password');
+        showDecryptedSeed(result.seed);
+        showToast('Decryption successful', 'success');
+        
+        if (DOM.decryptPassword) DOM.decryptPassword.value = '';
+        STATE.encryptedData = '';
+        STATE.qrImageData = null;
+        
+        // Limpiar estado de decryption
+        if (DOM.decryptStatus) {
+            DOM.decryptStatus.style.display = 'none';
+            DOM.decryptStatus.className = 'decrypt-status';
+        }
+        
+    } catch (error) {
+        STATE.decryptionAttempts++;
+        showSpinner(false);
+        
+        let errorMessage = error.message;
+        if (error.message.includes('Incorrect password')) {
+            errorMessage = '❌ Incorrect password. Please try again.';
+        } else if (error.message.includes('No QR data')) {
+            errorMessage = '❌ ' + error.message;
+        } else {
+            errorMessage = `❌ ${error.message}`;
+        }
+        
+        if (STATE.decryptionAttempts >= CONFIG.MAX_DECRYPT_ATTEMPTS) {
+            if (DOM.decryptStatus) {
+                DOM.decryptStatus.textContent = '⚠️ Too many failed attempts. Please wait 30 seconds.';
+                DOM.decryptStatus.className = 'decrypt-status warning';
+                DOM.decryptStatus.style.display = 'block';
+            }
+            setTimeout(() => {
+                if (DOM.decryptStatus) {
+                    DOM.decryptStatus.style.display = 'none';
+                    DOM.decryptStatus.className = 'decrypt-status';
+                }
+                STATE.decryptionAttempts = 0;
+            }, 30000);
+        } else {
+            if (DOM.decryptStatus) {
+                DOM.decryptStatus.textContent = `${errorMessage} (Attempt ${STATE.decryptionAttempts}/${CONFIG.MAX_DECRYPT_ATTEMPTS})`;
+                DOM.decryptStatus.className = 'decrypt-status error';
+                DOM.decryptStatus.style.display = 'block';
+            }
+        }
+        
+        // Si es error de password, no limpiar el QR data
+        if (error.message.includes('Incorrect password')) {
+            // Mantener los datos para otro intento
+        } else {
+            STATE.encryptedData = '';
+            STATE.qrImageData = null;
+        }
+    } finally {
+        STATE.isProcessing = false;
+    }
 }
 
-// ============ Message Counter ============
-function updateMessageCounter() {
-    const len = dom.userMessage.value.length;
-    dom.messageChars.textContent = len;
-    dom.messageChars.style.color = len > 200 ? 'var(--warning-color)' : len > 100 ? 'var(--accent-color)' : '#666';
+function showDecryptedSeed(seed) {
+    const words = seed.split(' ');
+    if (DOM.seedGrid) {
+        DOM.seedGrid.innerHTML = words.map((w, i) => `
+            <div class="seed-word" role="listitem">
+                <span class="word-index">${i + 1}</span>
+                ${w}
+            </div>
+        `).join('');
+    }
+    
+    if (DOM.decryptedCount) DOM.decryptedCount.textContent = `${words.length} words`;
+    goToStep('decrypted');
+    startTimer();
 }
 
-// ============ Event Listeners ============
-function initEventListeners() {
-    dom.startBtn.addEventListener('click', () => openModal(dom.seedModal));
-    dom.scanBtn.addEventListener('click', openScannerModal);
-    dom.cancelBtn.addEventListener('click', () => closeModal(dom.seedModal));
-    dom.closeModalBtns.forEach(btn => btn.addEventListener('click', function() {
-        const modal = this.closest('.modal');
-        if (modal) closeModal(modal);
-    }));
-    dom.seedPhrase.addEventListener('input', handleSeedInput);
-    dom.toggleVisibility.addEventListener('click', () => {
-        appState.wordsVisible = !appState.wordsVisible;
-        dom.seedPhrase.type = appState.wordsVisible ? 'text' : 'password';
-        dom.toggleVisibility.innerHTML = appState.wordsVisible ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+// ============ FILE HANDLING ============
+function processFile(file) {
+    if (!file || !file.type.match('image.*')) {
+        showToast('Please select a valid image file', 'error');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Image too large (max 5MB)', 'error');
+        return;
+    }
+    
+    showSpinner(true, 'Processing image…');
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            STATE.qrImageData = e.target.result;
+            STATE.encryptedData = '';
+            if (DOM.qrFile) DOM.qrFile.value = '';
+            
+            showSpinner(false);
+            openModal('password');
+            showToast('Image loaded successfully', 'success');
+            
+            // Intentar extraer automáticamente el QR
+            try {
+                const extracted = await QR.extract(STATE.qrImageData);
+                if (extracted) {
+                    STATE.encryptedData = extracted;
+                    STATE.qrImageData = null;
+                    showToast('QR code detected automatically', 'success');
+                }
+            } catch (extractError) {
+                // Si falla la extracción automática, el usuario puede usar la cámara o subir otra imagen
+                console.log('Auto-extraction failed, manual decryption available');
+            }
+        } catch (error) {
+            showSpinner(false);
+            showToast('Failed to load image: ' + error.message, 'error');
+        }
+    };
+    reader.onerror = () => {
+        showSpinner(false);
+        showToast('Failed to read file', 'error');
+    };
+    reader.readAsDataURL(file);
+}
+
+// ============ PDF EXPORT ============
+function generatePDF() {
+    if (!STATE.encryptedData) {
+        showToast('No QR generated', 'error');
+        return;
+    }
+    
+    showSpinner(true, 'Generating PDF…');
+    
+    try {
+        const { jsPDF } = window.jspdf || {};
+        if (!jsPDF) {
+            showSpinner(false);
+            showToast('PDF library not available', 'error');
+            return;
+        }
+        
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+        const w = doc.internal.pageSize.getWidth();
+        const h = doc.internal.pageSize.getHeight();
+        const cx = w / 2;
+        
+        doc.setFillColor(245, 248, 250);
+        doc.rect(0, 0, w, h, 'F');
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(26, 42, 58);
+        doc.text('MnemoniQR', cx, 20, null, null, 'center');
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(90, 106, 122);
+        doc.text('Encrypted Backup', cx, 27, null, null, 'center');
+        
+        const qrData = DOM.qrCanvas.toDataURL('image/png');
+        const qrSize = 75;
+        const qrX = cx - qrSize / 2;
+        const qrY = 40;
+        doc.addImage(qrData, 'PNG', qrX, qrY, qrSize, qrSize);
+        
+        doc.setFontSize(8);
+        doc.setTextColor(90, 106, 122);
+        doc.text('AES-256-GCM Encrypted', cx, qrY + qrSize + 8, null, null, 'center');
+        
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        const now = new Date().toLocaleString();
+        doc.text(`Generated: ${now}`, cx, h - 8, null, null, 'center');
+        
+        doc.setFontSize(7);
+        doc.setTextColor(200, 60, 60);
+        doc.text('Store this document securely', cx, h - 3, null, null, 'center');
+        
+        doc.save(`mnemoniqr-backup-${Date.now()}.pdf`);
+        showSpinner(false);
+        showToast('PDF generated successfully', 'success');
+    } catch (error) {
+        showSpinner(false);
+        showToast('PDF failed: ' + error.message, 'error');
+    }
+}
+
+// ============ SHARE ============
+async function shareQR() {
+    if (!STATE.encryptedData) return;
+    
+    DOM.qrCanvas.toBlob(async blob => {
+        if (!blob) {
+            showToast('Failed to generate image', 'error');
+            return;
+        }
+        
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    files: [new File([blob], 'seed-backup.png', { type: 'image/png' })],
+                    title: 'MnemoniQR Backup'
+                });
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    showToast('Share cancelled', 'warning');
+                }
+            }
+        } else {
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                showToast('QR copied to clipboard', 'success');
+            } catch {
+                showToast('Share not supported on this device', 'warning');
+            }
+        }
+    }, 'image/png', 0.92);
+}
+
+// ============ EVENTS ============
+function init() {
+    // Encrypt flow
+    if (DOM.encryptBtn) DOM.encryptBtn.addEventListener('click', () => {
+        goToStep('seed');
+        if (DOM.seedInput) {
+            DOM.seedInput.value = '';
+            DOM.seedInput.focus();
+        }
+        updateSuggestions();
     });
-    dom.passwordToggle.addEventListener('click', () => {
-        appState.passwordVisible = !appState.passwordVisible;
-        dom.password.type = appState.passwordVisible ? 'text' : 'password';
-        dom.passwordToggle.innerHTML = appState.passwordVisible ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+    
+    if (DOM.seedInput) {
+        DOM.seedInput.addEventListener('input', updateSuggestions);
+        DOM.seedInput.addEventListener('blur', updateSuggestions);
+        DOM.seedInput.addEventListener('focus', updateSuggestions);
+    }
+    
+    if (DOM.seedNext) DOM.seedNext.addEventListener('click', () => {
+        const text = DOM.seedInput.value.trim();
+        const words = text.split(/\s+/).filter(w => w.length > 0);
+        
+        if (![12, 18, 24].includes(words.length)) {
+            showToast('Seed must be 12, 18 or 24 words', 'error');
+            return;
+        }
+        
+        const invalidWords = words.filter(w => !BIP39_WORDS.includes(w));
+        if (invalidWords.length > 0) {
+            showToast(`Invalid words: ${invalidWords.join(', ')}`, 'error');
+            return;
+        }
+        
+        goToStep('message');
+        if (DOM.messageInput) {
+            DOM.messageInput.value = STATE.message || '';
+            DOM.messageInput.focus();
+            updateCharCounter();
+        }
     });
-    dom.password.addEventListener('input', updatePasswordStrength);
-    dom.generatePassword.addEventListener('click', generateSecurePassword);
-    dom.encryptBtn.addEventListener('click', startEncryption);
-    dom.pdfBtn.addEventListener('click', generatePDF);
-    dom.shareBtn.addEventListener('click', shareQR);
-    dom.downloadBtn.addEventListener('click', downloadQRAsPNG);
-    dom.dropArea.addEventListener('click', triggerFileSelect);
-    dom.qrFile.addEventListener('change', handleFileSelect);
-    dom.decryptSeedBtn.addEventListener('click', decryptQR);
-    dom.copySeed.addEventListener('click', copySeedToClipboard);
-    dom.closeDecrypted.addEventListener('click', () => closeModal(dom.decryptedModal));
-    dom.closeDecryptedBtn.addEventListener('click', () => closeModal(dom.decryptedModal));
-    dom.closeWelcome.addEventListener('click', () => closeModal(dom.welcomeModal));
-    dom.acceptWelcome.addEventListener('click', () => closeModal(dom.welcomeModal));
-    dom.closeQRModal.addEventListener('click', () => closeModal(dom.qrModal));
-    dom.closeScanner.addEventListener('click', closeScannerModal);
-    dom.stopScanBtn.addEventListener('click', closeScannerModal);
-    dom.switchCameraBtn.addEventListener('click', switchCamera);
-    dom.cancelDecryptBtn.addEventListener('click', () => closeModal(dom.passwordModal));
-    dom.closePasswordModal.addEventListener('click', () => closeModal(dom.passwordModal));
-    dom.decryptPasswordToggle.addEventListener('click', () => {
-        const isVisible = dom.decryptPassword.type === 'text';
-        dom.decryptPassword.type = isVisible ? 'password' : 'text';
-        dom.decryptPasswordToggle.innerHTML = isVisible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    
+    if (DOM.messageNext) DOM.messageNext.addEventListener('click', () => {
+        STATE.message = DOM.messageInput.value.trim();
+        goToStep('password');
+        if (DOM.passwordInput) {
+            DOM.passwordInput.value = '';
+            DOM.passwordInput.focus();
+            updatePasswordStrength();
+        }
     });
-    dom.dropArea.addEventListener('dragover', handleDragOver);
-    dom.dropArea.addEventListener('dragleave', handleDragLeave);
-    dom.dropArea.addEventListener('drop', handleDrop);
-    document.addEventListener('click', e => {
-        if (!dom.seedPhrase.contains(e.target) && !dom.suggestionsContainer.contains(e.target)) hideSuggestions();
+    
+    if (DOM.messageSkip) DOM.messageSkip.addEventListener('click', () => {
+        if (DOM.messageInput) DOM.messageInput.value = '';
+        STATE.message = '';
+        goToStep('password');
+        if (DOM.passwordInput) {
+            DOM.passwordInput.value = '';
+            DOM.passwordInput.focus();
+            updatePasswordStrength();
+        }
     });
-    if (dom.userMessage) dom.userMessage.addEventListener('input', updateMessageCounter);
-    if (dom.updateQrBtn) dom.updateQrBtn.addEventListener('click', async () => {
-        const newSeed = dom.decryptedSeed.value;
-        const newMsg = dom.userMessage?.value || '';
-        await updateEncryptedQR(newSeed, newMsg);
-        closeModal(dom.decryptedModal);
-        openModal(dom.qrModal);
+    
+    if (DOM.messageInput) {
+        DOM.messageInput.addEventListener('input', updateCharCounter);
+    }
+    
+    if (DOM.passwordInput) {
+        DOM.passwordInput.addEventListener('input', updatePasswordStrength);
+        DOM.passwordInput.addEventListener('focus', updatePasswordStrength);
+    }
+    
+    if (DOM.showPassword) {
+        DOM.showPassword.addEventListener('change', () => {
+            if (DOM.passwordInput) {
+                DOM.passwordInput.type = DOM.showPassword.checked ? 'text' : 'password';
+            }
+        });
+    }
+    
+    if (DOM.passwordGenerate) {
+        DOM.passwordGenerate.addEventListener('click', () => {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+            let pwd = '';
+            for (let i = 0; i < 20; i++) {
+                const randomIndex = crypto.getRandomValues(new Uint8Array(1))[0] % chars.length;
+                pwd += chars[randomIndex];
+            }
+            if (DOM.passwordInput) DOM.passwordInput.value = pwd;
+            updatePasswordStrength();
+            showToast('Password generated', 'success');
+        });
+    }
+    
+    if (DOM.passwordNext) DOM.passwordNext.addEventListener('click', startEncryption);
+    
+    // QR actions
+    if (DOM.qrDownload) {
+        DOM.qrDownload.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `mnemoniqr-${Date.now()}.png`;
+            link.href = DOM.qrCanvas.toDataURL('image/png', 1.0);
+            link.click();
+            showToast('QR downloaded', 'success');
+        });
+    }
+    
+    if (DOM.qrPdf) DOM.qrPdf.addEventListener('click', generatePDF);
+    if (DOM.qrShare) DOM.qrShare.addEventListener('click', shareQR);
+    
+    if (DOM.qrDone) {
+        DOM.qrDone.addEventListener('click', () => {
+            goToStep('main');
+            STATE.encryptedData = '';
+            if (DOM.qrCanvas) {
+                const ctx = DOM.qrCanvas.getContext('2d');
+                ctx.clearRect(0, 0, DOM.qrCanvas.width, DOM.qrCanvas.height);
+            }
+        });
+    }
+    
+    // Decrypt
+    if (DOM.scanBtn) {
+        DOM.scanBtn.addEventListener('click', async () => {
+            openModal('password');
+            // Limpiar estado previo
+            STATE.encryptedData = '';
+            STATE.qrImageData = null;
+            if (DOM.decryptStatus) {
+                DOM.decryptStatus.style.display = 'none';
+                DOM.decryptStatus.className = 'decrypt-status';
+            }
+            if (DOM.decryptPassword) DOM.decryptPassword.value = '';
+            await startScanner();
+        });
+    }
+    
+    if (DOM.uploadArea) {
+        DOM.uploadArea.addEventListener('click', () => {
+            if (DOM.qrFile) DOM.qrFile.click();
+        });
+        DOM.uploadArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (DOM.qrFile) DOM.qrFile.click();
+            }
+        });
+    }
+    
+    if (DOM.qrFile) {
+        DOM.qrFile.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+            }
+        });
+    }
+    
+    // Drag and drop
+    if (DOM.uploadArea) {
+        DOM.uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            DOM.uploadArea.style.borderColor = 'var(--accent)';
+            DOM.uploadArea.style.background = 'rgba(44,122,122,0.05)';
+        });
+        
+        DOM.uploadArea.addEventListener('dragleave', () => {
+            DOM.uploadArea.style.borderColor = '';
+            DOM.uploadArea.style.background = '';
+        });
+        
+        DOM.uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            DOM.uploadArea.style.borderColor = '';
+            DOM.uploadArea.style.background = '';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processFile(e.dataTransfer.files[0]);
+            }
+        });
+    }
+    
+    // Password modal
+    if (DOM.decryptShowPassword) {
+        DOM.decryptShowPassword.addEventListener('change', () => {
+            if (DOM.decryptPassword) {
+                DOM.decryptPassword.type = DOM.decryptShowPassword.checked ? 'text' : 'password';
+            }
+        });
+    }
+    
+    if (DOM.decryptConfirm) DOM.decryptConfirm.addEventListener('click', decryptQR);
+    
+    if (DOM.decryptCancel) {
+        DOM.decryptCancel.addEventListener('click', () => {
+            stopScanner();
+            closeModal('password');
+        });
+    }
+    
+    if (DOM.decryptPassword) {
+        DOM.decryptPassword.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                decryptQR();
+            }
+        });
+    }
+    
+    // Decrypted actions
+    if (DOM.decryptedCopy) {
+        DOM.decryptedCopy.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(STATE.decryptedSeed);
+                showToast('Seed copied to clipboard', 'success');
+            } catch {
+                // Fallback: seleccionar y copiar manualmente
+                const textarea = document.createElement('textarea');
+                textarea.value = STATE.decryptedSeed;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Seed copied to clipboard', 'success');
+                } catch {
+                    showToast('Failed to copy. Please select manually.', 'error');
+                }
+                document.body.removeChild(textarea);
+            }
+        });
+    }
+    
+    if (DOM.decryptedHide) DOM.decryptedHide.addEventListener('click', hideDecryptedSeed);
+    if (DOM.decryptedDone) DOM.decryptedDone.addEventListener('click', hideDecryptedSeed);
+    
+    // About
+    if (DOM.aboutBtn) DOM.aboutBtn.addEventListener('click', () => openModal('about'));
+    if (DOM.aboutClose) DOM.aboutClose.addEventListener('click', () => closeModal('about'));
+    if (DOM.aboutGotIt) DOM.aboutGotIt.addEventListener('click', () => closeModal('about'));
+    
+    // Back buttons
+    DOM.backButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.step;
+            if (target === 'back') {
+                // Preguntar si hay datos ingresados
+                let hasData = false;
+                if (STATE.step === 'seed' && DOM.seedInput && DOM.seedInput.value.trim().length > 0) {
+                    hasData = true;
+                }
+                if (STATE.step === 'message' && DOM.messageInput && DOM.messageInput.value.trim().length > 0) {
+                    hasData = true;
+                }
+                if (STATE.step === 'password' && DOM.passwordInput && DOM.passwordInput.value.length > 0) {
+                    hasData = true;
+                }
+                
+                if (hasData) {
+                    if (!confirm('You have entered data. Are you sure you want to go back?')) {
+                        return;
+                    }
+                }
+                
+                stopScanner();
+                goToStep('main');
+            } else {
+                goToStep(target);
+            }
+        });
     });
-
-    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+    
+    // Close modal on backdrop click
+    document.querySelectorAll('.modal, .step-modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                const id = modal.id;
+                if (id === 'password') {
+                    stopScanner();
+                    STATE.decryptionAttempts = 0;
+                    if (DOM.decryptStatus) {
+                        DOM.decryptStatus.style.display = 'none';
+                        DOM.decryptStatus.className = 'decrypt-status';
+                    }
+                    STATE.encryptedData = '';
+                    STATE.qrImageData = null;
+                    if (DOM.decryptPassword) DOM.decryptPassword.value = '';
+                }
+                closeModal(id);
+            }
+        });
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (STATE.step === 'seed' && !DOM.seedNext.disabled) {
+                DOM.seedNext.click();
+            }
+            if (STATE.step === 'message') {
+                DOM.messageNext.click();
+            }
+            if (STATE.step === 'password' && !DOM.passwordNext.disabled) {
+                DOM.passwordNext.click();
+            }
+        }
+        // Ctrl+Enter en el campo de seed para confirmar
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && STATE.step === 'seed') {
+            if (!DOM.seedNext.disabled) DOM.seedNext.click();
+        }
+    });
+    
+    // Visibility change - pausar timer
+    document.addEventListener('visibilitychange', () => {
+        STATE.isPaused = document.hidden;
+        if (document.hidden && STATE.timerInterval) {
+            // El timer se pausa automáticamente
+        } else if (!document.hidden && STATE.step === 'decrypted' && STATE.decryptedSeed) {
+            // Reanudar el timer si estaba pausado
+            if (!STATE.timerInterval) {
+                startTimer();
+            }
+        }
+    });
+    
+    // Update char counter
+    function updateCharCounter() {
+        if (DOM.messageInput && DOM.charCounter) {
+            const len = DOM.messageInput.value.length;
+            DOM.charCounter.textContent = `${len}/255`;
+        }
+    }
+    
+    console.log('MnemoniQR initialized successfully');
 }
 
-// ============ Initialization ============
-window.addEventListener('DOMContentLoaded', () => {
-    initEventListeners();
-    initTheme();
-    openModal(dom.welcomeModal);
+// ============ START ============
+document.addEventListener('DOMContentLoaded', init);
+
+// Cleanup on unload
+window.addEventListener('beforeunload', () => {
+    stopScanner();
+    stopTimer();
+    // Limpiar datos sensibles
+    STATE.seed = '';
+    STATE.password = '';
+    STATE.decryptedSeed = '';
+    STATE.encryptedData = '';
+    STATE.qrImageData = null;
 });

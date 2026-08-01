@@ -1,469 +1,585 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MnemoniQR – Secure Seed Encryption</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>MnemoniQR – Secure Seed Backup</title>
     
-    <!-- PWA Essentials -->
+    <!-- ============================================================
+         SECURITY HEADERS
+    ============================================================ -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 
+            https://cdnjs.cloudflare.com 
+            https://cdn.jsdelivr.net
+            https://telegram.org
+            blob:;
+        style-src 'self' 'unsafe-inline' 
+            https://cdnjs.cloudflare.com;
+        img-src 'self' data: blob: https:;
+        font-src https://cdnjs.cloudflare.com;
+        connect-src 'self' https://telegram.org;
+        worker-src 'self' blob:;
+        frame-src 'none';
+        base-uri 'self';
+        form-action 'self';
+        upgrade-insecure-requests;
+    ">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=()">
+    
+    <!-- ============================================================
+         PWA META TAGS
+    ============================================================ -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#00cc99">
+    <meta name="theme-color" content="#1a2a3a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MnemoniQR">
     
-    <!-- Favicons -->
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/icons/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/icons/icon-96x96.png">
+    
+    <!-- Maskable Icon -->
+    <link rel="mask-icon" href="/assets/icons/icon-512x512.png" color="#1a2a3a">
+    
+    <!-- Favicon -->
     <link rel="icon" href="/assets/favicon.ico" sizes="any">
-    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/icon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/icon-72x72.png">
     
-    <!-- Preload -->
+    <!-- ============================================================
+         PRELOADS
+    ============================================================ -->
     <link rel="preload" href="styles.css" as="style">
     <link rel="preload" href="script.js" as="script">
+    <link rel="preload" href="MQR_logo.png" as="image">
     
-    <!-- External -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- ============================================================
+         EXTERNAL LIBRARIES
+    ============================================================ -->
+    <!-- Font Awesome -->
+    <link rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" 
+          crossorigin="anonymous" 
+          referrerpolicy="no-referrer">
+    
+    <!-- QRCode -->
+    <script async src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js" 
+            onerror="console.warn('QRCode library failed to load - fallback will be used')"></script>
+    
+    <!-- jsPDF -->
+    <script async src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+            onerror="console.warn('jsPDF library failed to load')"></script>
+    
+    <!-- jsQR -->
+    <script async src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+            onerror="console.warn('jsQR library failed to load')"></script>
+    
+    <!-- Telegram Web App -->
+    <script async src="https://telegram.org/js/telegram-web-app.js"
+            onerror="console.warn('Telegram Web App library failed to load')"></script>
+    
+    <!-- ============================================================
+         STYLES
+    ============================================================ -->
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">
-            <img src="MQR_logo.png" alt="MnemoniQR Logo" class="logo-icon">
-        </div>
-        
-        <p class="tagline">
-            Protect your cryptocurrency seeds with AES-256-GCM encryption and authenticated data
-        </p>
-        
-        <div class="action-buttons">
-            <button id="start-btn" class="btn-primary btn-encrypt" aria-label="Encrypt seed">
-                <i class="fas fa-lock"></i> Encrypt Seed
-            </button>
-        </div>
+    <div class="app">
+        <!-- ============================================================
+             MAIN CONTAINER
+        ============================================================ -->
+        <div class="container" role="main">
+            <!-- Header -->
+            <header class="header">
+                <img src="MQR_logo.png" alt="MnemoniQR Logo" class="logo" width="180" height="auto" loading="lazy">
+                <p class="subtitle">Protect your recovery phrase completely offline.</p>
+            </header>
 
-        <!-- Theme toggle -->
-        <button id="theme-toggle" class="theme-toggle" aria-label="Switch dark/light mode">
-            <i class="fas fa-moon"></i>
-        </button>
-        
-        <div class="decrypt-section">
-            <h3 class="decrypt-title">
-                <i class="fas fa-unlock"></i> Decrypt Seed
-            </h3>
-            
-            <div class="decrypt-options">
-                <button id="scan-btn" class="btn-primary btn-scan" aria-label="Scan QR code">
-                    <i class="fas fa-camera"></i> Scan QR Code
+            <!-- Main Actions -->
+            <div class="main-actions">
+                <button id="encrypt-btn-main" class="btn-primary btn-large" aria-label="Encrypt seed phrase">
+                    <i class="fas fa-lock" aria-hidden="true"></i>
+                    Encrypt Seed
                 </button>
-                
-                <div class="or-divider">
-                    <span>or</span>
+            </div>
+
+            <!-- Decrypt Section -->
+            <div class="decrypt-section">
+                <p class="decrypt-label">Already have a QR?</p>
+                <div class="decrypt-actions">
+                    <button id="scan-btn" class="btn-secondary" aria-label="Scan QR code with camera">
+                        <i class="fas fa-camera" aria-hidden="true"></i>
+                        Scan QR
+                    </button>
+                    <span class="divider">or</span>
+                    <div class="upload-area" id="upload-area" role="button" tabindex="0" aria-label="Upload QR image">
+                        <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                        <span>Upload Image</span>
+                        <input type="file" id="qr-file" accept="image/*" style="display: none;" aria-label="Select QR image file">
+                    </div>
                 </div>
             </div>
-            
-            <div class="drop-area" id="drop-area" role="button" tabindex="0" aria-label="Upload QR image">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p>Drag and drop your QR code here</p>
-                <p class="small">Or tap to select an image</p>
-                <input type="file" id="qr-file" accept="image/*" style="display: none;">
-            </div>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <button id="about-btn" class="btn-text" aria-label="About security">About Security</button>
+                <span class="dot">·</span>
+                <span>v2.0</span>
+            </footer>
         </div>
-    </div>
-    
-    <!-- Seed Encryption Modal -->
-    <div id="seed-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="seed-modal-title">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="seed-modal-title">Encrypt Seed Phrase</h2>
-                <p class="modal-subtitle">Enter 12, 18, or 24 words separated by spaces</p>
-                <button class="close-modal" aria-label="Close modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="input-group">
-                <label class="input-label" for="seed-phrase">
-                    Recovery Phrase
-                    <span>Maximum 24 words</span>
-                </label>
-                <div class="seed-input-container">
-                    <textarea id="seed-phrase" placeholder="Enter each word separated by a space..." aria-label="Seed phrase"></textarea>
-                    <div class="word-counter" id="word-counter">0 words</div>
-                    <button class="toggle-visibility" id="toggle-visibility" aria-label="Toggle visibility">
-                        <i class="fas fa-eye"></i>
+
+        <!-- ============================================================
+             ENCRYPT FLOW
+        ============================================================ -->
+        
+        <!-- Step 1: Seed Input -->
+        <div id="step-seed" class="step-modal" style="display: none;" role="dialog" aria-label="Enter recovery phrase">
+            <div class="step-content">
+                <div class="step-header">
+                    <button class="btn-back" data-step="back" aria-label="Go back to main menu">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
-                    <div id="bip39-suggestions" class="bip39-suggestions" role="listbox"></div>
+                    <h2>Recovery Phrase</h2>
+                    <span class="step-counter" id="word-counter">0 words</span>
+                </div>
+                
+                <div class="seed-input-wrapper">
+                    <textarea id="seed-input" 
+                              placeholder="Enter each word separated by a space..." 
+                              autocomplete="off"
+                              spellcheck="false"
+                              rows="6"
+                              aria-label="Enter your seed phrase words separated by spaces"></textarea>
+                    <div id="suggestions" class="suggestions-list" role="listbox"></div>
                 </div>
                 
                 <div class="word-hints">
-                    <div class="word-hint"><i class="fas fa-check-circle"></i> 12 words</div>
-                    <div class="word-hint"><i class="fas fa-check-circle"></i> 18 words</div>
-                    <div class="word-hint"><i class="fas fa-check-circle"></i> 24 words</div>
+                    <span>12</span>
+                    <span>18</span>
+                    <span>24</span>
+                    <span class="hint-dot">·</span>
+                    <span id="bip39-status" class="status-valid">✓ BIP39</span>
                 </div>
+                
+                <button id="seed-next" class="btn-primary btn-large" disabled aria-label="Continue to next step">
+                    Continue
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
 
-                <!-- BIP39 checksum warning -->
-                <div id="bip39-warning" class="bip39-warning" style="display: none;">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>Invalid checksum – not a standard BIP39 mnemonic.</span>
+        <!-- Step 2: Message (Optional) -->
+        <div id="step-message" class="step-modal" style="display: none;" role="dialog" aria-label="Add optional note">
+            <div class="step-content">
+                <div class="step-header">
+                    <button class="btn-back" data-step="seed" aria-label="Go back to seed input">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2>Add a note (optional)</h2>
                 </div>
-            </div>
-            
-            <!-- User Message Section -->
-            <div class="user-message-section">
-                <div class="input-group">
-                    <label class="input-label" for="user-message">
-                        User Message (Optional)
-                        <span>Add notes about this seed phrase</span>
-                    </label>
-                    <input type="text" id="user-message" class="password-input" 
-                           placeholder="e.g., Main wallet backup" maxlength="255">
-                    <div class="message-counter">
-                        <span id="message-chars">0</span>/255 characters
-                    </div>
+                
+                <div class="message-input-wrapper">
+                    <input type="text" id="message-input" 
+                           placeholder="e.g., Main wallet backup" 
+                           maxlength="255"
+                           aria-label="Optional note for your backup">
+                    <span class="char-counter" id="char-counter">0/255</span>
                 </div>
+                
+                <button id="message-next" class="btn-primary btn-large" aria-label="Continue to password setup">
+                    Continue
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button id="message-skip" class="btn-text" aria-label="Skip optional note">Skip</button>
             </div>
-            
-            <div class="password-section" id="password-section">
-                <div class="input-group">
-                    <label class="input-label" for="password">
-                        Encryption Password
-                        <span>Minimum 12 characters</span>
-                    </label>
-                    <div class="password-input-container">
-                        <input type="password" id="password" class="password-input" placeholder="Create a strong password">
-                        <button class="password-toggle" id="password-toggle" aria-label="Toggle password visibility">
-                            <i class="fas fa-eye"></i>
+        </div>
+
+        <!-- Step 3: Password -->
+        <div id="step-password" class="step-modal" style="display: none;" role="dialog" aria-label="Create encryption password">
+            <div class="step-content">
+                <div class="step-header">
+                    <button class="btn-back" data-step="message" aria-label="Go back to message input">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2>Create Password</h2>
+                </div>
+                
+                <div class="password-wrapper">
+                    <div class="password-input-group">
+                        <input type="password" id="password-input" 
+                               placeholder="Create a strong password" 
+                               autocomplete="new-password"
+                               aria-label="Create a strong password for encryption">
+                        <button id="password-generate" class="btn-icon-small" title="Generate password" aria-label="Generate random password">
+                            <i class="fas fa-dice"></i>
                         </button>
                     </div>
-                    <div class="password-strength">
-                        <div class="password-strength-bar" id="password-strength-bar"></div>
-                    </div>
-                    <div class="password-strength-text" id="password-strength-text">Security: Very weak</div>
                     
-                    <button class="generate-password-btn" id="generate-password">
-                        <i class="fas fa-dice"></i> Generate secure password
-                    </button>
-                </div>
-            </div>
-            
-            <div class="actions">
-                <button class="btn-secondary" id="cancel-btn">Cancel</button>
-                <button class="btn-primary" id="encrypt-btn">Encrypt Seed</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Password Input Modal -->
-    <div id="password-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="pwd-modal-title">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="pwd-modal-title">Decrypt Seed Phrase</h2>
-                <p class="modal-subtitle">Enter password to decrypt QR code</p>
-                <button class="close-modal" id="close-password-modal" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="password-section">
-                <div class="input-group">
-                    <label class="input-label" for="decrypt-password">
-                        Encryption Password
-                    </label>
-                    <div class="password-input-container">
-                        <input type="password" id="decrypt-password" class="password-input" placeholder="Enter your password" autocomplete="off">
-                        <button class="password-toggle" id="decrypt-password-toggle" aria-label="Toggle visibility">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="actions">
-                <button class="btn-secondary" id="cancel-decrypt-btn">Cancel</button>
-                <button class="btn-primary" id="decrypt-seed-btn">Decrypt Seed</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Decrypted Seed Modal -->
-    <div id="decrypted-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="decrypted-title">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="decrypted-title">
-                    <i class="fas fa-shield-check" style="color: var(--success-color);"></i>
-                    Seed Successfully Decrypted
-                </h2>
-                <p class="modal-subtitle">GCM authentication passed – data integrity confirmed</p>
-                <button class="close-modal" id="close-decrypted" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <!-- Integrity Badge -->
-            <div class="integrity-badge">
-                <i class="fas fa-shield-haltered"></i>
-                AES-256-GCM Authenticated
-            </div>
-            
-            <!-- Metadata Section -->
-            <div class="metadata-section">
-                <h4 style="margin-bottom: 1rem; color: var(--accent-color);">
-                    <i class="fas fa-info-circle"></i> QR Metadata
-                </h4>
-                
-                <div class="metadata-grid">
-                    <div class="metadata-item">
-                        <strong>Format Version:</strong>
-                        <span id="metadata-version">1</span>
-                    </div>
-                    <div class="metadata-item">
-                        <strong>Created:</strong>
-                        <span id="metadata-created">Loading...</span>
-                    </div>
-                    <div class="metadata-item">
-                        <strong>Modifications:</strong>
-                        <span id="metadata-modifications">0</span>
-                    </div>
-                    <div class="metadata-item" style="display: none;" id="failed-attempts-container">
-                        <strong>Failed Attempts:</strong>
-                        <span id="metadata-failed-attempts">0</span>
-                    </div>
-                    <div class="metadata-item" style="display: none;" id="last-failed-container">
-                        <strong>Last Failed Attempt:</strong>
-                        <span id="metadata-last-attempt">Never</span>
-                    </div>
-                    <div class="user-message-content" id="user-message-container" style="display: none;">
-                        <strong>User Message:</strong>
-                        <p id="metadata-user-message" style="margin-top: 0.5rem;"></p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="input-group">
-                <label class="input-label">
-                    Recovery Phrase
-                    <span id="word-count">0 words</span>
-                </label>
-                <div class="seed-input-container">
-                    <textarea id="decrypted-seed" class="password-input" readonly style="min-height: 100px;" aria-label="Decrypted seed"></textarea>
-                    <button class="toggle-visibility" id="copy-seed" aria-label="Copy seed">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-                
-                <div class="seed-words" id="seed-words-container"></div>
-            </div>
-            
-            <div class="security-note success">
-                <i class="fas fa-shield-check"></i>
-                <strong>Authenticated:</strong> AES-256-GCM ensures data hasn't been tampered with.
-            </div>
-            
-            <div class="actions">
-                <button class="btn-primary" id="close-decrypted-btn">Close</button>
-                <button class="btn-secondary" id="update-qr-btn" style="display: none;">
-                    <i class="fas fa-sync-alt"></i> Update QR
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Welcome Modal -->
-    <div id="welcome-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="welcome-title">Welcome to MnemoniQR</h2>
-                <button class="close-modal" id="close-welcome" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="input-group">
-                <div class="security-note">
-                    <i class="fas fa-shield-alt"></i>
-                    <strong>100% Client-Side Processing:</strong> 
-                    <p>Everything stays on your device. No data is ever uploaded.</p>
-                </div>
-                <div class="security-note">
-                    <i class="fas fa-lock"></i>
-                    <strong>Maximum Security:</strong> 
-                    <p>Your seed phrases and passwords <u>never leave your browser</u>.</p>
-                </div>
-                <div class="security-note">
-                    <i class="fas fa-fingerprint"></i>
-                    <strong>AES-256-GCM Authentication:</strong> 
-                    <p>Encrypted data includes an authentication tag to detect any tampering.</p>
-                </div>
-                <div class="security-note">
-                    <i class="fas fa-history"></i>
-                    <strong>Security Tracking:</strong> 
-                    <p>QR codes track modification history and failed decryption attempts.</p>
-                </div>
-                <div class="security-note">
-                    <i class="fas fa-bolt"></i>
-                    <strong>No Server Dependency:</strong> 
-                    <p>The app works completely offline once loaded.</p>
-                </div>
-                <div class="security-note" style="background: rgba(255, 193, 7, 0.1); border-left-color: #ffc107;">
-                    <i class="fas fa-wifi-slash"></i>
-                    <strong>Security Recommendation:</strong>
-                    <p>For maximum protection, use this app in <strong>offline mode</strong>.</p>
-                </div>
-            </div>
-            
-            <div class="actions">
-                <button class="btn-primary" id="accept-welcome">Get Started</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- QR Result Modal -->
-    <div id="qr-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="qr-modal-title">Encrypted Seed QR</h2>
-                <p class="modal-subtitle">Store this QR code securely</p>
-                <button class="close-modal" id="close-qr-modal" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div id="qr-container">
-                <div class="qr-wrapper" id="qr-wrapper">
-                    <canvas id="qr-canvas"></canvas>
-                </div>
-                
-                <!-- Security Verification -->
-                <div class="security-verification">
-                    <h4 style="margin-bottom: 1rem; color: var(--accent-color);">
-                        <i class="fas fa-shield-check"></i> Security Verification
-                    </h4>
-                    
-                    <div class="verification-steps">
-                        <div class="verification-step verified">
-                            <i class="fas fa-check-circle"></i>
-                            <span>AES-256-GCM Encryption</span>
-                        </div>
-                        <div class="verification-step verified">
-                            <i class="fas fa-check-circle"></i>
-                            <span>GCM Authentication Tag</span>
-                        </div>
-                        <div class="verification-step verified">
-                            <i class="fas fa-check-circle"></i>
-                            <span>PBKDF2 Key Derivation (310,000 iterations)</span>
-                        </div>
+                    <div class="password-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="show-password" aria-label="Show password">
+                            <span>Show password</span>
+                        </label>
                     </div>
                     
-                    <div class="gcm-info">
-                        <div class="info-item">
-                            <strong>Mode:</strong> AES-256-GCM
+                    <!-- Password Strength -->
+                    <div class="strength-section">
+                        <div class="strength-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            <div id="strength-fill" class="strength-fill" style="width: 0%;"></div>
                         </div>
-                        <div class="info-item">
-                            <strong>Tag Size:</strong> 128 bits
+                        <div class="strength-label" id="strength-label">Very weak</div>
+                    </div>
+                    
+                    <!-- Requirements -->
+                    <div class="requirements">
+                        <div class="req-item" data-req="length">
+                            <i class="fas fa-circle" aria-hidden="true"></i>
+                            <span>12+ characters</span>
                         </div>
-                        <div class="info-item">
-                            <strong>Purpose:</strong> Tamper detection & authentication
+                        <div class="req-item" data-req="uppercase">
+                            <i class="fas fa-circle" aria-hidden="true"></i>
+                            <span>Uppercase</span>
+                        </div>
+                        <div class="req-item" data-req="lowercase">
+                            <i class="fas fa-circle" aria-hidden="true"></i>
+                            <span>Lowercase</span>
+                        </div>
+                        <div class="req-item" data-req="number">
+                            <i class="fas fa-circle" aria-hidden="true"></i>
+                            <span>Number</span>
+                        </div>
+                        <div class="req-item" data-req="symbol">
+                            <i class="fas fa-circle" aria-hidden="true"></i>
+                            <span>Symbol</span>
                         </div>
                     </div>
+                </div>
+                
+                <button id="password-next" class="btn-primary btn-large" disabled aria-label="Generate QR code">
+                    Generate QR
+                    <i class="fas fa-qrcode"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             QR RESULT
+        ============================================================ -->
+        <div id="step-qr" class="step-modal" style="display: none;" role="dialog" aria-label="Encrypted QR code">
+            <div class="step-content qr-fullscreen">
+                <div class="step-header">
+                    <h2>Encrypted Backup</h2>
+                    <span class="qr-badge">AES-256-GCM</span>
+                </div>
+                
+                <div class="qr-container">
+                    <div class="qr-wrapper">
+                        <canvas id="qr-canvas" width="280" height="280" aria-label="QR code containing encrypted seed"></canvas>
+                        <div class="qr-overlay">
+                            <img src="MQR_logo.png" alt="MnemoniQR" class="qr-logo" width="40" height="40">
+                        </div>
+                    </div>
+                    <p class="qr-label">MnemoniQR · Encrypted Backup</p>
                 </div>
                 
                 <div class="qr-actions">
-                    <button id="share-btn" class="btn-primary"><i class="fas fa-share-alt"></i> Share</button>
-                    <button id="download-btn" class="btn-secondary"><i class="fas fa-download"></i> Download PNG</button>
-                    <button id="pdf-btn" class="btn-secondary"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                    <button id="qr-download" class="btn-secondary" aria-label="Download QR as PNG image">
+                        <i class="fas fa-download"></i>
+                        Download PNG
+                    </button>
+                    <button id="qr-pdf" class="btn-secondary" aria-label="Export QR as PDF document">
+                        <i class="fas fa-file-pdf"></i>
+                        Export PDF
+                    </button>
+                    <button id="qr-share" class="btn-secondary" aria-label="Share QR code">
+                        <i class="fas fa-share-alt"></i>
+                        Share
+                    </button>
+                    <button id="qr-done" class="btn-primary" aria-label="Return to main menu">Done</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             DECRYPT RESULT
+        ============================================================ -->
+        <div id="step-decrypted" class="step-modal" style="display: none;" role="dialog" aria-label="Decrypted seed phrase">
+            <div class="step-content">
+                <div class="step-header">
+                    <h2>
+                        <i class="fas fa-check-circle" style="color: #2ecc71;" aria-hidden="true"></i>
+                        Seed Decrypted
+                    </h2>
+                    <span class="seed-count" id="decrypted-count">0 words</span>
                 </div>
                 
-                <div class="security-note">
-                    <i class="fas fa-shield-alt"></i>
-                    <strong>GCM Protection:</strong> The QR code contains an authentication tag that verifies data integrity during decryption. Any tampering will be detected.
+                <div class="seed-grid" id="seed-grid" role="list" aria-label="Recovery phrase words"></div>
+                
+                <div class="decrypted-actions">
+                    <button id="decrypted-copy" class="btn-secondary" aria-label="Copy seed phrase to clipboard">
+                        <i class="fas fa-copy"></i>
+                        Copy
+                    </button>
+                    <button id="decrypted-hide" class="btn-secondary" aria-label="Hide seed phrase">
+                        <i class="fas fa-eye-slash"></i>
+                        Hide
+                    </button>
+                    <button id="decrypted-done" class="btn-primary" aria-label="Return to main menu">Done</button>
+                </div>
+                
+                <div class="timer-bar">
+                    <div id="timer-fill" class="timer-fill" style="width: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                    <span class="timer-label" id="timer-label">Auto-hide in 60s</span>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Scanner Modal -->
-    <div id="scanner-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="scanner-title">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="scanner-title">Scan QR Code</h2>
-                <p class="modal-subtitle">Point your camera at the QR code</p>
-                <button class="close-modal" id="close-scanner" aria-label="Close scanner">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="scanner-container">
-                <div class="scanner-frame">
-                    <video id="camera-stream" autoplay playsinline muted></video>
-                    <div class="scan-region" id="scan-region">
-                        <div class="scan-region-highlight"></div>
+
+        <!-- ============================================================
+             PASSWORD MODAL (Decrypt)
+        ============================================================ -->
+        <div id="password" class="modal" style="display: none;" role="dialog" aria-label="Enter decryption password">
+            <div class="modal-content">
+                <h2>Enter Password</h2>
+                <p class="modal-sub">Enter the password to decrypt the QR code</p>
+                
+                <div class="password-input-group modal-password">
+                    <input type="password" id="decrypt-password" 
+                           placeholder="Enter your password" 
+                           autocomplete="off"
+                           aria-label="Enter decryption password">
+                </div>
+                
+                <div class="password-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="decrypt-show-password" aria-label="Show password">
+                        <span>Show password</span>
+                    </label>
+                </div>
+                
+                <div id="decrypt-status" class="decrypt-status" style="display: none;" role="alert"></div>
+                
+                <!-- Scanner preview container -->
+                <div id="scanner-preview-container" style="display: none;">
+                    <div class="scanner-preview" style="width:100%;border-radius:12px;overflow:hidden;margin:1rem 0;position:relative;">
+                        <video id="scanner-video" autoplay playsinline muted style="width:100%;display:block;"></video>
+                        <div class="scanner-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+                            <div class="scanner-frame" style="width:70%;height:70%;border:3px solid rgba(44,122,122,0.5);border-radius:12px;box-shadow:0 0 0 4000px rgba(0,0,0,0.3);"></div>
+                            <div class="scanner-status" style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:white;padding:8px 16px;border-radius:20px;font-size:0.85rem;">
+                                <i class="fas fa-search" aria-hidden="true"></i> Looking for QR...
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <button id="switch-camera-btn" class="btn-icon" aria-label="Switch camera">
-                    <i class="fas fa-camera-rotate"></i>
-                </button>
-            </div>
-            
-            <div class="scanner-actions">
-                <button id="stop-scan-btn" class="btn-secondary">
-                    <i class="fas fa-stop"></i> Stop Scanner
-                </button>
-            </div>
-            
-            <div class="security-note">
-                <i class="fas fa-info-circle"></i>
-                The camera feed is processed locally and never leaves your device.
+                
+                <div class="modal-actions">
+                    <button id="decrypt-cancel" class="btn-secondary" aria-label="Cancel decryption">Cancel</button>
+                    <button id="decrypt-confirm" class="btn-primary" aria-label="Decrypt QR code">Decrypt</button>
+                </div>
             </div>
         </div>
+
+        <!-- ============================================================
+             ABOUT MODAL
+        ============================================================ -->
+        <div id="about" class="modal" style="display: none;" role="dialog" aria-label="About security">
+            <div class="modal-content about-content">
+                <button class="modal-close" id="about-close" aria-label="Close about dialog">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h2>About Security</h2>
+                
+                <div class="about-items">
+                    <div class="about-item">
+                        <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                        <div>
+                            <strong>Client-Side Processing</strong>
+                            <p>Everything stays on your device. No data is ever uploaded.</p>
+                        </div>
+                    </div>
+                    <div class="about-item">
+                        <i class="fas fa-lock" aria-hidden="true"></i>
+                        <div>
+                            <strong>AES-256-GCM</strong>
+                            <p>Military-grade encryption with authentication to detect tampering.</p>
+                        </div>
+                    </div>
+                    <div class="about-item">
+                        <i class="fas fa-key" aria-hidden="true"></i>
+                        <div>
+                            <strong>PBKDF2 Key Derivation</strong>
+                            <p>310,000 iterations to protect against brute-force attacks.</p>
+                        </div>
+                    </div>
+                    <div class="about-item">
+                        <i class="fas fa-wifi-slash" aria-hidden="true"></i>
+                        <div>
+                            <strong>Works Offline</strong>
+                            <p>No internet connection required. Your data never leaves your device.</p>
+                        </div>
+                    </div>
+                    <div class="about-item">
+                        <i class="fas fa-history" aria-hidden="true"></i>
+                        <div>
+                            <strong>Auto-Cleanup</strong>
+                            <p>Decrypted seeds automatically disappear after 60 seconds.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="about-got-it" class="btn-primary" aria-label="Close about dialog">Got it</button>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             TOAST & SPINNER
+        ============================================================ -->
+        <div id="toast-container" role="status" aria-live="polite"></div>
+        
+        <div id="spinner-overlay" style="display: none;" role="status" aria-live="assertive">
+            <div class="spinner"></div>
+            <p id="spinner-message">Processing…</p>
+        </div>
     </div>
+
+    <!-- ============================================================
+         MAIN SCRIPT
+    ============================================================ -->
+    <script src="script.js" defer></script>
     
-    <div id="toast-container"></div>
-    
-    <!-- Spinner overlay -->
-    <div id="spinner-overlay" class="spinner-overlay">
-        <div class="spinner"></div>
-        <p id="spinner-message">Processing… Please wait</p>
-    </div>
-    
-    <footer>
-        <p>MnemoniQR &copy; 2023 | Secure seed encryption for cryptocurrencies</p>
-        <p>No data leaves your device. All processing occurs locally.</p>
-    </footer>
-    
-    <script src="script.js"></script>
-    
-    <!-- PWA Installation Handler -->
-    <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => console.log('SW registered:', registration.scope))
-          .catch(error => console.log('SW registration failed:', error));
-      });
-    }
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const installBtn = document.createElement('button');
-      installBtn.textContent = 'Install App';
-      installBtn.className = 'btn-primary';
-      installBtn.id = 'install-button';
-      document.querySelector('.container').appendChild(installBtn);
-      installBtn.addEventListener('click', () => {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(choice => {
-          if (choice.outcome === 'accepted') console.log('PWA installed');
-          installBtn.remove();
-          deferredPrompt = null;
+    <!-- ============================================================
+         PWA & INSTALLATION SCRIPT
+    ============================================================ -->
+    <script defer>
+        // ============ SERVICE WORKER ============
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => {
+                        console.log('SW registered:', reg.scope);
+                        // Verificar actualizaciones
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Mostrar notificación de actualización
+                                    if (window.showToast) {
+                                        window.showToast('New version available! Refresh to update.', 'info');
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+
+        // ============ PWA INSTALLATION ============
+        let deferredPrompt;
+        let installBtn = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Crear botón de instalación si no existe
+            if (!installBtn) {
+                installBtn = document.createElement('button');
+                installBtn.textContent = '📲 Install App';
+                installBtn.className = 'btn-primary btn-install';
+                installBtn.id = 'install-btn';
+                installBtn.setAttribute('aria-label', 'Install MnemoniQR as an app');
+                
+                // Insertar después del footer
+                const container = document.querySelector('.container');
+                if (container) {
+                    const footer = container.querySelector('.footer');
+                    if (footer) {
+                        container.insertBefore(installBtn, footer);
+                    } else {
+                        container.appendChild(installBtn);
+                    }
+                }
+            }
+            installBtn.style.display = 'flex';
+            
+            installBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) {
+                    if (window.showToast) {
+                        window.showToast('Installation not available', 'warning');
+                    }
+                    return;
+                }
+                const result = await deferredPrompt.prompt();
+                if (result.outcome === 'accepted') {
+                    if (window.showToast) {
+                        window.showToast('App installed successfully!', 'success');
+                    }
+                    installBtn.style.display = 'none';
+                } else {
+                    if (window.showToast) {
+                        window.showToast('Installation declined', 'info');
+                    }
+                }
+                deferredPrompt = null;
+            });
         });
-      });
-    });
-    window.addEventListener('appinstalled', () => {
-      const btn = document.getElementById('install-button');
-      if (btn) btn.remove();
-    });
+
+        // App installed event
+        window.addEventListener('appinstalled', () => {
+            if (window.showToast) {
+                window.showToast('App installed! 🎉', 'success');
+            }
+            if (installBtn) installBtn.style.display = 'none';
+        });
+
+        // Detectar si está en modo standalone
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('Running as standalone app');
+            // Ocultar botón de instalación
+            document.addEventListener('DOMContentLoaded', () => {
+                const btn = document.getElementById('install-btn');
+                if (btn) btn.style.display = 'none';
+            });
+        }
+
+        // ============ DEEP LINKS (Shortcuts) ============
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
+            
+            if (action === 'encrypt') {
+                setTimeout(() => {
+                    const encryptBtn = document.getElementById('encrypt-btn-main');
+                    if (encryptBtn) encryptBtn.click();
+                }, 500);
+            } else if (action === 'scan') {
+                setTimeout(() => {
+                    const scanBtn = document.getElementById('scan-btn');
+                    if (scanBtn) scanBtn.click();
+                }, 500);
+            }
+        });
+
+        // ============ NETWORK STATUS ============
+        window.addEventListener('online', () => {
+            if (window.showToast) {
+                window.showToast('Back online!', 'success');
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            if (window.showToast) {
+                window.showToast('You are offline. Some features may not work.', 'warning');
+            }
+        });
     </script>
 </body>
 </html>
