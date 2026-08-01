@@ -1,5 +1,5 @@
 /* ============================================================
-   MnemoniQR - Professional Design
+   MnemoniQR - Professional Design v2.1 (MEJORADO)
    ============================================================ */
 
 :root {
@@ -107,6 +107,16 @@ body {
 @keyframes pulse-install {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.02); }
+}
+
+/* Security Stats (MEJORADO) */
+.security-stats .stats-grid .stat-item {
+    transition: var(--transition);
+}
+
+.security-stats .stats-grid .stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
 }
 
 /* Buttons */
@@ -292,6 +302,14 @@ body {
 
 .upload-area i {
     font-size: 1.1rem;
+}
+
+/* Upload Area Drag & Drop (MEJORADO) */
+.upload-area.dragover {
+    border-color: var(--accent);
+    background: rgba(44, 122, 122, 0.1);
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(44, 122, 122, 0.2);
 }
 
 /* Footer */
@@ -915,7 +933,7 @@ body {
     border-left: 3px solid var(--accent-light);
 }
 
-/* Scanner Preview */
+/* Scanner Preview (MEJORADO) */
 .scanner-preview {
     position: relative;
     width: 100%;
@@ -976,6 +994,18 @@ body {
 
 .scanner-status .fa-spinner {
     animation: spin 1s linear infinite;
+}
+
+/* Camera Indicator (MEJORADO) */
+@keyframes pulse-camera {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
 }
 
 /* ============================================================
@@ -1119,6 +1149,10 @@ body {
     .modal-content {
         padding: 1.5rem;
     }
+    
+    .security-stats .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 @media (max-width: 380px) {
@@ -1132,6 +1166,10 @@ body {
     
     .divider {
         display: none;
+    }
+    
+    .security-stats .stats-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1185,44 +1223,123 @@ body {
     .btn-install {
         animation: none !important;
     }
+    
+    .camera-indicator {
+        animation: none !important;
+    }
 }
 
-/* Dark Mode Support */
+/* Dark Mode Support (MEJORADO) */
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg: #1a1a2e;
-        --card-bg: #16213e;
-        --text: #e8e8e8;
-        --text-secondary: #b0b0c0;
-        --text-light: #8a8a9a;
+        --bg: #0f0f1a;
+        --card-bg: #1a1a2e;
+        --text: #e8e8f0;
+        --text-secondary: #b0b0c8;
+        --text-light: #7a7a9a;
         --border: #2a2a4e;
-        --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-        --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.4);
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.5);
     }
     
     .qr-wrapper {
         background: #1a1a2e;
+        border-color: var(--accent);
     }
     
     .qr-overlay {
         background: #1a1a2e;
     }
     
+    .qr-wrapper canvas {
+        background: #1a1a2e;
+    }
+    
     .password-input-group input {
-        color: #e8e8e8;
+        color: #e8e8f0;
     }
     
     .seed-word {
-        background: #1a1a2e;
+        background: #0f0f1a;
         border-color: #2a2a4e;
+        color: #e8e8f0;
     }
     
     .suggestions-list {
-        background: #16213e;
+        background: #1a1a2e;
         border-color: #2a2a4e;
     }
     
     .suggestion-item:hover {
+        background: #0f0f1a;
+    }
+    
+    .security-stats .stats-grid .stat-item {
         background: #1a1a2e;
+    }
+    
+    .security-stats .stats-grid .stat-item span {
+        color: #e8e8f0;
+    }
+    
+    #decrypted-metadata {
+        background: #0f0f1a;
+    }
+}
+
+/* ============================================================
+   MEJORAS ADICIONALES
+   ============================================================ */
+
+/* Smooth scroll en toda la app */
+* {
+    scroll-behavior: smooth;
+}
+
+/* Mejora de la accesibilidad del foco */
+:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Transiciones suaves para todos los elementos interactivos */
+button, .btn-primary, .btn-secondary, .btn-text, .upload-area {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mejora de la legibilidad en modo oscuro */
+@media (prefers-color-scheme: dark) {
+    .toast {
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+    }
+    
+    .modal-content {
+        border: 1px solid var(--border);
+    }
+    
+    .scanner-status {
+        background: rgba(0, 0, 0, 0.85);
+    }
+}
+
+/* Estilo para el indicador de carga en el escáner */
+.scanner-status .fa-camera {
+    font-size: 1rem;
+}
+
+/* Ajuste de padding en el modal de contraseña para mejor legibilidad */
+.modal-password input {
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+/* Sombra más pronunciada en el QR para mejor contraste */
+.qr-wrapper {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+    .qr-wrapper {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     }
 }

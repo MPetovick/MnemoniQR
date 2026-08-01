@@ -1,7 +1,7 @@
 {
     "name": "MnemoniQR - Secure Seed Backup",
     "short_name": "MnemoniQR",
-    "description": "Encrypt and backup cryptocurrency seed phrases with AES-256-GCM",
+    "description": "Cifra y respalda frases semilla de criptomonedas con AES-256-GCM",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
@@ -63,9 +63,9 @@
     ],
     "shortcuts": [
         {
-            "name": "Encrypt Seed",
-            "short_name": "Encrypt",
-            "description": "Start new seed encryption",
+            "name": "Cifrar Semilla",
+            "short_name": "Cifrar",
+            "description": "Iniciar nuevo cifrado de semilla",
             "url": "/?action=encrypt",
             "icons": [
                 {
@@ -75,9 +75,9 @@
             ]
         },
         {
-            "name": "Scan QR",
-            "short_name": "Scan",
-            "description": "Scan a QR code to decrypt",
+            "name": "Escanear QR",
+            "short_name": "Escanear",
+            "description": "Escanear un código QR para descifrar",
             "url": "/?action=scan",
             "icons": [
                 {
@@ -92,16 +92,21 @@
             "src": "/assets/screenshots/main.png",
             "sizes": "1080x1920",
             "type": "image/png",
-            "label": "MnemoniQR Main Screen"
+            "label": "Pantalla Principal de MnemoniQR"
         },
         {
             "src": "/assets/screenshots/encrypt.png",
             "sizes": "1080x1920",
             "type": "image/png",
-            "label": "Encrypt Seed Screen"
+            "label": "Pantalla de Cifrado de Semilla"
         }
     ],
-    "features": ["Offline Support", "Secure Encryption", "Camera Integration", "QR Generation"],
+    "features": [
+        "Offline Support",
+        "Secure Encryption",
+        "Camera Integration",
+        "QR Generation"
+    ],
     "handle_links": "preferred",
     "launch_handler": {
         "client_mode": ["focus-existing", "auto"]

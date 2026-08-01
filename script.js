@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR - Script Principal (CORREGIDO - VERSION FINAL)
+// MnemoniQR - Script Principal v2.1 (MEJORADO)
 // ============================================================
 
 // ============ CONFIGURATION ============
@@ -15,7 +15,12 @@ const CONFIG = {
     AUTO_HIDE_SECONDS: 60,
     MAX_DECRYPT_ATTEMPTS: 5,
     BIP39_CACHE_MAX_SIZE: 100,
-    TOAST_PERSISTENT_ERRORS: true
+    TOAST_PERSISTENT_ERRORS: true,
+    // NUEVAS MEJORAS
+    MAGIC_HEADER: 'MQRv2:', // Identificador de integridad
+    SCAN_FRAME_INTERVAL: 2, // Procesar cada N frames
+    CACHE_CLEANUP_INTERVAL: 300000, // 5 minutos
+    MAX_QR_SIZE: 5 * 1024 * 1024 // 5MB
 };
 
 // ============ BIP39 WORD LIST ============
@@ -156,7 +161,7 @@ const BIP39_WORDS = [
     "play","please","pledge","pluck","plug","plunge","poem","poet","point","polar",
     "pole","police","pond","pony","pool","popular","portion","position","possible","post",
     "potato","pottery","poverty","powder","power","practice","praise","predict","prefer","present",
-    "pretty","prevent","price","pride","primary","print","priority","prison","private",
+    "pretty","prevent","price","pride","primary","print","priority","private","prison","private",
     "prize","problem","process","produce","profit","program","project","promote","proof","property",
     "prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin",
     "punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle",
@@ -267,6 +272,7 @@ const DOM = {
     
     // QR
     qrCanvas: document.getElementById('qr-canvas'),
+    qrMetadata: document.getElementById('qr-metadata'),
     qrDownload: document.getElementById('qr-download'),
     qrPdf: document.getElementById('qr-pdf'),
     qrShare: document.getElementById('qr-share'),
@@ -274,6 +280,7 @@ const DOM = {
     
     // Decrypted
     seedGrid: document.getElementById('seed-grid'),
+    decryptedMetadata: document.getElementById('decrypted-metadata'),
     decryptedCount: document.getElementById('decrypted-count'),
     decryptedCopy: document.getElementById('decrypted-copy'),
     decryptedHide: document.getElementById('decrypted-hide'),
@@ -290,7 +297,7 @@ const DOM = {
     decryptConfirm: document.getElementById('decrypt-confirm'),
     scannerPreviewContainer: document.getElementById('scanner-preview-container'),
     scannerVideo: document.getElementById('scanner-video'),
-    scannerStatus: document.querySelector('.scanner-status'),
+    scannerStatusText: document.getElementById('scanner-status-text'),
     
     aboutModal: document.getElementById('about'),
     aboutClose: document.getElementById('about-close'),
@@ -324,17 +331,26 @@ const STATE = {
     scannerActive: false,
     scannerTimer: null,
     scannerVideoTrack: null,
-    isPaused: false
+    isPaused: false,
+    scannerFrameCount: 0, // NUEVO: Para control de frames
+    qrMetadata: null // NUEVO: Para almacenar metadatos del QR
 };
 
 // ============ CRYPTO ============
 const CryptoUtils = {
     _keyCache: new Map(),
+    _cacheTimestamps: new Map(),
     
     async _deriveKey(passphrase, salt) {
         const cacheKey = `${passphrase}:${Array.from(salt).join(',')}`;
         if (this._keyCache.has(cacheKey)) {
-            return this._keyCache.get(cacheKey);
+            const timestamp = this._cacheTimestamps.get(cacheKey);
+            if (Date.now() - timestamp < 300000) { // 5 minutos
+                return this._keyCache.get(cacheKey);
+            } else {
+                this._keyCache.delete(cacheKey);
+                this._cacheTimestamps.delete(cacheKey);
+            }
         }
         
         const baseKey = await crypto.subtle.importKey(
@@ -365,8 +381,7 @@ const CryptoUtils = {
         );
         
         this._keyCache.set(cacheKey, key);
-        setTimeout(() => this._keyCache.delete(cacheKey), 300000);
-        
+        this._cacheTimestamps.set(cacheKey, Date.now());
         return key;
     },
 
@@ -449,6 +464,7 @@ const CryptoUtils = {
         }
     },
 
+    // NUEVO: Añadir magic header para integridad
     async encryptMessage(message, passphrase, userMessage = '') {
         const metadata = this.createMetadata(userMessage);
         const salt = crypto.getRandomValues(new Uint8Array(CONFIG.SALT_LENGTH));
@@ -480,12 +496,20 @@ const CryptoUtils = {
         combined.set(iv, 128 + CONFIG.SALT_LENGTH);
         combined.set(ciphertext, 128 + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH);
         
-        return btoa(String.fromCharCode(...combined));
+        // Añadir magic header
+        const base64Data = btoa(String.fromCharCode(...combined));
+        return CONFIG.MAGIC_HEADER + base64Data;
     },
 
     async decryptMessage(encryptedBase64, passphrase) {
         try {
-            const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+            // Verificar magic header
+            if (!encryptedBase64.startsWith(CONFIG.MAGIC_HEADER)) {
+                throw new Error('Invalid MnemoniQR code format');
+            }
+            
+            const cleanData = encryptedBase64.substring(CONFIG.MAGIC_HEADER.length);
+            const encryptedData = Uint8Array.from(atob(cleanData), c => c.charCodeAt(0));
             
             if (encryptedData.length < 128 + CONFIG.SALT_LENGTH + CONFIG.IV_LENGTH) {
                 throw new Error('Invalid encrypted data format');
@@ -518,9 +542,11 @@ const CryptoUtils = {
                 metadata: metadata
             };
         } catch (error) {
-            // Distinguir entre error de contraseña y otros errores
             if (error.message.includes('bad decrypt') || error.message.includes('decryption failed')) {
                 throw new Error('Incorrect password');
+            }
+            if (error.message.includes('Invalid MnemoniQR code format')) {
+                throw error;
             }
             throw new Error('Decryption failed: ' + error.message);
         }
@@ -769,7 +795,6 @@ function showToast(message, type = 'info') {
         toast.classList.add('show');
     });
     
-    // Los toasts de error persisten hasta que el usuario haga clic
     if (type !== 'error' || !CONFIG.TOAST_PERSISTENT_ERRORS) {
         setTimeout(() => {
             dismissToast(toast);
@@ -785,7 +810,7 @@ function dismissToast(toast) {
     }, 300);
 }
 
-function showSpinner(show, message = 'Processing…') {
+function showSpinner(show, message = 'Procesando…') {
     if (!DOM.spinnerOverlay) return;
     DOM.spinnerOverlay.style.display = show ? 'flex' : 'none';
     if (message && DOM.spinnerMessage) {
@@ -820,7 +845,6 @@ function openModal(id) {
         modal.style.display = 'flex';
         document.addEventListener('keydown', handleModalEscape);
         
-        // Si es el modal de password, enfocar el input
         if (id === 'password' && DOM.decryptPassword) {
             setTimeout(() => DOM.decryptPassword.focus(), 100);
         }
@@ -833,7 +857,6 @@ function closeModal(id) {
         modal.style.display = 'none';
         document.removeEventListener('keydown', handleModalEscape);
         
-        // Limpiar estado si es el modal de password
         if (id === 'password') {
             stopScanner();
             STATE.decryptionAttempts = 0;
@@ -844,13 +867,15 @@ function closeModal(id) {
                 DOM.decryptStatus.style.display = 'none';
                 DOM.decryptStatus.className = 'decrypt-status';
             }
+            if (DOM.scannerPreviewContainer) {
+                DOM.scannerPreviewContainer.style.display = 'none';
+            }
         }
     }
 }
 
 function handleModalEscape(e) {
     if (e.key === 'Escape') {
-        // Cerrar cualquier modal abierto
         const openModals = document.querySelectorAll('.modal[style*="display: flex"]');
         if (openModals.length) {
             const id = openModals[openModals.length - 1].id;
@@ -866,25 +891,25 @@ function updateSuggestions() {
     const text = DOM.seedInput.value;
     const words = text.trim().split(/\s+/).filter(w => w.length > 0);
     
-    DOM.wordCounter.textContent = `${words.length} words`;
+    DOM.wordCounter.textContent = `${words.length} palabras`;
     
     const allWordsValid = words.every(w => BIP39_WORDS.includes(w));
     const isValidCount = [12, 18, 24].includes(words.length);
     
     if (words.length > 0 && !allWordsValid) {
-        DOM.bip39Status.textContent = '⚠️ Invalid word(s)';
+        DOM.bip39Status.textContent = '⚠️ Palabra(s) inválida(s)';
         DOM.bip39Status.className = 'status-invalid';
         DOM.seedNext.disabled = true;
         STATE.seedValid = false;
     } else if (isValidCount && allWordsValid) {
         BIP39.validateChecksum(words).then(valid => {
             if (valid) {
-                DOM.bip39Status.textContent = '✓ BIP39 Valid';
+                DOM.bip39Status.textContent = '✓ BIP39 Válido';
                 DOM.bip39Status.className = 'status-valid';
                 DOM.seedNext.disabled = false;
                 STATE.seedValid = true;
             } else {
-                DOM.bip39Status.textContent = '⚠️ Invalid checksum';
+                DOM.bip39Status.textContent = '⚠️ Checksum inválido';
                 DOM.bip39Status.className = 'status-invalid';
                 DOM.seedNext.disabled = true;
                 STATE.seedValid = false;
@@ -995,10 +1020,10 @@ function updatePasswordStrength() {
     if (checks.symbol) strength += 20;
     
     const levels = [
-        { min: 80, label: 'Strong', color: '#2ecc71' },
-        { min: 60, label: 'Good', color: '#3498db' },
-        { min: 40, label: 'Fair', color: '#f39c12' },
-        { min: 0, label: 'Weak', color: '#e74c3c' }
+        { min: 80, label: 'Fuerte', color: '#2ecc71' },
+        { min: 60, label: 'Buena', color: '#3498db' },
+        { min: 40, label: 'Regular', color: '#f39c12' },
+        { min: 0, label: 'Débil', color: '#e74c3c' }
     ];
     
     const level = levels.find(l => strength >= l.min);
@@ -1020,7 +1045,7 @@ function updatePasswordStrength() {
 function startTimer() {
     STATE.timerRemaining = CONFIG.AUTO_HIDE_SECONDS;
     if (DOM.timerFill) DOM.timerFill.style.width = '100%';
-    if (DOM.timerLabel) DOM.timerLabel.textContent = `Auto-hide in ${STATE.timerRemaining}s`;
+    if (DOM.timerLabel) DOM.timerLabel.textContent = `Auto-ocultar en ${STATE.timerRemaining}s`;
     
     if (STATE.timerInterval) {
         clearInterval(STATE.timerInterval);
@@ -1035,7 +1060,7 @@ function startTimer() {
             DOM.timerFill.style.width = `${pct}%`;
             DOM.timerFill.parentElement.setAttribute('aria-valuenow', pct);
         }
-        if (DOM.timerLabel) DOM.timerLabel.textContent = `Auto-hide in ${STATE.timerRemaining}s`;
+        if (DOM.timerLabel) DOM.timerLabel.textContent = `Auto-ocultar en ${STATE.timerRemaining}s`;
         
         if (STATE.timerRemaining <= 0) {
             clearInterval(STATE.timerInterval);
@@ -1054,32 +1079,34 @@ function stopTimer() {
 
 function hideDecryptedSeed() {
     stopTimer();
-    showToast('Seed auto-hidden for security', 'warning');
+    showToast('Semilla auto-ocultada por seguridad', 'warning');
     goToStep('main');
     if (DOM.seedGrid) DOM.seedGrid.innerHTML = '';
+    if (DOM.decryptedMetadata) DOM.decryptedMetadata.innerHTML = '';
     STATE.decryptedSeed = '';
+    STATE.qrMetadata = null;
 }
 
-// ============ SCANNER ============
+// ============ SCANNER (MEJORADO) ============
 function initScanner() {
-    // El scanner ahora usa el contenedor en el modal
     if (DOM.scannerVideo) {
         DOM.scannerVideo.autoplay = true;
         DOM.scannerVideo.playsInline = true;
         DOM.scannerVideo.muted = true;
     }
+    STATE.scannerFrameCount = 0;
 }
 
 async function startScanner() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showToast('Camera not supported on this device', 'error');
+        showToast('Cámara no soportada en este dispositivo', 'error');
         return;
     }
     
     initScanner();
     STATE.scannerActive = true;
+    STATE.scannerFrameCount = 0;
     
-    // Mostrar el contenedor del scanner
     if (DOM.scannerPreviewContainer) {
         DOM.scannerPreviewContainer.style.display = 'block';
     }
@@ -1100,23 +1127,23 @@ async function startScanner() {
             await DOM.scannerVideo.play();
         }
         
-        // Actualizar estado del scanner
-        if (DOM.scannerStatus) {
-            DOM.scannerStatus.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Looking for QR...';
+        if (DOM.scannerStatusText) {
+            DOM.scannerStatusText.textContent = 'Buscando QR...';
         }
         
         scanLoop();
-        showToast('Camera activated', 'success');
+        showToast('Cámara activada', 'success');
         
     } catch (error) {
         STATE.scannerActive = false;
         if (DOM.scannerPreviewContainer) {
             DOM.scannerPreviewContainer.style.display = 'none';
         }
-        showToast('Camera error: ' + error.message, 'error');
+        showToast('Error de cámara: ' + error.message, 'error');
     }
 }
 
+// MEJORADO: Procesar solo frames específicos para optimizar rendimiento
 function scanLoop() {
     if (!STATE.scannerActive || !DOM.scannerVideo) return;
     
@@ -1127,9 +1154,16 @@ function scanLoop() {
         return;
     }
     
+    // Procesar solo cada N frames (optimización)
+    STATE.scannerFrameCount++;
+    if (STATE.scannerFrameCount % CONFIG.SCAN_FRAME_INTERVAL !== 0) {
+        STATE.scannerTimer = requestAnimationFrame(scanLoop);
+        return;
+    }
+    
     try {
-        const width = Math.floor(video.videoWidth * 0.5) || 320;
-        const height = Math.floor(video.videoHeight * 0.5) || 240;
+        const width = Math.floor(video.videoWidth * 0.4) || 256;
+        const height = Math.floor(video.videoHeight * 0.4) || 192;
         
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -1147,24 +1181,31 @@ function scanLoop() {
         }
         
         if (code && code.data && code.data.length > 100) {
-            stopScanner();
-            STATE.encryptedData = code.data;
-            STATE.qrImageData = null;
-            
-            // Actualizar estado visual
-            if (DOM.scannerStatus) {
-                DOM.scannerStatus.innerHTML = '<i class="fas fa-check-circle" aria-hidden="true"></i> QR Found!';
-                DOM.scannerStatus.style.background = 'rgba(46,204,113,0.8)';
+            // Verificar que sea un QR válido de MnemoniQR
+            if (code.data.startsWith(CONFIG.MAGIC_HEADER)) {
+                stopScanner();
+                STATE.encryptedData = code.data;
+                STATE.qrImageData = null;
+                
+                if (DOM.scannerStatusText) {
+                    DOM.scannerStatusText.textContent = '¡QR Encontrado!';
+                }
+                
+                showToast('QR escaneado exitosamente', 'success');
+                setTimeout(() => {
+                    if (DOM.decryptPassword) DOM.decryptPassword.focus();
+                }, 300);
+                return;
+            } else {
+                // QR encontrado pero no es de MnemoniQR
+                if (DOM.scannerStatusText) {
+                    DOM.scannerStatusText.textContent = 'QR inválido - Intenta de nuevo';
+                }
+                // Continuar escaneando
             }
-            
-            showToast('QR scanned successfully', 'success');
-            setTimeout(() => {
-                if (DOM.decryptPassword) DOM.decryptPassword.focus();
-            }, 300);
-            return;
         }
     } catch (error) {
-        // Silently continue scanning
+        // Continuar silenciosamente
     }
     
     STATE.scannerTimer = requestAnimationFrame(scanLoop);
@@ -1191,9 +1232,8 @@ function stopScanner() {
     if (DOM.scannerPreviewContainer) {
         DOM.scannerPreviewContainer.style.display = 'none';
     }
-    if (DOM.scannerStatus) {
-        DOM.scannerStatus.innerHTML = '<i class="fas fa-camera" aria-hidden="true"></i> Camera ready';
-        DOM.scannerStatus.style.background = 'rgba(0,0,0,0.7)';
+    if (DOM.scannerStatusText) {
+        DOM.scannerStatusText.textContent = 'Cámara lista';
     }
 }
 
@@ -1208,44 +1248,54 @@ async function startEncryption() {
     const words = STATE.seed.split(/\s+/);
     
     if (![12, 18, 24].includes(words.length)) {
-        showToast('Seed must be 12, 18 or 24 words', 'error');
+        showToast('La semilla debe tener 12, 18 o 24 palabras', 'error');
         return;
     }
     
     for (const word of words) {
         if (!BIP39_WORDS.includes(word)) {
-            showToast(`Invalid word: "${word}"`, 'error');
+            showToast(`Palabra inválida: "${word}"`, 'error');
             return;
         }
     }
     
     const isValidChecksum = await BIP39.validateChecksum(words);
     if (!isValidChecksum) {
-        showToast('⚠️ Invalid BIP39 checksum. Proceed with caution.', 'warning');
+        showToast('⚠️ Checksum BIP39 inválido. Procede con precaución.', 'warning');
     }
     
     if (STATE.password.length < CONFIG.MIN_PASSWORD_LENGTH) {
-        showToast(`Password must be at least ${CONFIG.MIN_PASSWORD_LENGTH} characters`, 'error');
+        showToast(`La contraseña debe tener al menos ${CONFIG.MIN_PASSWORD_LENGTH} caracteres`, 'error');
         return;
     }
     
     STATE.isProcessing = true;
-    showSpinner(true, 'Encrypting seed…');
+    showSpinner(true, 'Cifrando semilla…');
     
     try {
         const encrypted = await CryptoUtils.encryptMessage(STATE.seed, STATE.password, STATE.message);
         STATE.encryptedData = encrypted;
         
-        showSpinner(true, 'Generating QR code…');
+        showSpinner(true, 'Generando código QR…');
         try {
             await QR.generate(encrypted);
         } catch (qrErr) {
-            throw new Error('QR generation failed: ' + qrErr.message);
+            throw new Error('Generación de QR falló: ' + qrErr.message);
+        }
+        
+        // Mostrar metadatos del QR
+        if (DOM.qrMetadata) {
+            const now = new Date();
+            DOM.qrMetadata.innerHTML = `
+                <i class="fas fa-clock" aria-hidden="true"></i> Generado: ${now.toLocaleString()}
+                <span style="margin:0 0.5rem;">·</span>
+                <i class="fas fa-shield-alt" aria-hidden="true"></i> Nivel H
+            `;
         }
         
         showSpinner(false);
         goToStep('qr');
-        showToast('Seed encrypted successfully', 'success');
+        showToast('Semilla cifrada exitosamente', 'success');
         
         // Limpiar datos sensibles
         STATE.seed = '';
@@ -1255,7 +1305,7 @@ async function startEncryption() {
         
     } catch (error) {
         showSpinner(false);
-        showToast('Encryption failed: ' + error.message, 'error');
+        showToast('Cifrado falló: ' + error.message, 'error');
         console.error('Encryption error:', error);
     } finally {
         STATE.isProcessing = false;
@@ -1268,39 +1318,44 @@ async function decryptQR() {
     
     const password = DOM.decryptPassword.value;
     if (!password) {
-        showToast('Password required', 'error');
+        showToast('Contraseña requerida', 'error');
         return;
     }
     
     STATE.isProcessing = true;
-    showSpinner(true, 'Decrypting…');
+    showSpinner(true, 'Descifrando…');
     
     try {
         let encrypted = STATE.encryptedData;
         
         if (!encrypted && STATE.qrImageData) {
-            showSpinner(true, 'Reading QR from image…');
+            showSpinner(true, 'Leyendo QR de la imagen…');
             encrypted = await QR.extract(STATE.qrImageData);
         }
         
         if (!encrypted) {
-            throw new Error('No QR data available. Please scan or upload a QR code first.');
+            throw new Error('No hay datos QR disponibles. Escanea o sube un código QR primero.');
+        }
+        
+        // Verificar magic header
+        if (!encrypted.startsWith(CONFIG.MAGIC_HEADER)) {
+            throw new Error('Este código QR no es un backup válido de MnemoniQR');
         }
         
         const result = await CryptoUtils.decryptMessage(encrypted, password);
         STATE.decryptedSeed = result.seed;
+        STATE.qrMetadata = result.metadata;
         STATE.decryptionAttempts = 0;
         
         showSpinner(false);
         closeModal('password');
-        showDecryptedSeed(result.seed);
-        showToast('Decryption successful', 'success');
+        showDecryptedSeed(result.seed, result);
+        showToast('Descifrado exitoso', 'success');
         
         if (DOM.decryptPassword) DOM.decryptPassword.value = '';
         STATE.encryptedData = '';
         STATE.qrImageData = null;
         
-        // Limpiar estado de decryption
         if (DOM.decryptStatus) {
             DOM.decryptStatus.style.display = 'none';
             DOM.decryptStatus.className = 'decrypt-status';
@@ -1312,8 +1367,10 @@ async function decryptQR() {
         
         let errorMessage = error.message;
         if (error.message.includes('Incorrect password')) {
-            errorMessage = '❌ Incorrect password. Please try again.';
-        } else if (error.message.includes('No QR data')) {
+            errorMessage = '❌ Contraseña incorrecta. Intenta de nuevo.';
+        } else if (error.message.includes('Invalid MnemoniQR code format')) {
+            errorMessage = '❌ Este QR no es un backup válido de MnemoniQR';
+        } else if (error.message.includes('No hay datos QR')) {
             errorMessage = '❌ ' + error.message;
         } else {
             errorMessage = `❌ ${error.message}`;
@@ -1321,7 +1378,7 @@ async function decryptQR() {
         
         if (STATE.decryptionAttempts >= CONFIG.MAX_DECRYPT_ATTEMPTS) {
             if (DOM.decryptStatus) {
-                DOM.decryptStatus.textContent = '⚠️ Too many failed attempts. Please wait 30 seconds.';
+                DOM.decryptStatus.textContent = '⚠️ Demasiados intentos fallidos. Espera 30 segundos.';
                 DOM.decryptStatus.className = 'decrypt-status warning';
                 DOM.decryptStatus.style.display = 'block';
             }
@@ -1334,15 +1391,14 @@ async function decryptQR() {
             }, 30000);
         } else {
             if (DOM.decryptStatus) {
-                DOM.decryptStatus.textContent = `${errorMessage} (Attempt ${STATE.decryptionAttempts}/${CONFIG.MAX_DECRYPT_ATTEMPTS})`;
+                DOM.decryptStatus.textContent = `${errorMessage} (Intento ${STATE.decryptionAttempts}/${CONFIG.MAX_DECRYPT_ATTEMPTS})`;
                 DOM.decryptStatus.className = 'decrypt-status error';
                 DOM.decryptStatus.style.display = 'block';
             }
         }
         
-        // Si es error de password, no limpiar el QR data
-        if (error.message.includes('Incorrect password')) {
-            // Mantener los datos para otro intento
+        if (error.message.includes('Incorrect password') || error.message.includes('Invalid MnemoniQR code format')) {
+            // Mantener los datos
         } else {
             STATE.encryptedData = '';
             STATE.qrImageData = null;
@@ -1352,7 +1408,7 @@ async function decryptQR() {
     }
 }
 
-function showDecryptedSeed(seed) {
+function showDecryptedSeed(seed, result = null) {
     const words = seed.split(' ');
     if (DOM.seedGrid) {
         DOM.seedGrid.innerHTML = words.map((w, i) => `
@@ -1363,24 +1419,41 @@ function showDecryptedSeed(seed) {
         `).join('');
     }
     
-    if (DOM.decryptedCount) DOM.decryptedCount.textContent = `${words.length} words`;
+    // Mostrar metadatos descifrados
+    if (DOM.decryptedMetadata && result) {
+        const meta = result.metadata || {};
+        const userMsg = result.userMessage || meta.userMessage || '';
+        let metaHtml = '';
+        if (userMsg) {
+            metaHtml += `<div><i class="fas fa-tag" aria-hidden="true"></i> Nota: "${userMsg}"</div>`;
+        }
+        if (meta.timestamp) {
+            metaHtml += `<div><i class="fas fa-clock" aria-hidden="true"></i> Creado: ${new Date(meta.timestamp).toLocaleString()}</div>`;
+        }
+        if (meta.version) {
+            metaHtml += `<div><i class="fas fa-code-branch" aria-hidden="true"></i> Versión: ${meta.version}</div>`;
+        }
+        DOM.decryptedMetadata.innerHTML = metaHtml || '<div><i class="fas fa-check" aria-hidden="true"></i> Backup válido</div>';
+    }
+    
+    if (DOM.decryptedCount) DOM.decryptedCount.textContent = `${words.length} palabras`;
     goToStep('decrypted');
     startTimer();
 }
 
-// ============ FILE HANDLING ============
+// ============ FILE HANDLING (MEJORADO) ============
 function processFile(file) {
     if (!file || !file.type.match('image.*')) {
-        showToast('Please select a valid image file', 'error');
+        showToast('Selecciona un archivo de imagen válido', 'error');
         return;
     }
     
-    if (file.size > 5 * 1024 * 1024) {
-        showToast('Image too large (max 5MB)', 'error');
+    if (file.size > CONFIG.MAX_QR_SIZE) {
+        showToast('Imagen demasiado grande (máximo 5MB)', 'error');
         return;
     }
     
-    showSpinner(true, 'Processing image…');
+    showSpinner(true, 'Procesando imagen…');
     
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -1391,28 +1464,29 @@ function processFile(file) {
             
             showSpinner(false);
             openModal('password');
-            showToast('Image loaded successfully', 'success');
+            showToast('Imagen cargada exitosamente', 'success');
             
             // Intentar extraer automáticamente el QR
             try {
                 const extracted = await QR.extract(STATE.qrImageData);
-                if (extracted) {
+                if (extracted && extracted.startsWith(CONFIG.MAGIC_HEADER)) {
                     STATE.encryptedData = extracted;
                     STATE.qrImageData = null;
-                    showToast('QR code detected automatically', 'success');
+                    showToast('Código QR detectado automáticamente', 'success');
+                } else if (extracted) {
+                    showToast('QR detectado pero no es un backup válido', 'warning');
                 }
             } catch (extractError) {
-                // Si falla la extracción automática, el usuario puede usar la cámara o subir otra imagen
-                console.log('Auto-extraction failed, manual decryption available');
+                console.log('Extracción automática falló, descifrado manual disponible');
             }
         } catch (error) {
             showSpinner(false);
-            showToast('Failed to load image: ' + error.message, 'error');
+            showToast('Error al cargar imagen: ' + error.message, 'error');
         }
     };
     reader.onerror = () => {
         showSpinner(false);
-        showToast('Failed to read file', 'error');
+        showToast('Error al leer el archivo', 'error');
     };
     reader.readAsDataURL(file);
 }
@@ -1420,17 +1494,17 @@ function processFile(file) {
 // ============ PDF EXPORT ============
 function generatePDF() {
     if (!STATE.encryptedData) {
-        showToast('No QR generated', 'error');
+        showToast('No hay QR generado', 'error');
         return;
     }
     
-    showSpinner(true, 'Generating PDF…');
+    showSpinner(true, 'Generando PDF…');
     
     try {
         const { jsPDF } = window.jspdf || {};
         if (!jsPDF) {
             showSpinner(false);
-            showToast('PDF library not available', 'error');
+            showToast('Librería PDF no disponible', 'error');
             return;
         }
         
@@ -1450,7 +1524,7 @@ function generatePDF() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(90, 106, 122);
-        doc.text('Encrypted Backup', cx, 27, null, null, 'center');
+        doc.text('Backup Cifrado', cx, 27, null, null, 'center');
         
         const qrData = DOM.qrCanvas.toDataURL('image/png');
         const qrSize = 75;
@@ -1460,23 +1534,23 @@ function generatePDF() {
         
         doc.setFontSize(8);
         doc.setTextColor(90, 106, 122);
-        doc.text('AES-256-GCM Encrypted', cx, qrY + qrSize + 8, null, null, 'center');
+        doc.text('Cifrado AES-256-GCM', cx, qrY + qrSize + 8, null, null, 'center');
         
         doc.setFontSize(7);
         doc.setTextColor(150);
         const now = new Date().toLocaleString();
-        doc.text(`Generated: ${now}`, cx, h - 8, null, null, 'center');
+        doc.text(`Generado: ${now}`, cx, h - 8, null, null, 'center');
         
         doc.setFontSize(7);
         doc.setTextColor(200, 60, 60);
-        doc.text('Store this document securely', cx, h - 3, null, null, 'center');
+        doc.text('Almacena este documento de forma segura', cx, h - 3, null, null, 'center');
         
         doc.save(`mnemoniqr-backup-${Date.now()}.pdf`);
         showSpinner(false);
-        showToast('PDF generated successfully', 'success');
+        showToast('PDF generado exitosamente', 'success');
     } catch (error) {
         showSpinner(false);
-        showToast('PDF failed: ' + error.message, 'error');
+        showToast('PDF falló: ' + error.message, 'error');
     }
 }
 
@@ -1486,7 +1560,7 @@ async function shareQR() {
     
     DOM.qrCanvas.toBlob(async blob => {
         if (!blob) {
-            showToast('Failed to generate image', 'error');
+            showToast('Error al generar imagen', 'error');
             return;
         }
         
@@ -1498,7 +1572,7 @@ async function shareQR() {
                 });
             } catch (error) {
                 if (error.name !== 'AbortError') {
-                    showToast('Share cancelled', 'warning');
+                    showToast('Compartir cancelado', 'warning');
                 }
             }
         } else {
@@ -1506,9 +1580,9 @@ async function shareQR() {
                 await navigator.clipboard.write([
                     new ClipboardItem({ 'image/png': blob })
                 ]);
-                showToast('QR copied to clipboard', 'success');
+                showToast('QR copiado al portapapeles', 'success');
             } catch {
-                showToast('Share not supported on this device', 'warning');
+                showToast('Compartir no soportado en este dispositivo', 'warning');
             }
         }
     }, 'image/png', 0.92);
@@ -1537,13 +1611,13 @@ function init() {
         const words = text.split(/\s+/).filter(w => w.length > 0);
         
         if (![12, 18, 24].includes(words.length)) {
-            showToast('Seed must be 12, 18 or 24 words', 'error');
+            showToast('La semilla debe tener 12, 18 o 24 palabras', 'error');
             return;
         }
         
         const invalidWords = words.filter(w => !BIP39_WORDS.includes(w));
         if (invalidWords.length > 0) {
-            showToast(`Invalid words: ${invalidWords.join(', ')}`, 'error');
+            showToast(`Palabras inválidas: ${invalidWords.join(', ')}`, 'error');
             return;
         }
         
@@ -1603,7 +1677,7 @@ function init() {
             }
             if (DOM.passwordInput) DOM.passwordInput.value = pwd;
             updatePasswordStrength();
-            showToast('Password generated', 'success');
+            showToast('Contraseña generada', 'success');
         });
     }
     
@@ -1616,7 +1690,7 @@ function init() {
             link.download = `mnemoniqr-${Date.now()}.png`;
             link.href = DOM.qrCanvas.toDataURL('image/png', 1.0);
             link.click();
-            showToast('QR downloaded', 'success');
+            showToast('QR descargado', 'success');
         });
     }
     
@@ -1631,6 +1705,7 @@ function init() {
                 const ctx = DOM.qrCanvas.getContext('2d');
                 ctx.clearRect(0, 0, DOM.qrCanvas.width, DOM.qrCanvas.height);
             }
+            if (DOM.qrMetadata) DOM.qrMetadata.innerHTML = '';
         });
     }
     
@@ -1638,7 +1713,6 @@ function init() {
     if (DOM.scanBtn) {
         DOM.scanBtn.addEventListener('click', async () => {
             openModal('password');
-            // Limpiar estado previo
             STATE.encryptedData = '';
             STATE.qrImageData = null;
             if (DOM.decryptStatus) {
@@ -1670,23 +1744,20 @@ function init() {
         });
     }
     
-    // Drag and drop
+    // Drag and drop (MEJORADO)
     if (DOM.uploadArea) {
         DOM.uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            DOM.uploadArea.style.borderColor = 'var(--accent)';
-            DOM.uploadArea.style.background = 'rgba(44,122,122,0.05)';
+            DOM.uploadArea.classList.add('dragover');
         });
         
         DOM.uploadArea.addEventListener('dragleave', () => {
-            DOM.uploadArea.style.borderColor = '';
-            DOM.uploadArea.style.background = '';
+            DOM.uploadArea.classList.remove('dragover');
         });
         
         DOM.uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            DOM.uploadArea.style.borderColor = '';
-            DOM.uploadArea.style.background = '';
+            DOM.uploadArea.classList.remove('dragover');
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                 processFile(e.dataTransfer.files[0]);
             }
@@ -1725,18 +1796,17 @@ function init() {
         DOM.decryptedCopy.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(STATE.decryptedSeed);
-                showToast('Seed copied to clipboard', 'success');
+                showToast('Semilla copiada al portapapeles', 'success');
             } catch {
-                // Fallback: seleccionar y copiar manualmente
                 const textarea = document.createElement('textarea');
                 textarea.value = STATE.decryptedSeed;
                 document.body.appendChild(textarea);
                 textarea.select();
                 try {
                     document.execCommand('copy');
-                    showToast('Seed copied to clipboard', 'success');
+                    showToast('Semilla copiada al portapapeles', 'success');
                 } catch {
-                    showToast('Failed to copy. Please select manually.', 'error');
+                    showToast('Error al copiar. Selecciona manualmente.', 'error');
                 }
                 document.body.removeChild(textarea);
             }
@@ -1756,7 +1826,6 @@ function init() {
         btn.addEventListener('click', () => {
             const target = btn.dataset.step;
             if (target === 'back') {
-                // Preguntar si hay datos ingresados
                 let hasData = false;
                 if (STATE.step === 'seed' && DOM.seedInput && DOM.seedInput.value.trim().length > 0) {
                     hasData = true;
@@ -1769,7 +1838,7 @@ function init() {
                 }
                 
                 if (hasData) {
-                    if (!confirm('You have entered data. Are you sure you want to go back?')) {
+                    if (!confirm('Tienes datos ingresados. ¿Seguro que quieres volver?')) {
                         return;
                     }
                 }
@@ -1816,19 +1885,17 @@ function init() {
                 DOM.passwordNext.click();
             }
         }
-        // Ctrl+Enter en el campo de seed para confirmar
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && STATE.step === 'seed') {
             if (!DOM.seedNext.disabled) DOM.seedNext.click();
         }
     });
     
-    // Visibility change - pausar timer
+    // Visibility change
     document.addEventListener('visibilitychange', () => {
         STATE.isPaused = document.hidden;
         if (document.hidden && STATE.timerInterval) {
-            // El timer se pausa automáticamente
+            // Timer se pausa automáticamente
         } else if (!document.hidden && STATE.step === 'decrypted' && STATE.decryptedSeed) {
-            // Reanudar el timer si estaba pausado
             if (!STATE.timerInterval) {
                 startTimer();
             }
@@ -1843,7 +1910,7 @@ function init() {
         }
     }
     
-    console.log('MnemoniQR initialized successfully');
+    console.log('MnemoniQR v2.1 inicializado exitosamente');
 }
 
 // ============ START ============
@@ -1853,10 +1920,10 @@ document.addEventListener('DOMContentLoaded', init);
 window.addEventListener('beforeunload', () => {
     stopScanner();
     stopTimer();
-    // Limpiar datos sensibles
     STATE.seed = '';
     STATE.password = '';
     STATE.decryptedSeed = '';
     STATE.encryptedData = '';
     STATE.qrImageData = null;
+    STATE.qrMetadata = null;
 });

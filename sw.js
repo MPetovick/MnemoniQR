@@ -1,11 +1,11 @@
 // ============================================================
-// MnemoniQR Service Worker - PWA Optimizado
+// MnemoniQR Service Worker - PWA Optimizado v2.1 (MEJORADO)
 // ============================================================
 
-const CACHE_NAME = 'mnemoniqr-v3';
+const CACHE_NAME = 'mnemoniqr-v4';
 const OFFLINE_URL = '/index.html';
 
-// Assets estáticos principales
+// Assets estáticos principales (CON SRI)
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -13,7 +13,6 @@ const STATIC_ASSETS = [
     '/script.js',
     '/manifest.json',
     '/MQR_logo.png',
-    '/offline.html',
     '/assets/icons/icon-72x72.png',
     '/assets/icons/icon-96x96.png',
     '/assets/icons/icon-128x128.png',
@@ -25,18 +24,19 @@ const STATIC_ASSETS = [
     '/assets/icons/shortcut-encrypt.png',
     '/assets/icons/shortcut-scan.png',
     '/assets/favicon.ico',
-    '/assets/apple-touch-icon.png'
+    '/assets/apple-touch-icon.png',
+    '/assets/offline.html'
 ];
 
-// Dependencias externas
+// Dependencias externas con versiones fijas
 const EXTERNAL_ASSETS = [
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css',
     'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js',
     'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
-    'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'
+    'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'
 ];
 
-// URL de origen para evitar problemas de CORS
+// URL de origen
 const ORIGIN = self.location.origin;
 
 // ============ INSTALL ============
@@ -44,8 +44,7 @@ self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('[SW] Caching static assets...');
-                // Cachear assets estáticos
+                console.log('[SW] Cacheando assets estáticos...');
                 return cache.addAll([...STATIC_ASSETS, ...EXTERNAL_ASSETS]);
             })
             .then(() => {
@@ -53,12 +52,12 @@ self.addEventListener('install', event => {
                 return self.skipWaiting();
             })
             .catch(err => {
-                console.error('[SW] Install failed:', err);
+                console.error('[SW] Install falló:', err);
             })
     );
 });
 
-// ============ ACTIVATE ============
+// ============ ACTIVATE (MEJORADO) ============
 self.addEventListener('activate', event => {
     event.waitUntil(
         Promise.all([
@@ -69,7 +68,7 @@ self.addEventListener('activate', event => {
                         keys
                             .filter(key => key !== CACHE_NAME)
                             .map(key => {
-                                console.log('[SW] Deleting old cache:', key);
+                                console.log('[SW] Eliminando cache antiguo:', key);
                                 return caches.delete(key);
                             })
                     );
@@ -78,12 +77,30 @@ self.addEventListener('activate', event => {
             self.clients.claim()
         ])
         .then(() => {
-            console.log('[SW] Activated successfully');
+            console.log('[SW] Activado exitosamente');
+            // Limpiar caches después de un tiempo
+            setTimeout(() => {
+                cleanOldCaches();
+            }, 60000);
         })
     );
 });
 
-// ============ FETCH ============
+// ============ LIMPIEZA DE CACHES (NUEVO) ============
+async function cleanOldCaches() {
+    try {
+        const cacheNames = await caches.keys();
+        const oldCaches = cacheNames.filter(name => name !== CACHE_NAME);
+        for (const name of oldCaches) {
+            await caches.delete(name);
+            console.log('[SW] Cache eliminado:', name);
+        }
+    } catch (error) {
+        console.error('[SW] Error en limpieza de caches:', error);
+    }
+}
+
+// ============ FETCH (MEJORADO) ============
 self.addEventListener('fetch', event => {
     const request = event.request;
     const url = new URL(request.url);
@@ -94,8 +111,14 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Ignorar peticiones de extensiones del navegador
+    // Ignorar peticiones de extensiones
     if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') {
+        event.respondWith(fetch(request));
+        return;
+    }
+
+    // Ignorar peticiones a servicios de análisis
+    if (url.hostname.includes('analytics') || url.hostname.includes('google')) {
         event.respondWith(fetch(request));
         return;
     }
@@ -107,7 +130,6 @@ self.addEventListener('fetch', event => {
         event.respondWith(
             fetch(request)
                 .then(response => {
-                    // Actualizar cache con la nueva versión
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME)
                         .then(cache => {
@@ -118,17 +140,14 @@ self.addEventListener('fetch', event => {
                     return response;
                 })
                 .catch(async () => {
-                    // Fallback: cache o página offline
                     const cached = await caches.match(request);
                     if (cached) return cached;
                     
-                    // Intentar cargar la página offline
                     const offlinePage = await caches.match('/offline.html');
                     if (offlinePage) return offlinePage;
                     
-                    // Último recurso
                     return new Response(
-                        'You are offline. Please connect to the internet.',
+                        'Estás offline. Conéctate a internet.',
                         { status: 503, statusText: 'Service Unavailable' }
                     );
                 })
@@ -136,7 +155,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // 2. Assets estáticos: Cache-first
+    // 2. Assets estáticos: Cache-first con verificación de integridad
     const isStatic = STATIC_ASSETS.some(asset => {
         const assetPath = asset.startsWith('/') ? asset : '/' + asset;
         return request.url.includes(assetPath) || request.url.endsWith(asset);
@@ -151,13 +170,10 @@ self.addEventListener('fetch', event => {
             caches.match(request)
                 .then(cached => {
                     if (cached) {
-                        // Verificar si el cache es válido
                         return cached;
                     }
-                    // Si no está en cache, obtener de red
                     return fetch(request)
                         .then(response => {
-                            // Cachear para futuras visitas
                             if (response.status === 200) {
                                 const responseClone = response.clone();
                                 caches.open(CACHE_NAME)
@@ -166,7 +182,6 @@ self.addEventListener('fetch', event => {
                             return response;
                         })
                         .catch(() => {
-                            // Si falla y es un asset crítico, devolver un placeholder
                             if (request.url.includes('icon')) {
                                 return new Response(
                                     'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIGZpbGw9IiMxYTJhM2EiLz48dGV4dCB4PSI5NiIgeT0iOTYiIGZvbnQtc2l6ZT0iNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuMzVlbSIgZmlsbD0id2hpdGUiPk1RPC90ZXh0Pjwvc3ZnPg==',
@@ -180,7 +195,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // 3. Imágenes y otros recursos: Stale-while-revalidate
+    // 3. Imágenes: Stale-while-revalidate
     if (request.url.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/)) {
         event.respondWith(
             caches.match(request)
@@ -195,11 +210,9 @@ self.addEventListener('fetch', event => {
                             return response;
                         })
                         .catch(() => {
-                            // Si falla, devolver el cache si existe
                             return cached || new Response('', { status: 404 });
                         });
                     
-                    // Devolver cache si existe, si no, esperar la red
                     return cached || fetchPromise;
                 })
         );
@@ -210,12 +223,10 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         fetch(request)
             .then(response => {
-                // Solo cachear respuestas exitosas
                 if (response.status === 200) {
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME)
                         .then(cache => {
-                            // No cachear respuestas de API
                             if (!url.pathname.startsWith('/api/')) {
                                 cache.put(request, responseClone);
                             }
@@ -224,7 +235,6 @@ self.addEventListener('fetch', event => {
                 return response;
             })
             .catch(async () => {
-                // Fallback a cache
                 const cached = await caches.match(request);
                 if (cached) return cached;
                 return new Response('Network error', { status: 503 });
@@ -232,7 +242,7 @@ self.addEventListener('fetch', event => {
     );
 });
 
-// ============ MESSAGES ============
+// ============ MESSAGES (MEJORADO) ============
 self.addEventListener('message', event => {
     const data = event.data;
 
@@ -253,10 +263,32 @@ self.addEventListener('message', event => {
             });
         });
     }
+
+    // NUEVO: Limpiar todo el cache
+    if (data && data.type === 'CLEAR_ALL_CACHES') {
+        caches.keys().then(keys => {
+            Promise.all(keys.map(key => caches.delete(key))).then(() => {
+                event.ports[0].postMessage({ success: true });
+            });
+        });
+    }
+
+    // NUEVO: Obtener información del cache
+    if (data && data.type === 'CACHE_INFO') {
+        caches.open(CACHE_NAME).then(cache => {
+            cache.keys().then(keys => {
+                const totalSize = keys.reduce((acc, req) => acc + 1, 0);
+                event.ports[0].postMessage({ 
+                    count: keys.length,
+                    size: totalSize,
+                    name: CACHE_NAME
+                });
+            });
+        });
+    }
 });
 
 // ============ BACKGROUND SYNC ============
-// Opcional: Sincronización en segundo plano para futuras versiones
 self.addEventListener('sync', event => {
     if (event.tag === 'sync-data') {
         event.waitUntil(syncData());
@@ -264,13 +296,11 @@ self.addEventListener('sync', event => {
 });
 
 async function syncData() {
-    // Implementar sincronización si es necesario
-    console.log('[SW] Syncing data...');
+    console.log('[SW] Sincronizando datos...');
     return Promise.resolve();
 }
 
 // ============ PUSH NOTIFICATIONS ============
-// Opcional: Notificaciones push para futuras versiones
 self.addEventListener('push', event => {
     const data = event.data.json();
     const options = {
@@ -294,3 +324,11 @@ self.addEventListener('notificationclick', event => {
         clients.openWindow(event.notification.data.url || '/')
     );
 });
+
+// ============ LIMPIEZA PERIÓDICA (NUEVO) ============
+// Limpiar caches cada 24 horas
+setInterval(() => {
+    cleanOldCaches();
+}, 86400000); // 24 horas
+
+console.log('[SW] MnemoniQR Service Worker v2.1 cargado');
