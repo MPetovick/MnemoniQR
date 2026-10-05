@@ -3,31 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light dark">
 <title>MnemoniQR</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1f2a33">
+<meta name="theme-color" content="#E9EDE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141A1D" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="MnemoniQR">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="styles.css" integrity="sha384-fLZx1beod7MU0yQFfjgET9dnoqxtukLNioAZeT3Izx96iU+b3LT6zgNpiOOLYRZf">
+<link rel="stylesheet" href="styles.css" integrity="sha384-qFrVs1LWCi5BTSBAPW5ZrrtaFCJv2fIFcKdtoNgAWUTZc20PExX2VSnQMx7BTtNq">
 <script src="vendor/qrcode.min.js" integrity="sha384-j+PCCcBcNXQs6kRs1hRdOEJ/AqyHNjdSCi1wfQ/rBqCwaTUbzWLiRNth/rf32bIS" defer></script>
 <script src="vendor/jsqr.min.js" integrity="sha384-tqHEddO9DjuacgJyfvKkCvEFCkAsa/xW7e945T69PJJyN5K2akBEMf7TWifJwpaE" defer></script>
 <script src="vendor/argon2.min.js" integrity="sha384-tP0Wy54CKmng7i9EoTlPySD0hBx6Octj0VS6MfwlnUu111MPa+JLm0CCbep6XJ1W" defer></script>
 <script src="vendor/noble.min.js" integrity="sha384-8pjPNW+iH9kw1KMMMDfKRzJindppG2jIz0C7pQXYxm2lTVaydsJeCcu4iw+Xpq9P" defer></script>
 <script src="js/wordlists.js" integrity="sha384-q58ba/h6c6C4iec00KcIveoEhjhC0CN4vs7VbLXUiXcX1XcrkHQR2u2LUND95PZ8" defer></script>
 <script src="js/core.js" integrity="sha384-jXI9TZf+Vqt5DHYBda/wgKTrdy7mFMMpBLMYZrmIcXGJwHOnQcMwlkuSKTOHwSxe" defer></script>
-<script src="js/i18n.js" integrity="sha384-ip37cl0y9w/kp0c4RR+i+E3OLI5MCLp9loozA6UxGRCnF4s+rYNaxck0klj0GLdO" defer></script>
-<script src="js/app.js" integrity="sha384-6aKiRFmh/+Urem3GPzBrCQtEMpu3oCe4lHK277fT0yJ54/QanbAP1s1V2nxo0Bqc" defer></script>
+<script src="js/i18n.js" integrity="sha384-k8k/3WDEpjOkgjpnCS0b09CJRbttfB9Xu2m+bMN6M1zOl+CrwqERbDI5/EmDAuMX" defer></script>
+<script src="js/app.js" integrity="sha384-aoy6XGxomtdXBkmbpUEwMsQiU21MU7nLdEtbo2GOSXv78WO7pn30CGSiKhKDpM4c" defer></script>
 </head>
 <body>
 <svg class="sprite" aria-hidden="true">
   <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M4 12h16"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
@@ -37,12 +39,15 @@
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></symbol>
   <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
   <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/></symbol>
+  <symbol id="i-share-ios" viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></symbol>
+  <symbol id="i-add-home" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-plane" viewBox="0 0 24 24"><path d="M2 14l9-3V5a1.5 1.5 0 0 1 3 0v6l8 3v2l-8-2v4l2 2v1l-3.5-1L9 21v-1l2-2v-4l-9 2z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></symbol>
   <symbol id="i-verify" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
   <symbol id="i-del" viewBox="0 0 24 24"><path d="M9 5h11v14H9l-6-7z"/><path d="M12 9l5 6M17 9l-5 6"/></symbol>
   <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></symbol>
@@ -52,106 +57,128 @@
 <div id="practice-banner" class="practice-banner" hidden data-i18n="practice_banner">Modo práctica: esta semilla no es real</div>
 
 <div class="app">
-  <!-- ============ INICIO ============ -->
+  <!-- ================= INICIO ================= -->
   <main class="home" id="home">
-    <header class="header">
-      <img src="MQR_logo.webp" alt="MnemoniQR" class="logo" width="160" height="160">
-      <p class="subtitle" data-i18n="home_subtitle">Cifra tu frase de recuperación en un QR. Todo ocurre en este dispositivo.</p>
+    <header class="topbar">
+      <img src="MQR_logo.webp" alt="" class="brand-logo" width="52" height="52">
+      <div class="brand-text">
+        <span class="brand-name">MnemoniQR</span>
+        <span class="brand-sub" data-i18n="brand_sub">Backup cifrado de semillas</span>
+      </div>
+      <label class="lang-chip"><span class="sr-only" data-i18n="language">Idioma</span>
+        <select id="ui-lang">
+          <option value="es">ES · Español</option><option value="ca">CA · Català</option><option value="en">EN · English</option>
+          <option value="fr">FR · Français</option><option value="ru">RU · Русский</option>
+        </select>
+      </label>
     </header>
 
-    <button type="button" id="net-pill" class="net-pill" aria-live="polite">
-      <svg class="ic" aria-hidden="true"><use href="#i-plane"/></svg><span id="net-text"></span>
-    </button>
-
-    <button type="button" id="encrypt-btn-main" class="btn btn-primary btn-large">
-      <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> <span data-i18n="encrypt_seed">Cifrar semilla</span>
-    </button>
-
-    <section class="decrypt-section" aria-labelledby="decrypt-label">
-      <p class="decrypt-label" id="decrypt-label" data-i18n="have_qr">¿Ya tienes un QR de MnemoniQR?</p>
-      <div class="decrypt-actions">
-        <button type="button" id="scan-btn" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> <span data-i18n="scan">Escanear</span></button>
-        <button type="button" id="upload-btn" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> <span data-i18n="upload">Subir imagen</span></button>
-        <input type="file" id="qr-file" accept="image/*" multiple hidden>
+    <section class="ticket" id="drop-zone">
+      <div class="ticket-head">
+        <h1 data-i18n="home_title">Pasa tu frase de recuperación a papel, cifrada.</h1>
+        <p data-i18n="home_subtitle">Imprime el QR, guarda la contraseña aparte y nada sale de este dispositivo.</p>
       </div>
-      <p class="drop-hint" data-i18n="drop_hint">También puedes soltar las imágenes aquí.</p>
+      <div class="perforation" aria-hidden="true"></div>
+      <button type="button" class="row-action" id="encrypt-btn-main">
+        <span class="row-icon dark"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span>
+        <span class="row-text"><strong data-i18n="encrypt_seed">Cifrar una semilla</strong><span data-i18n="encrypt_seed_sub">Un QR o varios fragmentos</span></span>
+        <svg class="ic chev" aria-hidden="true"><use href="#i-next"/></svg>
+      </button>
+      <button type="button" class="row-action" id="recover-btn">
+        <span class="row-icon"><svg class="ic" aria-hidden="true"><use href="#i-scan"/></svg></span>
+        <span class="row-text"><strong data-i18n="recover">Recuperar desde un QR</strong><span data-i18n="recover_sub">Escanea o sube las imágenes</span></span>
+        <svg class="ic chev" aria-hidden="true"><use href="#i-next"/></svg>
+      </button>
+      <button type="button" class="row-action" id="practice-btn">
+        <span class="row-icon"><svg class="ic" aria-hidden="true"><use href="#i-practice"/></svg></span>
+        <span class="row-text"><strong data-i18n="practice_cta">Practicar una recuperación</strong><span data-i18n="practice_sub">Con una semilla de prueba</span></span>
+        <svg class="ic chev" aria-hidden="true"><use href="#i-next"/></svg>
+      </button>
+      <p class="drop-hint" data-i18n="drop_hint">También puedes soltar aquí las imágenes de los QR.</p>
     </section>
 
-    <button type="button" id="practice-btn" class="btn-text"><svg class="ic" aria-hidden="true"><use href="#i-practice"/></svg> <span data-i18n="practice_cta">Practicar una recuperación</span></button>
+    <button type="button" class="notice" id="net-card" aria-live="polite">
+      <svg class="ic" aria-hidden="true"><use href="#i-plane"/></svg>
+      <span class="notice-text"><strong id="net-title"></strong><span id="net-body"></span></span>
+    </button>
 
     <footer class="footer">
-      <button type="button" id="about-btn" class="btn-text" data-i18n="about">Cómo te protege</button>
-      <label class="lang-select"><span class="sr-only" data-i18n="language">Idioma</span>
-        <select id="ui-lang"><option value="es">Español</option><option value="ca">Català</option><option value="en">English</option></select>
-      </label>
-      <span class="version">v4.0</span>
-      <span id="install-slot"></span>
+      <button type="button" id="about-btn" class="link" data-i18n="about">Cómo te protege</button>
+      <button type="button" id="install-link" class="link" hidden data-i18n="install">Instalar app</button>
+      <span class="version">v5.0</span>
     </footer>
   </main>
 
-  <!-- ============ SEMILLA ============ -->
+  <!-- ================= SEMILLA ================= -->
   <section id="step-seed" class="step" hidden aria-labelledby="h-seed">
     <div class="step-content">
-      <div class="step-header">
+      <header class="step-top">
         <button type="button" class="btn-back" id="seed-back" data-i18n-aria="back"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
-        <h2 id="h-seed" data-i18n="seed_title">Frase de recuperación</h2>
-        <span class="step-counter" id="word-counter" aria-live="polite"></span>
-      </div>
-      <p class="step-progress" id="seed-progress"></p>
+        <ol class="stepper" data-stepper data-i18n-aria="progress"></ol>
+      </header>
 
-      <div class="seed-controls">
-        <div class="segmented" role="radiogroup" id="count-group" data-i18n-aria="word_count"></div>
-        <select id="seed-lang" data-i18n-aria="seed_language"><option value="en">English</option><option value="es">Español</option></select>
-        <button type="button" id="seed-eye" class="btn-icon" aria-pressed="false" data-i18n-aria="show_words"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
-      </div>
-
-      <ol id="word-grid" class="word-grid" data-i18n-aria="seed_words"></ol>
+      <section class="paper seed-paper">
+        <div class="paper-head">
+          <h2 id="h-seed" data-i18n="seed_title">Frase de recuperación</h2>
+          <span class="count" id="word-counter" aria-live="polite"></span>
+        </div>
+        <div class="seed-controls">
+          <label class="mini-select"><span class="sr-only" data-i18n="word_count">Número de palabras</span><select id="seed-count"></select></label>
+          <label class="mini-select"><span class="sr-only" data-i18n="seed_language">Idioma de la frase</span>
+            <select id="seed-lang"><option value="en">English</option><option value="es">Español</option></select></label>
+          <span class="hint-inline" data-i18n="bip_lang_hint">Idioma de la frase, no de la app</span>
+        </div>
+        <ol id="word-grid" class="word-lines" data-i18n-aria="seed_words"></ol>
+        <div class="paper-foot">
+          <span class="muted small" data-i18n="mask_hint">Las palabras escritas se ocultan</span>
+          <button type="button" id="seed-eye" class="link icon-link" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> <span id="seed-eye-text"></span></button>
+        </div>
+      </section>
 
       <p id="seed-status" class="status" aria-live="polite"></p>
       <p id="seed-fp" class="fp" hidden></p>
+      <button type="button" id="seed-next" class="btn btn-primary" disabled><span data-i18n="continue">Continuar</span> <svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
 
       <div class="kbd-area">
         <div id="suggest-row" class="suggest-row" role="listbox" data-i18n-aria="suggestions"></div>
         <div id="kbd" class="kbd" role="group" data-i18n-aria="keyboard"></div>
         <div class="kbd-extra">
-          <button type="button" id="seed-paste" class="btn-text"><svg class="ic" aria-hidden="true"><use href="#i-paste"/></svg> <span data-i18n="paste">Pegar</span></button>
-          <span class="help" data-i18n="kbd_help">Teclado propio: el teclado del sistema no ve las palabras.</span>
+          <button type="button" id="seed-paste" class="link icon-link small"><svg class="ic" aria-hidden="true"><use href="#i-paste"/></svg> <span data-i18n="paste">Pegar</span></button>
+          <span class="muted small" data-i18n="kbd_help">Teclado propio: el teclado del sistema no ve las palabras.</span>
         </div>
-        <button type="button" id="seed-next" class="btn btn-primary btn-large" disabled><span data-i18n="continue">Continuar</span> <svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
       </div>
-
     </div>
   </section>
 
-  <!-- ============ OPCIONES ============ -->
+  <!-- ================= OPCIONES ================= -->
   <section id="step-options" class="step" hidden aria-labelledby="h-opt">
     <div class="step-content">
-      <div class="step-header">
+      <header class="step-top">
         <button type="button" class="btn-back" data-back="seed" data-i18n-aria="back"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
-        <h2 id="h-opt" data-i18n="options_title">Opciones</h2>
-      </div>
-      <p class="step-progress" id="options-progress"></p>
+        <ol class="stepper" data-stepper data-i18n-aria="progress"></ol>
+      </header>
+      <h2 id="h-opt" class="step-title" data-i18n="options_title">Opciones</h2>
 
-      <div class="opt">
+      <section class="paper opt">
         <label for="message-input" class="opt-label" data-i18n="note_label">Nota cifrada (opcional)</label>
         <input type="text" id="message-input" maxlength="100" autocomplete="off" data-i18n-ph="note_ph" aria-describedby="msg-help">
-        <p class="help" id="msg-help" data-i18n="note_help">Va dentro del cifrado. No escribas aquí la contraseña.</p>
-      </div>
+        <p class="help" id="msg-help" data-i18n="note_help"></p>
+      </section>
 
-      <div class="opt">
-        <label class="checkbox-label opt-label"><input type="checkbox" id="pp-enable"> <span data-i18n="pp_label">Mi cartera usa passphrase BIP39 (palabra 25)</span></label>
-        <div id="pp-box" hidden>
-          <div class="password-input-group"><input type="password" id="pp-input" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pp_ph" data-i18n-aria="pp_ph"></div>
-          <p class="help warn" data-i18n="pp_help">Se guarda cifrada junto a la semilla. Debe ser exactamente la de tu cartera: mayúsculas y espacios cuentan.</p>
+      <section class="paper opt">
+        <label class="switch-row"><input type="checkbox" id="pp-enable"> <span class="opt-label" data-i18n="pp_label">Mi cartera usa passphrase BIP39</span></label>
+        <div id="pp-box" class="stack" hidden>
+          <div class="field-group"><input type="password" id="pp-input" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pp_ph" data-i18n-aria="pp_ph"></div>
+          <p class="help warn" data-i18n="pp_help"></p>
         </div>
-      </div>
+      </section>
 
-      <div class="opt">
-        <label class="checkbox-label opt-label"><input type="checkbox" id="decoy-enable"> <span data-i18n="decoy_label">Añadir una cartera señuelo</span></label>
-        <p class="help" data-i18n="decoy_help">Con otra contraseña, el mismo QR abre una semilla distinta con pocos fondos. Útil si alguien te obliga a descifrarlo. Nadie puede saber si existe el señuelo.</p>
-      </div>
+      <section class="paper opt">
+        <label class="switch-row"><input type="checkbox" id="decoy-enable"> <span class="opt-label" data-i18n="decoy_label">Añadir una cartera señuelo</span></label>
+        <p class="help" data-i18n="decoy_help"></p>
+      </section>
 
-      <div class="opt">
+      <section class="paper opt">
         <label for="split-select" class="opt-label" data-i18n="split_label">Formato</label>
         <select id="split-select">
           <option value="1" data-i18n="split_single">Un solo QR</option>
@@ -163,29 +190,29 @@
           <label><span data-i18n="split_k">Necesarios</span> <input type="number" id="split-k" min="2" max="16" value="2" inputmode="numeric"></label>
           <label><span data-i18n="split_n">Total</span> <input type="number" id="split-n" min="2" max="16" value="3" inputmode="numeric"></label>
         </div>
-        <p class="help" data-i18n="split_help">Cada QR por separado no revela nada. Guárdalos en lugares distintos.</p>
-      </div>
+        <p class="help" data-i18n="split_help"></p>
+      </section>
 
       <button type="button" id="options-next" class="btn btn-primary btn-large"><span data-i18n="continue">Continuar</span> <svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
     </div>
   </section>
 
-  <!-- ============ CONTRASEÑA ============ -->
+  <!-- ================= CONTRASEÑA ================= -->
   <section id="step-password" class="step" hidden aria-labelledby="h-pwd">
     <div class="step-content">
-      <div class="step-header">
+      <header class="step-top">
         <button type="button" class="btn-back" id="password-back" data-i18n-aria="back"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
-        <h2 id="h-pwd" data-i18n="password_title">Contraseña de cifrado</h2>
-      </div>
-      <p class="step-progress" id="password-progress"></p>
+        <ol class="stepper" data-stepper data-i18n-aria="progress"></ol>
+      </header>
+      <h2 id="h-pwd" class="step-title" data-i18n="password_title">Contraseña de cifrado</h2>
 
-      <fieldset class="pw-set">
-        <legend id="real-legend" data-i18n="pw_real">Contraseña</legend>
-        <div class="password-input-group">
+      <fieldset class="paper pw-set">
+        <legend id="real-legend" class="opt-label" data-i18n="pw_real">Contraseña</legend>
+        <div class="field-group">
           <input type="password" id="password-input" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_ph">
           <button type="button" id="password-generate" class="btn-icon" data-i18n-aria="pw_generate"><svg class="ic" aria-hidden="true"><use href="#i-dice"/></svg></button>
         </div>
-        <div class="password-input-group">
+        <div class="field-group">
           <input type="password" id="password-confirm" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_repeat" data-i18n-aria="pw_repeat">
         </div>
         <div class="strength">
@@ -193,81 +220,84 @@
           <div class="strength-row"><span id="strength-label"></span><span id="strength-bits"></span></div>
         </div>
         <ul class="requirements">
-          <li data-req="length" data-i18n="req_length">12 caracteres o más</li>
-          <li data-req="entropy" data-i18n="req_entropy">Difícil de adivinar (≥ 60 bits)</li>
-          <li data-req="match" data-i18n="req_match">Las dos coinciden</li>
+          <li data-req="length" data-i18n="req_length"></li>
+          <li data-req="entropy" data-i18n="req_entropy"></li>
+          <li data-req="match" data-i18n="req_match"></li>
         </ul>
       </fieldset>
 
-      <fieldset class="pw-set" id="decoy-set" hidden>
-        <legend data-i18n="pw_decoy">Contraseña del señuelo</legend>
-        <div class="password-input-group"><input type="password" id="decoy-input" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_decoy"></div>
-        <div class="password-input-group"><input type="password" id="decoy-confirm" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_repeat" data-i18n-aria="pw_repeat"></div>
+      <fieldset class="paper pw-set" id="decoy-set" hidden>
+        <legend class="opt-label" data-i18n="pw_decoy">Contraseña del señuelo</legend>
+        <div class="field-group"><input type="password" id="decoy-input" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_decoy"></div>
+        <div class="field-group"><input type="password" id="decoy-confirm" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_repeat" data-i18n-aria="pw_repeat"></div>
         <ul class="requirements">
-          <li data-req="d-length" data-i18n="req_decoy_length">8 caracteres o más</li>
-          <li data-req="d-match" data-i18n="req_match">Las dos coinciden</li>
-          <li data-req="d-diff" data-i18n="req_decoy_diff">Distinta de la contraseña real</li>
+          <li data-req="d-length" data-i18n="req_decoy_length"></li>
+          <li data-req="d-match" data-i18n="req_match"></li>
+          <li data-req="d-diff" data-i18n="req_decoy_diff"></li>
         </ul>
       </fieldset>
 
       <label class="checkbox-label"><input type="checkbox" id="show-password"> <span data-i18n="show_password">Mostrar contraseñas</span></label>
 
-      <fieldset class="levels" id="levels">
-        <legend data-i18n="level_title">Nivel de protección</legend>
+      <fieldset class="paper levels" id="levels">
+        <legend class="opt-label" data-i18n="level_title">Nivel de protección</legend>
         <label class="level"><input type="radio" name="level" value="standard" checked> <span><strong data-i18n="level_standard">Estándar</strong> <small>64 MiB</small></span> <span class="level-time" data-level-time="standard"></span></label>
         <label class="level"><input type="radio" name="level" value="high"> <span><strong data-i18n="level_high">Alto</strong> <small>128 MiB</small></span> <span class="level-time" data-level-time="high"></span></label>
         <label class="level"><input type="radio" name="level" value="max"> <span><strong data-i18n="level_max">Máximo</strong> <small>256 MiB</small></span> <span class="level-time" data-level-time="max"></span></label>
-        <p class="help" id="level-help" data-i18n="level_help">El tiempo es lo que tardará este dispositivo en abrirlo. Un móvil antiguo puede tardar varias veces más o no tener memoria para el nivel máximo.</p>
+        <p class="help" data-i18n="level_help"></p>
       </fieldset>
 
-      <p class="help warn" data-i18n="pw_warn">Sin esta contraseña el backup no se puede recuperar. Apúntala en papel y guárdala separada del QR.</p>
+      <p class="help warn" data-i18n="pw_warn"></p>
       <button type="button" id="password-next" class="btn btn-primary btn-large" disabled><svg class="ic" aria-hidden="true"><use href="#i-qr"/></svg> <span data-i18n="generate_qr">Generar QR</span></button>
     </div>
   </section>
 
-  <!-- ============ RESULTADO ============ -->
+  <!-- ================= RESULTADO ================= -->
   <section id="step-result" class="step" hidden aria-labelledby="h-qr">
-    <div class="step-content qr-step">
-      <div class="step-header">
-        <h2 id="h-qr" data-i18n="result_title">Backup cifrado</h2>
+    <div class="step-content">
+      <header class="step-top">
+        <h2 id="h-qr" class="step-title flush" data-i18n="result_title">Backup cifrado</h2>
         <span class="badge" id="qr-badge"></span>
-      </div>
-
-      <div class="share-nav" id="share-nav" hidden>
-        <button type="button" class="btn-icon" id="share-prev" data-i18n-aria="prev"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
-        <span id="share-label" aria-live="polite"></span>
-        <button type="button" class="btn-icon" id="share-next" data-i18n-aria="next"><svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
-      </div>
-
-      <figure class="qr-card">
-        <canvas id="qr-canvas" width="300" height="300"></canvas>
-        <figcaption id="qr-caption"></figcaption>
-      </figure>
-      <p class="fp center" id="result-fp"></p>
-
+      </header>
+      <section class="paper qr-paper">
+        <div class="share-nav" id="share-nav" hidden>
+          <button type="button" class="btn-icon" id="share-prev" data-i18n-aria="prev"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+          <span id="share-label" aria-live="polite"></span>
+          <button type="button" class="btn-icon" id="share-next" data-i18n-aria="next"><svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
+        </div>
+        <figure class="qr-figure">
+          <canvas id="qr-canvas" width="300" height="300"></canvas>
+          <figcaption id="qr-caption"></figcaption>
+        </figure>
+        <div class="perforation" aria-hidden="true"></div>
+        <p class="fp" id="result-fp"></p>
+      </section>
       <button type="button" id="qr-verify" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-verify"/></svg> <span data-i18n="verify_cta">Comprobar que puedo recuperarlo</span></button>
       <div class="qr-actions">
-        <button type="button" id="qr-download" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> PNG</button>
         <button type="button" id="qr-print" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> PDF</button>
+        <button type="button" id="qr-download" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> PNG</button>
         <button type="button" id="qr-share" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span data-i18n="share">Compartir</span></button>
       </div>
-      <p class="help" id="result-help" data-i18n="result_help">Lo más privado es imprimirlo y no guardar copias digitales.</p>
-      <button type="button" id="qr-done" class="btn-text" data-i18n="done_wipe">Terminar y borrar de la pantalla</button>
+      <p class="help" id="result-help"></p>
+      <button type="button" id="qr-done" class="link center-self" data-i18n="done_wipe">Terminar y borrar de la pantalla</button>
     </div>
   </section>
 
-  <!-- ============ SEMILLA DESCIFRADA ============ -->
+  <!-- ================= DESCIFRADA ================= -->
   <section id="step-decrypted" class="step" hidden aria-labelledby="h-dec">
     <div class="step-content">
-      <div class="step-header">
-        <h2 id="h-dec"><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="decrypted_title">Semilla descifrada</span></h2>
-        <span class="step-counter" id="decrypted-count"></span>
-      </div>
-      <div id="decrypted-meta" class="meta"></div>
-      <p class="fp" id="decrypted-fp"></p>
-      <ol class="seed-grid blurred" id="seed-grid" data-i18n-aria="seed_words"></ol>
-      <p class="pp-line blurred" id="decrypted-pp" hidden></p>
-      <p class="help" data-i18n="reveal_help">Toca la cuadrícula para mostrar u ocultar. Se borra al salir de la app.</p>
+      <header class="step-top">
+        <h2 id="h-dec" class="step-title flush"><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="decrypted_title">Semilla descifrada</span></h2>
+        <span class="count" id="decrypted-count"></span>
+      </header>
+      <section class="paper">
+        <div id="decrypted-meta" class="meta"></div>
+        <p class="fp" id="decrypted-fp"></p>
+        <div class="perforation" aria-hidden="true"></div>
+        <ol class="seed-grid blurred" id="seed-grid" data-i18n-aria="seed_words"></ol>
+        <p class="pp-line blurred" id="decrypted-pp" hidden></p>
+      </section>
+      <p class="help" data-i18n="reveal_help"></p>
       <div class="decrypted-actions">
         <button type="button" id="decrypted-reveal" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> <span id="reveal-text"></span></button>
         <button type="button" id="decrypted-copy" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span data-i18n="copy">Copiar</span></button>
@@ -280,9 +310,10 @@
     </div>
   </section>
 
-  <!-- ============ MODAL: DESCIFRAR / VERIFICAR ============ -->
+  <!-- ================= MODAL: DESCIFRAR ================= -->
   <div id="password-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-dpwd">
     <div class="modal-content">
+      <button type="button" class="modal-close" id="decrypt-x" data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       <h2 id="h-dpwd" data-i18n="enter_password">Introduce la contraseña</h2>
       <p class="modal-sub" id="decrypt-sub"></p>
       <div id="scanner" class="scanner" hidden>
@@ -291,12 +322,13 @@
         <div class="scanner-status" id="scanner-status"></div>
       </div>
       <div id="share-progress" class="share-progress" hidden aria-live="polite"></div>
-      <div class="row-actions" id="more-shares" hidden>
-        <button type="button" id="more-scan" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> <span data-i18n="scan">Escanear</span></button>
-        <button type="button" id="more-upload" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> <span data-i18n="upload">Subir imagen</span></button>
+      <div class="row-actions" id="source-actions">
+        <button type="button" id="src-scan" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> <span data-i18n="scan">Escanear</span></button>
+        <button type="button" id="src-upload" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> <span data-i18n="upload">Subir imagen</span></button>
+        <input type="file" id="qr-file" accept="image/*" multiple hidden>
       </div>
-      <p id="qr-ready" class="qr-ready" hidden><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="qr_ready">QR leído</span></p>
-      <div class="password-input-group" id="decrypt-pw-group">
+      <p id="qr-ready" class="qr-ready" hidden><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="qr_ready">QR listo</span></p>
+      <div class="field-group">
         <input type="password" id="decrypt-password" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_ph">
       </div>
       <label class="checkbox-label"><input type="checkbox" id="decrypt-show-password"> <span data-i18n="show_password_one">Mostrar contraseña</span></label>
@@ -308,67 +340,97 @@
     </div>
   </div>
 
-  <!-- ============ MODAL: IMPRESIÓN ============ -->
+  <!-- ================= MODAL: IMPRESIÓN ================= -->
   <div id="print-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-print">
     <div class="modal-content">
       <button type="button" class="modal-close" data-close data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       <h2 id="h-print" data-i18n="print_title">Crear PDF para imprimir</h2>
       <fieldset class="radio-set">
         <legend data-i18n="print_template">Plantilla</legend>
-        <label><input type="radio" name="tpl" value="sheet" checked> <span data-i18n="tpl_sheet">Hoja A4 con instrucciones</span></label>
-        <label><input type="radio" name="tpl" value="cards"> <span data-i18n="tpl_cards">Tarjetas recortables (10 por A4)</span></label>
+        <label><input type="radio" name="tpl" value="sheet" checked> <span data-i18n="tpl_sheet"></span></label>
+        <label><input type="radio" name="tpl" value="cards"> <span data-i18n="tpl_cards"></span></label>
       </fieldset>
       <fieldset class="radio-set">
         <legend data-i18n="print_ecc">Resistencia al daño</legend>
-        <label><input type="radio" name="ecc" value="Q" checked> <span data-i18n="ecc_q">Normal (tolera ~25 %)</span></label>
-        <label><input type="radio" name="ecc" value="H"> <span data-i18n="ecc_h">Máxima (tolera ~30 %, QR más denso)</span></label>
+        <label><input type="radio" name="ecc" value="Q" checked> <span data-i18n="ecc_q"></span></label>
+        <label><input type="radio" name="ecc" value="H"> <span data-i18n="ecc_h"></span></label>
       </fieldset>
-      <label class="opt-label" id="copies-row"><span data-i18n="copies">Copias de cada QR</span>
+      <label class="opt-label inline-select" id="copies-row"><span data-i18n="copies">Copias de cada QR</span>
         <select id="print-copies"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
       </label>
       <button type="button" id="print-go" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <span data-i18n="download_pdf">Descargar PDF</span></button>
     </div>
   </div>
 
-  <!-- ============ MODAL: PRÁCTICA ============ -->
+  <!-- ================= MODAL: PRÁCTICA ================= -->
   <div id="practice-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-prac">
     <div class="modal-content">
       <button type="button" class="modal-close" data-close data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       <h2 id="h-prac" data-i18n="practice_title">Practicar una recuperación</h2>
-      <p data-i18n="practice_body1">Crearás un backup con una semilla de prueba generada al azar y luego lo recuperarás, como harías en una emergencia.</p>
-      <p class="help warn" data-i18n="practice_body2">Esa semilla es solo para practicar: no envíes nunca fondos a ella. Los QR de práctica se marcan como tales.</p>
+      <p data-i18n="practice_body1"></p>
+      <p class="help warn" data-i18n="practice_body2"></p>
       <button type="button" id="practice-start" class="btn btn-primary" data-i18n="practice_start">Empezar práctica</button>
     </div>
   </div>
 
-  <!-- ============ MODAL: ACERCA DE ============ -->
+  <!-- ================= MODAL: ACERCA DE ================= -->
   <div id="about-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-about">
     <div class="modal-content about">
       <button type="button" class="modal-close" data-close data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       <h2 id="h-about" data-i18n="about">Cómo te protege</h2>
       <dl class="about-list">
-        <dt data-i18n="ab1_t">Nada sale del dispositivo</dt><dd data-i18n="ab1_d"></dd>
-        <dt data-i18n="ab2_t">Teclado propio</dt><dd data-i18n="ab2_d"></dd>
-        <dt data-i18n="ab3_t">Argon2id + AES-256-GCM</dt><dd data-i18n="ab3_d"></dd>
-        <dt data-i18n="ab4_t">El QR no revela nada</dt><dd data-i18n="ab4_d"></dd>
-        <dt data-i18n="ab5_t">Fragmentos y señuelo</dt><dd data-i18n="ab5_d"></dd>
-        <dt data-i18n="ab6_t">Tu contraseña es la llave</dt><dd data-i18n="ab6_d"></dd>
-        <dt data-i18n="ab7_t">Límites</dt><dd data-i18n="ab7_d"></dd>
+        <dt data-i18n="ab1_t"></dt><dd data-i18n="ab1_d"></dd>
+        <dt data-i18n="ab2_t"></dt><dd data-i18n="ab2_d"></dd>
+        <dt data-i18n="ab3_t"></dt><dd data-i18n="ab3_d"></dd>
+        <dt data-i18n="ab4_t"></dt><dd data-i18n="ab4_d"></dd>
+        <dt data-i18n="ab5_t"></dt><dd data-i18n="ab5_d"></dd>
+        <dt data-i18n="ab6_t"></dt><dd data-i18n="ab6_d"></dd>
+        <dt data-i18n="ab7_t"></dt><dd data-i18n="ab7_d"></dd>
       </dl>
       <div class="build-fp">
         <span data-i18n="build_fp">Huella de esta versión</span>
         <code id="build-fp">…</code>
-        <span class="help" id="build-fp-help" data-i18n="build_fp_help">Compárala con la publicada en HASHES.txt.</span>
+        <span class="help" data-i18n="build_fp_help"></span>
       </div>
       <button type="button" class="btn btn-primary" data-close data-i18n="got_it">Entendido</button>
     </div>
+  </div>
+
+  <!-- ================= HOJA: INSTALAR ================= -->
+  <div id="install-sheet" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="h-install">
+      <span class="sheet-handle" aria-hidden="true"></span>
+      <div class="install-head">
+        <img src="MQR_logo.webp" alt="" width="64" height="64" class="install-icon">
+        <div class="install-titles">
+          <h2 id="h-install" data-i18n="install_title">Instala MnemoniQR</h2>
+          <code class="install-fp" id="install-fp"></code>
+        </div>
+      </div>
+      <p class="install-lead" id="install-lead"></p>
+      <ul class="benefits" id="install-benefits">
+        <li><span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-plane"/></svg></span><span data-i18n="install_b1"></span></li>
+        <li><span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg></span><span data-i18n="install_b2"></span></li>
+        <li><span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-verify"/></svg></span><span data-i18n="install_b3"></span></li>
+      </ul>
+      <ol class="ios-steps" id="install-ios" hidden>
+        <li><span class="step-n">1</span><span class="grow" data-i18n="ios_s1"></span><svg class="ic accent" aria-hidden="true"><use href="#i-share-ios"/></svg></li>
+        <li><span class="step-n">2</span><span class="grow" data-i18n="ios_s2"></span><svg class="ic accent" aria-hidden="true"><use href="#i-add-home"/></svg></li>
+        <li><span class="step-n">3</span><span class="grow" data-i18n="ios_s3"></span></li>
+      </ol>
+      <div class="sheet-actions">
+        <button type="button" id="install-later" class="btn btn-secondary" data-i18n="install_later">Ahora no</button>
+        <button type="button" id="install-go" class="btn btn-primary"></button>
+      </div>
+      <label class="checkbox-label small"><input type="checkbox" id="install-never"> <span data-i18n="install_never">No volver a mostrar</span></label>
+    </section>
   </div>
 
   <div id="toast-container" role="status" aria-live="polite"></div>
   <div id="spinner-overlay" class="spinner-overlay" hidden role="status" aria-live="assertive">
     <div class="spinner"></div>
     <p id="spinner-message"></p>
-    <button type="button" id="spinner-cancel" class="btn-text light" hidden data-i18n="cancel">Cancelar</button>
+    <button type="button" id="spinner-cancel" class="link light" hidden data-i18n="cancel">Cancelar</button>
   </div>
   <div id="privacy-shield" class="privacy-shield" aria-hidden="true"><img src="MQR_logo.webp" alt="" width="96" height="96"></div>
 </div>

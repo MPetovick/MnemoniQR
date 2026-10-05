@@ -2,15 +2,15 @@
   "id": "./",
   "name": "MnemoniQR · Backup cifrado de semillas",
   "short_name": "MnemoniQR",
-  "description": "Cifra tu frase de recuperación BIP39 en uno o varios QR con Argon2id y AES-256-GCM, sin conexión.",
+  "description": "Cifra tu frase de recuperación BIP39 en uno o varios QR, sin conexión. Interfaz en español, català, English, français y русский.",
   "lang": "es",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f3f4f1",
-  "theme_color": "#1f2a33",
+  "background_color": "#E9EDE8",
+  "theme_color": "#E9EDE8",
   "categories": [
     "security",
     "utilities"

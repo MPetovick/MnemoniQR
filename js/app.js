@@ -88,6 +88,7 @@ function openModal(id) {
     const el = $(id);
     modalStack.push({ el, ret: document.activeElement });
     el.hidden = false;
+    if (id === 'password-modal') updateSourceActions();
     const f = el.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), button:not(.modal-close)');
     setTimeout(() => f && f.focus(), 40);
 }
@@ -185,9 +186,10 @@ function renderCalib() {
 // ============================================================
 function updateNetPill() {
     const on = navigator.onLine;
-    $('net-pill').classList.toggle('online', on);
-    $('net-pill').classList.toggle('offline', !on);
-    $('net-text').textContent = on ? t('net_online') : t('net_offline');
+    $('net-card').classList.toggle('online', on);
+    $('net-card').classList.toggle('offline', !on);
+    $('net-title').textContent = on ? t('net_online') : t('net_offline');
+    $('net-body').textContent = on ? t('net_online_body') : t('net_offline_body');
 }
 function clearEntry() {
     S.seeds.real = newSeed(); S.seeds.decoy = newSeed();
@@ -240,9 +242,24 @@ const resolvedAt = (i) => BIP39.resolve(seed().lang, typedAt(i));
 function stepPlan() {
     return S.opts.decoy ? ['seed', 'options', 'decoy', 'password'] : ['seed', 'options', 'password'];
 }
-function progressText(name) {
+function renderStepper(current) {
     const plan = stepPlan();
-    return t('step_of', { i: plan.indexOf(name) + 1, n: plan.length });
+    const labels = { seed: 'step_phrase', options: 'step_options', decoy: 'step_decoy', password: 'step_key' };
+    const idx = plan.indexOf(current);
+    document.querySelectorAll(`#step-${S.step} [data-stepper]`).forEach((ol) => {
+        const items = [];
+        plan.forEach((name, i) => {
+            if (i) { const sep = document.createElement('li'); sep.className = 'sep'; sep.setAttribute('aria-hidden', 'true'); items.push(sep); }
+            const li = document.createElement('li');
+            li.className = i < idx ? 'done' : i === idx ? 'current' : '';
+            if (i === idx) li.setAttribute('aria-current', 'step');
+            const n = document.createElement('span'); n.className = 'n'; n.textContent = i + 1;
+            const l = document.createElement('span'); l.className = 'lbl'; l.textContent = t(labels[name]);
+            li.append(n, l);
+            items.push(li);
+        });
+        ol.replaceChildren(...items);
+    });
 }
 
 function openSeedStep(target) {
@@ -254,21 +271,18 @@ function openSeedStep(target) {
 function renderSeedStep() {
     const s = seed();
     $('h-seed').textContent = S.target === 'decoy' ? t('seed_title_decoy') : t('seed_title');
-    $('seed-progress').textContent = progressText(S.target === 'decoy' ? 'decoy' : 'seed');
+    renderStepper(S.target === 'decoy' ? 'decoy' : 'seed');
     $('seed-lang').value = s.lang;
     const eye = $('seed-eye');
     eye.setAttribute('aria-pressed', String(s.reveal));
     eye.querySelector('use').setAttribute('href', s.reveal ? '#i-eye-off' : '#i-eye');
-    eye.setAttribute('aria-label', s.reveal ? t('hide_words') : t('show_words'));
+    $('seed-eye-text').textContent = s.reveal ? t('hide') : t('show');
     // selector de número de palabras
-    const g = $('count-group');
-    g.replaceChildren(...C.VALID_WORD_COUNTS.map((n) => {
-        const b = document.createElement('button');
-        b.type = 'button'; b.textContent = n; b.setAttribute('role', 'radio');
-        b.setAttribute('aria-checked', String(n === s.count));
-        b.setAttribute('aria-label', t('n_words', { n }));
-        b.addEventListener('click', () => { s.count = n; if (s.cur >= n) s.cur = n - 1; renderSeedStep(); });
-        return b;
+    const cs = $('seed-count');
+    cs.replaceChildren(...C.VALID_WORD_COUNTS.map((n) => {
+        const o = document.createElement('option');
+        o.value = n; o.textContent = t('n_words', { n }); o.selected = n === s.count;
+        return o;
     }));
     renderGrid();
     renderKeyboard();
@@ -307,6 +321,7 @@ function renderGrid() {
         items.push(li);
     }
     grid.replaceChildren(...items);
+    grid.classList.toggle('cols-3', s.count >= 18);
     const cur = grid.querySelector('.cell.current');
     if (cur && S.step === 'seed') cur.scrollIntoView({ block: 'nearest' });
 }
@@ -481,7 +496,7 @@ async function pasteSeed() {
 
 async function seedContinue() {
     if (S.rawAllowed[S.target] && !confirm(t('checksum_confirm'))) return;
-    if (S.target === 'real') { goTo('options'); $('options-progress').textContent = progressText('options'); }
+    if (S.target === 'real') { goTo('options'); renderStepper('options'); }
     else openPasswordStep();
 }
 
@@ -511,7 +526,7 @@ function optionsContinue() {
 }
 function openPasswordStep() {
     goTo('password');
-    $('password-progress').textContent = progressText('password');
+    renderStepper('password');
     $('decoy-set').hidden = !S.opts.decoy;
     $('real-legend').textContent = S.opts.decoy ? t('pw_real_decoy') : t('pw_real');
     updatePasswordUI();
@@ -607,9 +622,9 @@ async function startEncryption() {
 // ============================================================
 // RESULTADO
 // ============================================================
-function shareCaption(i) {
+function shareCaption(i, tr = t) {
     const R = S.result;
-    return R.kind === 'shares' ? t('share_caption', { i: i + 1, n: R.n, k: R.k, set: R.setId.slice(0, 4).toUpperCase() }) : t('single_caption');
+    return R.kind === 'shares' ? tr('share_caption', { i: i + 1, n: R.n, k: R.k, set: R.setId.slice(0, 4).toUpperCase() }) : tr('single_caption');
 }
 async function renderResult() {
     const R = S.result;
@@ -745,6 +760,8 @@ const QR = {
 // ============================================================
 // PDF vectorial sin dependencias
 // ============================================================
+// Las fuentes estándar de PDF no tienen cirílico: en ruso, el PDF se genera en inglés
+const tp = (k, v) => self.I18N.tFor(self.I18N.lang === 'ru' ? 'en' : self.I18N.lang, k, v);
 const PDF = {
     W: 595.28, H: 841.89,
     lit(s) {
@@ -782,22 +799,22 @@ const PDF = {
         const pages = items.map(({ text, i }) => {
             let c = '';
             const qs = 290, x0 = (this.W - qs) / 2, y0 = this.H - 150 - qs;
-            c += this.txt('F3', 22, 56, this.H - 72, 'MnemoniQR');
-            c += this.txt('F1', 11, 56, this.H - 92, R.kind === 'shares' ? t('pdf_sub_share', { i: i + 1, n: R.n }) : t('pdf_sub'), 0.35);
-            if (R.practice) c += this.txt('F3', 12, 56, this.H - 112, t('pdf_practice'), 0.2);
+            c += this.txtp('F3', 22, 56, this.H - 72, 'MnemoniQR');
+            c += this.txtp('F1', 11, 56, this.H - 92, R.kind === 'shares' ? tp('pdf_sub_share', { i: i + 1, n: R.n }) : tp('pdf_sub'), 0.35);
+            if (R.practice) c += this.txtp('F3', 12, 56, this.H - 112, tp('pdf_practice'), 0.2);
             c += this.qr(text, ecc, x0, y0, qs);
-            c += this.txt('F1', 9, x0, y0 - 18, shareCaption(i) + ' · ' + t('pdf_algo'), 0.35);
+            c += this.txtp('F1', 9, x0, y0 - 18, shareCaption(i, tp) + ' · ' + tp('pdf_algo'), 0.35);
             let y = y0 - 56;
             const lines = R.kind === 'shares'
-                ? [t('pdf_l_share1', { k: R.k, n: R.n }), t('pdf_l_share2'), t('pdf_l3')]
-                : [t('pdf_l1'), t('pdf_l2'), t('pdf_l3')];
-            for (const l of lines) { c += this.txt('F1', 10, 56, y, l, 0.15); y -= 16; }
+                ? [tp('pdf_l_share1', { k: R.k, n: R.n }), tp('pdf_l_share2'), tp('pdf_l3')]
+                : [tp('pdf_l1'), tp('pdf_l2'), tp('pdf_l3')];
+            for (const l of lines) { c += this.txtp('F1', 10, 56, y, l, 0.15); y -= 16; }
             y -= 14;
-            c += this.txt('F1', 10, 56, y, t('pdf_label') + ' ______________________________________', 0.15);
+            c += this.txtp('F1', 10, 56, y, tp('pdf_label') + ' ______________________________________', 0.15);
             y -= 32;
-            c += this.txt('F1', 9, 56, y, t('pdf_backup_text'), 0.35);
+            c += this.txtp('F1', 9, 56, y, tp('pdf_backup_text'), 0.35);
             y -= 14;
-            for (const l of this.wrap(text, 70)) { c += this.txt('F2', 8, 56, y, l, 0.1); y -= 11; }
+            for (const l of this.wrap(text, 70)) { c += this.txtp('F2', 8, 56, y, l, 0.1); y -= 11; }
             return c;
         });
         return this.build(pages);
@@ -820,17 +837,17 @@ const PDF = {
                 c += this.qr(text, ecc, x + 10, y + 10, qs);
                 const tx = x + qs + 18;
                 let ty = y + ch - 26;
-                c += this.txt('F3', 11, tx, ty, 'MnemoniQR'); ty -= 16;
+                c += this.txtp('F3', 11, tx, ty, 'MnemoniQR'); ty -= 16;
                 if (R.kind === 'shares') {
-                    c += this.txt('F1', 8.5, tx, ty, t('card_share', { i: i + 1, n: R.n }), 0.15); ty -= 12;
-                    c += this.txt('F1', 8.5, tx, ty, t('card_need', { k: R.k }), 0.15); ty -= 12;
-                    c += this.txt('F1', 8.5, tx, ty, t('card_set', { set: R.setId.slice(0, 4).toUpperCase() }), 0.15); ty -= 12;
+                    c += this.txtp('F1', 8.5, tx, ty, tp('card_share', { i: i + 1, n: R.n }), 0.15); ty -= 12;
+                    c += this.txtp('F1', 8.5, tx, ty, tp('card_need', { k: R.k }), 0.15); ty -= 12;
+                    c += this.txtp('F1', 8.5, tx, ty, tp('card_set', { set: R.setId.slice(0, 4).toUpperCase() }), 0.15); ty -= 12;
                 } else {
-                    c += this.txt('F1', 8.5, tx, ty, t('card_backup'), 0.15); ty -= 12;
+                    c += this.txtp('F1', 8.5, tx, ty, tp('card_backup'), 0.15); ty -= 12;
                 }
-                if (R.practice) { c += this.txt('F3', 8.5, tx, ty, t('card_practice'), 0.15); ty -= 12; }
-                c += this.txt('F1', 7.5, tx, y + 26, t('pdf_label'), 0.4);
-                c += this.txt('F1', 7.5, tx, y + 14, '________________', 0.4);
+                if (R.practice) { c += this.txtp('F3', 8.5, tx, ty, tp('card_practice'), 0.15); ty -= 12; }
+                c += this.txtp('F1', 7.5, tx, y + 26, tp('pdf_label'), 0.4);
+                c += this.txtp('F1', 7.5, tx, y + 14, '________________', 0.4);
             });
             pages.push(c);
         }
@@ -872,7 +889,8 @@ async function startScanner() {
         sc.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
     } catch (e) { toast(e.name === 'NotAllowedError' ? t('camera_denied') : t('camera_failed'), 'error'); return; }
     $('scanner').hidden = false;
-    $('more-shares').hidden = true;
+    sc.active = true;
+    updateSourceActions();
     $('scanner-video').srcObject = sc.stream;
     try { await $('scanner-video').play(); } catch { /* autoplay */ }
     sc.active = true; sc.frame = 0;
@@ -917,7 +935,7 @@ function stopScanner() {
     if (sc.canvas) sc.canvas.width = 0;
     $('scanner-video').srcObject = null;
     $('scanner').hidden = true;
-    if (S.collect.shares.size && !S.collect.backup) $('more-shares').hidden = false;
+    updateSourceActions();
 }
 
 // Devuelve: 'backup' | 'share' | 'complete' | 'dup' | 'invalid' | 'mixed'
@@ -949,6 +967,9 @@ function acceptCode(text) {
     }
     status.textContent = t('share_next', { got: col.shares.size, k: col.k });
     return 'share';
+}
+function updateSourceActions() {
+    $('source-actions').hidden = S.modalMode === 'verify' || !!S.collect.backup || S.scanner.active;
 }
 function renderShareProgress() {
     const col = S.collect;
@@ -990,8 +1011,8 @@ async function processFiles(files) {
     finally {
         spinner(false);
         $('qr-file').value = '';
-        if (S.collect.shares.size && !S.collect.backup) $('more-shares').hidden = false;
-        if (S.collect.backup) { $('more-shares').hidden = true; $('decrypt-password').focus(); }
+        updateSourceActions();
+        if (S.collect.backup) $('decrypt-password').focus();
     }
 }
 
@@ -1014,9 +1035,10 @@ function resetDecryptModal(keepMode) {
     $('decrypt-status').hidden = true;
     $('qr-ready').hidden = true;
     $('share-progress').hidden = true;
-    $('more-shares').hidden = true;
+    updateSourceActions();
     S.collect = { backup: null, shares: new Map(), setId: null, k: 0, n: 0 };
     if (!keepMode) S.modalMode = 'decrypt';
+    updateSourceActions();
 }
 function setDecryptStatus(msg) {
     const el = $('decrypt-status');
@@ -1083,6 +1105,7 @@ async function showDecrypted(res) {
         return li;
     });
     $('seed-grid').replaceChildren(...items);
+    $('seed-grid').classList.toggle('cols-3', items.length >= 18);
     $('decrypted-count').textContent = t('n_words', { n: S.decrypted.words.length });
     const meta = $('decrypted-meta');
     const add = (s) => { const p = document.createElement('p'); p.textContent = s; meta.appendChild(p); };
@@ -1166,16 +1189,88 @@ function setupPWA() {
         let reloaded = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
     }
-    let deferred = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); deferred = e;
-        if ($('install-btn')) return;
-        const b = document.createElement('button');
-        b.type = 'button'; b.id = 'install-btn'; b.className = 'btn-text'; b.textContent = t('install');
-        b.addEventListener('click', async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; b.remove(); });
-        $('install-slot').appendChild(b);
-    });
+    Install.init();
 }
+
+// ============================================================
+// INSTALACIÓN (hoja inferior)
+// ============================================================
+const Install = {
+    deferred: null, ios: false,
+    KEY: 'mqr-install',
+    standalone() {
+        return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    },
+    pref() { try { return JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch { return {}; } },
+    save(v) { try { localStorage.setItem(this.KEY, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
+    snoozed() { const p = this.pref(); return !!(p.never || (p.until && Date.now() < p.until)); },
+    available() { return !this.standalone() && !!(this.deferred || this.ios) && location.protocol !== 'file:'; },
+    init() {
+        // iPhone/iPad: Safari no ofrece instalación automática, se muestran los pasos manuales
+        this.ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.deferred = e;
+            this.refreshLink();
+            this.maybeAuto();
+        });
+        window.addEventListener('appinstalled', () => { this.deferred = null; this.close(); this.refreshLink(); toast(t('installed'), 'success'); });
+        $('install-link').addEventListener('click', () => this.open());
+        $('install-later').addEventListener('click', () => this.dismiss());
+        $('install-go').addEventListener('click', () => this.go());
+        $('install-sheet').addEventListener('click', (e) => { if (e.target === $('install-sheet')) this.dismiss(); });
+        this.refreshLink();
+        if (this.ios) this.maybeAuto();
+    },
+    refreshLink() { $('install-link').hidden = !this.available(); },
+    // Solo en la pantalla de inicio, sin otros diálogos y respetando «Ahora no»
+    maybeAuto() {
+        setTimeout(() => {
+            if (this.available() && !this.snoozed() && S.step === 'home' && !modalStack.length && $('install-sheet').hidden) this.open();
+        }, 2000);
+    },
+    render() {
+        const ios = this.ios && !this.deferred;
+        $('install-benefits').hidden = ios;
+        $('install-ios').hidden = !ios;
+        $('install-lead').textContent = ios ? t('install_lead_ios') : t('install_lead');
+        $('install-go').textContent = ios ? t('got_it') : t('install_go');
+        buildFingerprint().then((f) => { $('install-fp').textContent = t('install_fp', { fp: f }); });
+    },
+    open() {
+        this.render();
+        $('install-never').checked = false;
+        modalStack.push({ el: $('install-sheet'), ret: document.activeElement });
+        $('install-sheet').hidden = false;
+        setTimeout(() => $('install-go').focus(), 50);
+    },
+    close() {
+        const el = $('install-sheet');
+        if (el.hidden) return;
+        el.hidden = true;
+        const i = modalStack.findIndex((m) => m.el === el);
+        if (i >= 0) { const m = modalStack.splice(i, 1)[0]; if (m.ret && m.ret.focus) m.ret.focus(); }
+    },
+    // «Ahora no» pospone 14 días; «No volver a mostrar» lo desactiva (el enlace del pie sigue ahí)
+    dismiss() {
+        this.save($('install-never').checked ? { never: true } : { until: Date.now() + 14 * 864e5 });
+        this.close();
+    },
+    async go() {
+        if (this.deferred) {
+            const d = this.deferred;
+            this.deferred = null;
+            this.close();
+            d.prompt();
+            try { await d.userChoice; } catch { /* cancelado */ }
+            this.refreshLink();
+        } else {
+            this.save({ until: Date.now() + 30 * 864e5 });
+            this.close();
+        }
+    }
+};
+
 
 // ============================================================
 // IDIOMA
@@ -1184,9 +1279,10 @@ function refreshTexts() {
     self.I18N.apply(document);
     updateNetPill();
     if (S.step === 'seed') renderSeedStep();
-    if (S.step === 'options') $('options-progress').textContent = progressText('options');
-    if (S.step === 'password') { $('password-progress').textContent = progressText('password'); updatePasswordUI(); renderCalib(); }
+    if (S.step === 'options') renderStepper('options');
+    if (S.step === 'password') { renderStepper('password'); updatePasswordUI(); renderCalib(); }
     if (S.step === 'result' && S.result) renderResult();
+    if (!$('install-sheet').hidden) Install.render();
     if (S.step === 'decrypted') setReveal(!$('seed-grid').classList.contains('blurred'));
 }
 
@@ -1210,7 +1306,7 @@ async function init() {
     buildFingerprint().then((f) => { $('build-fp').textContent = f; });
 
     $('ui-lang').addEventListener('change', (e) => { self.I18N.set(e.target.value); refreshTexts(); });
-    $('net-pill').addEventListener('click', () => toast(navigator.onLine ? t('net_online_help') : t('net_offline_help'), 'info', { duration: 9000 }));
+    $('net-card').addEventListener('click', () => toast(navigator.onLine ? t('net_online_help') : t('net_offline_help'), 'info', { duration: 9000 }));
 
     // --- cifrar ---
     $('encrypt-btn-main').addEventListener('click', () => { clearEntry(); S.practice = false; openSeedStep('real'); });
@@ -1224,7 +1320,7 @@ async function init() {
         toast(t('practice_started'), 'info', { duration: 7000 });
     });
     $('seed-back').addEventListener('click', () => {
-        if (S.target === 'decoy') { goTo('options'); $('options-progress').textContent = progressText('options'); return; }
+        if (S.target === 'decoy') { goTo('options'); renderStepper('options'); return; }
         if (S.seeds.real.words.some(Boolean) && !S.practice && !confirm(t('confirm_leave'))) return;
         clearEntry(); goTo('home');
     });
@@ -1242,7 +1338,9 @@ async function init() {
         trapFocus(e);
         if (e.key === 'Escape' && modalStack.length) {
             const top = modalStack[modalStack.length - 1].el.id;
-            if (top === 'password-modal') $('decrypt-cancel').click(); else closeModal(top);
+            if (top === 'password-modal') $('decrypt-cancel').click();
+            else if (top === 'install-sheet') Install.dismiss();
+            else closeModal(top);
             return;
         }
         if (S.step !== 'seed' || anyModalOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1269,7 +1367,7 @@ async function init() {
     }));
 
     // --- contraseña ---
-    $('password-back').addEventListener('click', () => { if (S.opts.decoy) openSeedStep('decoy'); else { goTo('options'); $('options-progress').textContent = progressText('options'); } });
+    $('password-back').addEventListener('click', () => { if (S.opts.decoy) openSeedStep('decoy'); else { goTo('options'); renderStepper('options'); } });
     ['password-input', 'password-confirm', 'decoy-input', 'decoy-confirm'].forEach((id) => {
         $(id).addEventListener('input', updatePasswordUI);
         $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('password-next').disabled) startEncryption(); });
@@ -1303,12 +1401,13 @@ async function init() {
     });
 
     // --- descifrar ---
-    $('scan-btn').addEventListener('click', () => openDecrypt(true));
-    $('upload-btn').addEventListener('click', () => $('qr-file').click());
-    $('more-scan').addEventListener('click', startScanner);
-    $('more-upload').addEventListener('click', () => $('qr-file').click());
+    $('recover-btn').addEventListener('click', () => openDecrypt(false));
+    $('src-scan').addEventListener('click', startScanner);
+    $('src-upload').addEventListener('click', () => $('qr-file').click());
+    $('decrypt-x').addEventListener('click', () => $('decrypt-cancel').click());
+    $('seed-count').addEventListener('change', (e) => { const s = seed(); s.count = parseInt(e.target.value, 10); if (s.cur >= s.count) s.cur = s.count - 1; renderSeedStep(); });
     $('qr-file').addEventListener('change', (e) => processFiles(e.target.files));
-    const ds = document.querySelector('.decrypt-section');
+    const ds = $('drop-zone');
     ds.addEventListener('dragover', (e) => { e.preventDefault(); ds.classList.add('dragover'); });
     ds.addEventListener('dragleave', () => ds.classList.remove('dragover'));
     ds.addEventListener('drop', (e) => { e.preventDefault(); ds.classList.remove('dragover'); processFiles(e.dataTransfer.files); });
@@ -1338,7 +1437,7 @@ async function init() {
     const action = new URLSearchParams(location.search).get('action');
     if (action) history.replaceState(null, '', location.pathname);
     if (action === 'encrypt') $('encrypt-btn-main').click();
-    if (action === 'scan') $('scan-btn').click();
+    if (action === 'scan') openDecrypt(true);
     if (action === 'practice') $('practice-btn').click();
 
     // para pruebas automáticas (tests.html y Playwright)

@@ -1,11 +1,12 @@
-// MnemoniQR Service Worker v4.0
+// MnemoniQR Service Worker v5.0
 // Solo precarga y sirve ficheros propios. Sin push, sin sync, sin terceros.
 'use strict';
-const CACHE = 'mnemoniqr-v4.0.0';
+const CACHE = 'mnemoniqr-v5.0.0';
 const ASSETS = [
     './', 'index.html', 'styles.css', 'manifest.json', 'kdf-worker.js',
     'js/wordlists.js', 'js/core.js', 'js/i18n.js', 'js/app.js',
     'vendor/qrcode.min.js', 'vendor/jsqr.min.js', 'vendor/argon2.min.js', 'vendor/noble.min.js',
+    'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2', 'fonts/atkinson-hyperlegible-latin-ext-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-ext-700-normal.woff2', 'fonts/jetbrains-mono-latin-400-normal.woff2', 'fonts/jetbrains-mono-latin-500-normal.woff2', 'fonts/jetbrains-mono-cyrillic-400-normal.woff2', 'fonts/jetbrains-mono-cyrillic-500-normal.woff2',
     'MQR_logo.webp', 'MQR_logo.png', 'favicon.png',
     'assets/icons/icon-96x96.png', 'assets/icons/icon-192x192.png', 'assets/icons/icon-512x512.png',
     'assets/icons/maskable-192.png', 'assets/icons/maskable-512.png', 'assets/icons/apple-touch-icon.png'
