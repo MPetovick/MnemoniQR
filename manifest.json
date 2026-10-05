@@ -1,9 +1,9 @@
 {
   "id": "./",
-  "name": "MnemoniQR · Backup cifrado de semillas",
+  "name": "MnemoniQR · Encrypted seed backup",
   "short_name": "MnemoniQR",
-  "description": "Cifra tu frase de recuperación BIP39 en uno o varios QR, sin conexión. Interfaz en español, català, English, français y русский.",
-  "lang": "es",
+  "description": "Encrypt your BIP39 recovery phrase into one or more QR codes with Argon2id and AES-256-GCM, fully offline.",
+  "lang": "en",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",
@@ -44,8 +44,8 @@
   ],
   "shortcuts": [
     {
-      "name": "Cifrar semilla",
-      "short_name": "Cifrar",
+      "name": "Encrypt a seed",
+      "short_name": "Encrypt",
       "url": "./?action=encrypt",
       "icons": [
         {
@@ -55,8 +55,8 @@
       ]
     },
     {
-      "name": "Escanear QR",
-      "short_name": "Escanear",
+      "name": "Scan a QR",
+      "short_name": "Scan",
       "url": "./?action=scan",
       "icons": [
         {
@@ -66,8 +66,8 @@
       ]
     },
     {
-      "name": "Practicar recuperación",
-      "short_name": "Practicar",
+      "name": "Practice a recovery",
+      "short_name": "Practice",
       "url": "./?action=practice",
       "icons": [
         {

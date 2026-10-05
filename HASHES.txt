@@ -1,14 +1,14 @@
-MnemoniQR v5.0 · Huellas de la versión
+MnemoniQR v5.1.0 · Release fingerprints
 
-Huella de la PWA (index.html):            CDEA A550 CC7A A117
-Huella del archivo único (offline.html):  4E07 AF74 3E85 C84B
+PWA (index.html):                  6C43 DABD 5951 AA87
+Single file (mnemoniqr-offline.html): BB89 D185 1995 2249
 
-Debe coincidir con la que muestra la app en "Cómo te protege".
+These must match "Fingerprint of this version" in the app (How it protects you).
 
-SHA-256 de cada fichero:
+SHA-256 of every file:
 6d03e2c6c892ee05956cf94287f23a49d61cf9ba1abb149b2be7672d69253bdc  MQR_logo.png
 144a557c1d2549058e09d552fefd5cfa0b6adefe3745f1a4c942a7ebe197e03b  MQR_logo.webp
-b5f9d32007d83ad7b35a52e21fd5739df3c253c6b6f7792af27542938e83b625  _headers
+aa4906ec24eb69b96a108b518cebf226ce1b5eac299fbb31d83ac9c70bf52a73  _headers
 519b1edcb552dc38ec91300aacbee5154c3c809524d4ad40823cf82cf131c413  assets/icons/apple-touch-icon.png
 65451adb387a04473c3c00bfd892a24303503225f6350309e33b0c3c443b51da  assets/icons/icon-128x128.png
 2a10cef24b59380998418551fe2bb64c6fb3cc0662ceaa51fa3cfa82fac07f13  assets/icons/icon-144x144.png
@@ -31,22 +31,22 @@ d64ba838ef5472bba248620ec4fd8b5aa7cf0db2908e0bb230600caf279ba7bc  fonts/atkinson
 26c9ed511def1f0fd3d1b5fe6d5c0c594d9ef8dd2435d2ff240ea265a416b6e4  fonts/jetbrains-mono-cyrillic-500-normal.woff2
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  fonts/jetbrains-mono-latin-400-normal.woff2
 cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a  fonts/jetbrains-mono-latin-500-normal.woff2
-b03ad668cb2aba6cf8f8bf2986f0a79da516ddedaad40a38529b3b7164b634ef  index.html
-4ba5e2476c6b853f68e8073876b4bd877e8e0d6f74d3b691e62c247328e930a5  js/app.js
-36fa6abd2ea80c123faf8badcf0c1a120866bb58645d784f84a46d51ed15459f  js/core.js
-04c617618f20d5d92f440fe57fd50d592ee100dea768de926adc7251cf9dbb15  js/i18n.js
-b7c426eb9cda1d8951b5f0f2e985e928d777c47598654fb987bc8a0eae8594ea  js/wordlists.js
-9721cbcf496969a6c603fa8e71a93b14d0fb5d0015a2af87b7f047ef5deb0663  kdf-worker.js
-d08f52e34a6f645ee6b6e86ab329e10ea0d9c7adc379dcbb1c69b145807ac7f9  manifest.json
-31cd59f8627c470d7a83e940606fd64841e6eeca3db0edd0f73f16f0d99489ef  mnemoniqr-offline.html
-93cae82fd3f8d501077a8fb88eddec426d94a5fab65a39d6e964253104f09ccf  styles.css
-ae37043ad2ff3970abff2d5dd5628a38dbf95bd67723f4dbe85a23b63fb4050a  sw.js
+91d152c0380a6f9c1aabde9f17a0064b656bb10dfe4e54949367529730433eab  index.html
+d13f6cc0ca5055c7be9bbedb1436188e113753f51ed4ac673abc9e8fc5768a07  js/app.js
+4bfd227549f0fb6fc2a19e5ed6aff1d5a71e7938014cfb0047512cc7386741e8  js/core.js
+70817acfc3cef9baf0f81fdc864296572746f54e036121ccb3d6f01844c16253  js/i18n.js
+4f59f55a69ab1a4b6ede1aab2703109edb91f9fef4774a18b872aec235b07508  js/wordlists.js
+2b2d0f6226dcf1f784fe518b8429ac93ba0bddfc37f25235645b1d3d6bdeea6f  kdf-worker.js
+a1e76402ff67c29bfe3bf7b83eb3f539a9ab587714a487c4669e5703342679fb  manifest.json
+7171d8c6da4545bafa2487e77af40b7bcabc651c8f48904057fbe49777c41324  mnemoniqr-offline.html
+a20aaf4b50553ab067066936d1dea14af491d26c9e145e15d21ce2c595bf50c0  styles.css
+3c4e12b39b0275ec08a2b789b445c77fce8d5fb989331606319cfc3e8acc62c2  sw.js
 4b00127ce8ed53ca36e12084adb58685661bac552a9cb9149baf799ef2b7f02b  tests/tests.css
-16bc66defcfd82885cf008abc8cd6adc54d6674dd095c6e976adb222dbfb3cb0  tests/tests.html
-ac3bb6bc974ff9bdbeafafba8ce12fcb44367e1d6e8b69fee3a66a7cce497d20  tests/tests.js
-b7c43ebd4b6af0f8bf770c311512be1c8b31af525c3fb5a325c41e4e5a11bc5d  tests/vectors.js
+6b65b1be87eac96af30aa172170fda0fc1584d77a529bc463bef700b5409b166  tests/tests.html
+e56f49b22ae309c751e684f45a01bdbc71831efa1e3641d55959b2dca0bf5753  tests/tests.js
+664aa19505072852d8d9a60c3e15bc6a4a58b648e2713496e563e6eb8c87c02b  tests/vectors.js
 dcec617a2e1b700fa132d1583a186cb70611113395e869f2dd6cc82b415d3094  vendor/argon2.min.js
 fc6a9b5b0735aaf4af4748e0433d7351d4b725cfb02b032c502a5b699f3e4b9d  vendor/jsqr.min.js
 cbe8a998f285e5ac5effe7529430a7512ffa977f3ecb214ec428334542e76de3  vendor/noble.min.js
 41ae0d1da7b1e06c7648f7a1245d7eed74009890302e1c44707dcb516d2d9eb5  vendor/qrcode.min.js
-6cbdff5efdf1bf15d254a4edc14f356f0740899f1002052869abe17160ae2aa1  vercel.json
+786327a302e8e6f21e97a4a128734f00d25d64efb8c026754f0644706420e664  vercel.json

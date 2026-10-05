@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v4 · Interfaz
+// MnemoniQR v5.1.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -17,14 +17,19 @@ const CFG = Object.freeze({
     KEY_ROWS: ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']
 });
 
-// ---------- Trusted Types: única vía para crear el worker ----------
+// ---------- Install prompt: capture it immediately, it can fire before init() ends ----------
+let earlyInstallEvent = null;
+const onEarlyInstall = (e) => { e.preventDefault(); earlyInstallEvent = e; };
+window.addEventListener('beforeinstallprompt', onEarlyInstall);
+
+// ---------- Trusted Types: the only way to create the worker and service worker URLs ----------
 const blobUrls = new Set();
 const ttPolicy = self.trustedTypes
     ? self.trustedTypes.createPolicy('mqr', { createScriptURL: (u) => (u === 'kdf-worker.js' || u === 'sw.js' || blobUrls.has(u) ? u : '') })
     : null;
 
 // ============================================================
-// ESTADO
+// STATE
 // ============================================================
 const newSeed = () => ({ count: 12, lang: 'en', words: Array(24).fill(''), cur: 0, reveal: false });
 const S = {
@@ -44,7 +49,7 @@ const S = {
 };
 
 // ============================================================
-// UTILIDADES DE UI
+// UI HELPERS
 // ============================================================
 function toast(message, type = 'info', { duration, onClick } = {}) {
     const el = document.createElement('div');
@@ -75,14 +80,14 @@ function goTo(step) {
     STEPS.forEach((s) => { $('step-' + s).hidden = s !== step; });
     $('home').hidden = step !== 'home';
     S.step = step;
-    if (step === 'home') { S.practice = false; }
+    if (step === 'home') { S.practice = false; Update.maybeShow(); }
     $('practice-banner').hidden = !(S.practice || (step === 'decrypted' && S.decrypted.practice) || (step === 'result' && S.result && S.result.practice));
     window.scrollTo(0, 0);
     const h = document.querySelector(step === 'home' ? '#encrypt-btn-main' : `#step-${step} h2`);
     if (h && step !== 'home') { h.tabIndex = -1; h.focus({ preventScroll: true }); }
 }
 
-// ---------- modales con trampa de foco ----------
+// ---------- modals with a focus trap ----------
 let modalStack = [];
 function openModal(id) {
     const el = $(id);
@@ -110,7 +115,7 @@ function trapFocus(e) {
 }
 
 // ============================================================
-// ARGON2: worker cancelable, con respaldo en el hilo principal
+// ARGON2: cancellable worker, with a main-thread fallback
 // ============================================================
 function makeWorker() {
     const inline = $('kdf-worker-src');
@@ -149,7 +154,7 @@ function argonWorker(password, salt, m, t2, p) {
         wk.w.onerror = (ev) => {
             ev.preventDefault();
             if (settled) return; settled = true; done();
-            // El worker no pudo arrancar (p. ej. file:// en algunos navegadores): hilo principal
+            // The worker could not start (e.g. file:// in some browsers): run on the main thread
             argonMain(pwCopy, salt, m, t2, p).then(resolve, reject).finally(() => util.wipe(password));
         };
         wk.w.postMessage({ id: 1, password, salt, m, t: t2, p }, [password.buffer]);
@@ -157,14 +162,14 @@ function argonWorker(password, salt, m, t2, p) {
 }
 M.setArgonImpl(argonWorker);
 
-// Calibración: mide 16 MiB × 1 pasada y extrapola a cada nivel
+// Calibration: time Argon2id on this device and extrapolate to each level
 async function calibrate() {
     if (S.calib) return S.calib;
     try {
-        // Dos medidas para descontar el arranque del worker y la compilación de WASM
+        // Two runs, so worker start-up and WASM compilation cancel out
         const run = async (m) => { const t0 = performance.now(); await argonWorker(util.rand(8), util.rand(16), m, 1, 1); return performance.now() - t0; };
         const a = await run(8192), b = await run(32768);
-        const per = Math.max((b - a) / 24576, b / 32768 / 3); // ms por KiB·pasada
+        const per = Math.max((b - a) / 24576, b / 32768 / 3); // ms per KiB·pass
         S.calib = {};
         for (const [k, v] of Object.entries(C.LEVELS)) S.calib[k] = per * v.m * v.t;
     } catch { S.calib = {}; }
@@ -182,7 +187,7 @@ function renderCalib() {
 }
 
 // ============================================================
-// RED Y PRIVACIDAD
+// NETWORK AND PRIVACY
 // ============================================================
 function updateNetPill() {
     const on = navigator.onLine;
@@ -233,7 +238,7 @@ function onVisibility() {
 }
 
 // ============================================================
-// ENTRADA DE SEMILLA CON TECLADO PROPIO
+// RECOVERY PHRASE ENTRY WITH THE BUILT-IN KEYBOARD
 // ============================================================
 const seed = () => S.seeds[S.target];
 const typedAt = (i) => seed().words[i] || '';
@@ -277,7 +282,7 @@ function renderSeedStep() {
     eye.setAttribute('aria-pressed', String(s.reveal));
     eye.querySelector('use').setAttribute('href', s.reveal ? '#i-eye-off' : '#i-eye');
     $('seed-eye-text').textContent = s.reveal ? t('hide') : t('show');
-    // selector de número de palabras
+    // word-count selector
     const cs = $('seed-count');
     cs.replaceChildren(...C.VALID_WORD_COUNTS.map((n) => {
         const o = document.createElement('option');
@@ -374,7 +379,7 @@ function renderKeyboard() {
     kbd.querySelector('[data-key=del]').setAttribute('aria-label', t('kbd_delete'));
     kbd.querySelector('[data-key=prev]').setAttribute('aria-label', t('kbd_prev'));
     kbd.querySelector('[data-key=fwd]').setAttribute('aria-label', t('kbd_fwd'));
-    // sugerencias
+    // suggestions
     const row = $('suggest-row');
     const cands = typed && resolvedAt(s.cur) < 0 || (typed && BIP39.countMatches(s.lang, typed) > 1) ? BIP39.candidates(s.lang, typed, 4) : [];
     row.replaceChildren(...cands.map((i) => {
@@ -458,7 +463,7 @@ async function updateSeedStatus() {
         try {
             const f = await M.fingerprint(BIP39.mnemonic(s.lang, idx), '');
             if (token === S.fpToken && S.step === 'seed') { fp.textContent = t('fp_seed', { fp: f }); fp.hidden = false; }
-        } catch { /* sin secp256k1 */ }
+        } catch { /* secp256k1 unavailable */ }
     } else {
         st.textContent = t('checksum_bad'); st.classList.add('bad');
         $('seed-next').disabled = false;
@@ -488,7 +493,7 @@ async function pasteSeed() {
     try {
         const txt = await navigator.clipboard.readText();
         if (fillFromText(txt)) {
-            try { await navigator.clipboard.writeText(''); } catch { /* sin foco */ }
+            try { await navigator.clipboard.writeText(''); } catch { /* page not focused */ }
             toast(t('pasted'), 'warning');
         }
     } catch { toast(t('paste_failed'), 'error'); }
@@ -501,7 +506,7 @@ async function seedContinue() {
 }
 
 // ============================================================
-// OPCIONES Y CONTRASEÑA
+// OPTIONS AND PASSWORD
 // ============================================================
 function readOptions() {
     S.opts.note = $('message-input').value.trim().slice(0, C.NOTE_MAX);
@@ -516,11 +521,11 @@ function readOptions() {
         S.opts.k = k; S.opts.n = n;
     } else { const [k, n] = v.split('-').map(Number); S.opts.k = k; S.opts.n = n; }
 }
-function optionsContinue() {
+async function optionsContinue() {
     readOptions();
     if (S.opts.ppOn && !S.opts.pp) { toast(t('pp_empty'), 'error'); return; }
     if (S.opts.decoy) {
-        if (S.practice && !S.seeds.decoy.words.some(Boolean)) prefillRandom(S.seeds.decoy, 12);
+        if (S.practice && !S.seeds.decoy.words.some(Boolean)) await prefillRandom(S.seeds.decoy, 12);
         openSeedStep('decoy');
     } else openPasswordStep();
 }
@@ -620,7 +625,7 @@ async function startEncryption() {
 }
 
 // ============================================================
-// RESULTADO
+// RESULT
 // ============================================================
 function shareCaption(i, tr = t) {
     const R = S.result;
@@ -644,7 +649,7 @@ async function renderResult() {
 async function verifyBackup() {
     const R = S.result;
     try {
-        // Relee cada QR desde píxeles reales
+        // Re-read every QR from actual pixels
         for (let i = 0; i < R.texts.length; i++) {
             const c = document.createElement('canvas');
             await QR.render(c, R.texts[i], 600, 'Q');
@@ -652,7 +657,7 @@ async function verifyBackup() {
         }
         if (R.kind === 'shares') {
             const dec = R.texts.map((x) => M.Shamir.decode(x));
-            // Dos combinaciones distintas deben reconstruir lo mismo
+            // Two different subsets must rebuild the same backup
             const a = M.joinShares(dec.slice(0, R.k));
             const b = M.joinShares(dec.slice(-R.k));
             if (a !== R.blobText || b !== R.blobText) throw new MQRError('shares_mismatch');
@@ -740,7 +745,7 @@ const QR = {
             try {
                 const r = await new BarcodeDetector({ formats: ['qr_code'] }).detect(src);
                 if (r.length) return r[0].rawValue;
-            } catch { /* jsQR */ }
+            } catch { /* fall back to jsQR */ }
         }
         for (const max of [1200, 800, 1800, 500]) {
             const s = Math.min(1, max / Math.max(w, h));
@@ -758,10 +763,14 @@ const QR = {
 };
 
 // ============================================================
-// PDF vectorial sin dependencias
+// Dependency-free vector PDF
 // ============================================================
-// Las fuentes estándar de PDF no tienen cirílico: en ruso, el PDF se genera en inglés
+// The standard PDF fonts have no Cyrillic: with the Russian UI the PDF is generated in English
 const tp = (k, v) => self.I18N.tFor(self.I18N.lang === 'ru' ? 'en' : self.I18N.lang, k, v);
+// Unicode code points that WinAnsiEncoding places in the 0x80-0x9F range
+const WINANSI = { 0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89,
+    0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95,
+    0x2013: 0x96, 0x2014: 0x97, 0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F };
 const PDF = {
     W: 595.28, H: 841.89,
     lit(s) {
@@ -771,8 +780,7 @@ const PDF = {
             if (ch === '(' || ch === ')' || ch === '\\') o += '\\' + ch;
             else if (c >= 32 && c < 127) o += ch;
             else if (c >= 160 && c < 256) o += '\\' + c.toString(8).padStart(3, '0');
-            else if (c === 0x2026) o += '...';
-            else if (c === 0x2013 || c === 0x2014) o += '-';
+            else if (WINANSI[c]) o += '\\' + WINANSI[c].toString(8);
             else o += '?';
         }
         return o + ')';
@@ -799,22 +807,22 @@ const PDF = {
         const pages = items.map(({ text, i }) => {
             let c = '';
             const qs = 290, x0 = (this.W - qs) / 2, y0 = this.H - 150 - qs;
-            c += this.txtp('F3', 22, 56, this.H - 72, 'MnemoniQR');
-            c += this.txtp('F1', 11, 56, this.H - 92, R.kind === 'shares' ? tp('pdf_sub_share', { i: i + 1, n: R.n }) : tp('pdf_sub'), 0.35);
-            if (R.practice) c += this.txtp('F3', 12, 56, this.H - 112, tp('pdf_practice'), 0.2);
+            c += this.txt('F3', 22, 56, this.H - 72, 'MnemoniQR');
+            c += this.txt('F1', 11, 56, this.H - 92, R.kind === 'shares' ? tp('pdf_sub_share', { i: i + 1, n: R.n }) : tp('pdf_sub'), 0.35);
+            if (R.practice) c += this.txt('F3', 12, 56, this.H - 112, tp('pdf_practice'), 0.2);
             c += this.qr(text, ecc, x0, y0, qs);
-            c += this.txtp('F1', 9, x0, y0 - 18, shareCaption(i, tp) + ' · ' + tp('pdf_algo'), 0.35);
+            c += this.txt('F1', 9, x0, y0 - 18, shareCaption(i, tp) + ' · ' + tp('pdf_algo'), 0.35);
             let y = y0 - 56;
             const lines = R.kind === 'shares'
                 ? [tp('pdf_l_share1', { k: R.k, n: R.n }), tp('pdf_l_share2'), tp('pdf_l3')]
                 : [tp('pdf_l1'), tp('pdf_l2'), tp('pdf_l3')];
-            for (const l of lines) { c += this.txtp('F1', 10, 56, y, l, 0.15); y -= 16; }
+            for (const l of lines) { c += this.txt('F1', 10, 56, y, l, 0.15); y -= 16; }
             y -= 14;
-            c += this.txtp('F1', 10, 56, y, tp('pdf_label') + ' ______________________________________', 0.15);
+            c += this.txt('F1', 10, 56, y, tp('pdf_label') + ' ______________________________________', 0.15);
             y -= 32;
-            c += this.txtp('F1', 9, 56, y, tp('pdf_backup_text'), 0.35);
+            c += this.txt('F1', 9, 56, y, tp('pdf_backup_text'), 0.35);
             y -= 14;
-            for (const l of this.wrap(text, 70)) { c += this.txtp('F2', 8, 56, y, l, 0.1); y -= 11; }
+            for (const l of this.wrap(text, 70)) { c += this.txt('F2', 8, 56, y, l, 0.1); y -= 11; }
             return c;
         });
         return this.build(pages);
@@ -837,17 +845,17 @@ const PDF = {
                 c += this.qr(text, ecc, x + 10, y + 10, qs);
                 const tx = x + qs + 18;
                 let ty = y + ch - 26;
-                c += this.txtp('F3', 11, tx, ty, 'MnemoniQR'); ty -= 16;
+                c += this.txt('F3', 11, tx, ty, 'MnemoniQR'); ty -= 16;
                 if (R.kind === 'shares') {
-                    c += this.txtp('F1', 8.5, tx, ty, tp('card_share', { i: i + 1, n: R.n }), 0.15); ty -= 12;
-                    c += this.txtp('F1', 8.5, tx, ty, tp('card_need', { k: R.k }), 0.15); ty -= 12;
-                    c += this.txtp('F1', 8.5, tx, ty, tp('card_set', { set: R.setId.slice(0, 4).toUpperCase() }), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, tp('card_share', { i: i + 1, n: R.n }), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, tp('card_need', { k: R.k }), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, tp('card_set', { set: R.setId.slice(0, 4).toUpperCase() }), 0.15); ty -= 12;
                 } else {
-                    c += this.txtp('F1', 8.5, tx, ty, tp('card_backup'), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, tp('card_backup'), 0.15); ty -= 12;
                 }
-                if (R.practice) { c += this.txtp('F3', 8.5, tx, ty, tp('card_practice'), 0.15); ty -= 12; }
-                c += this.txtp('F1', 7.5, tx, y + 26, tp('pdf_label'), 0.4);
-                c += this.txtp('F1', 7.5, tx, y + 14, '________________', 0.4);
+                if (R.practice) { c += this.txt('F3', 8.5, tx, ty, tp('card_practice'), 0.15); ty -= 12; }
+                c += this.txt('F1', 7.5, tx, y + 26, tp('pdf_label'), 0.4);
+                c += this.txt('F1', 7.5, tx, y + 14, '________________', 0.4);
             });
             pages.push(c);
         }
@@ -879,7 +887,7 @@ const PDF = {
 };
 
 // ============================================================
-// ESCÁNER Y RECOGIDA DE QR / FRAGMENTOS
+// SCANNER AND QR / SHARE COLLECTION
 // ============================================================
 async function startScanner() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast(t('no_camera'), 'error'); return; }
@@ -892,10 +900,10 @@ async function startScanner() {
     sc.active = true;
     updateSourceActions();
     $('scanner-video').srcObject = sc.stream;
-    try { await $('scanner-video').play(); } catch { /* autoplay */ }
+    try { await $('scanner-video').play(); } catch { /* autoplay blocked */ }
     sc.active = true; sc.frame = 0;
     sc.detector = null;
-    if ('BarcodeDetector' in self) { try { sc.detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch { /* jsQR */ } }
+    if ('BarcodeDetector' in self) { try { sc.detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch { /* fall back to jsQR */ } }
     sc.canvas = document.createElement('canvas');
     $('scanner-status').textContent = t('looking_for_qr');
     scanLoop();
@@ -916,7 +924,7 @@ async function scanLoop() {
                 ctx.drawImage(v, 0, 0, w, h);
                 data = QR.decodeImageData(ctx.getImageData(0, 0, w, h));
             }
-        } catch { /* sigue */ }
+        } catch { /* keep scanning */ }
         if (data) {
             const res = acceptCode(data);
             sc.cooldown = Date.now() + 900;
@@ -938,7 +946,7 @@ function stopScanner() {
     updateSourceActions();
 }
 
-// Devuelve: 'backup' | 'share' | 'complete' | 'dup' | 'invalid' | 'mixed'
+// Returns: 'backup' | 'share' | 'complete' | 'dup' | 'invalid' | 'mixed'
 function acceptCode(text) {
     const kind = M.kindOf(text);
     const status = $('scanner-status');
@@ -1017,7 +1025,7 @@ async function processFiles(files) {
 }
 
 // ============================================================
-// DESCIFRADO
+// DECRYPTION
 // ============================================================
 function openDecrypt(withCamera) {
     S.modalMode = 'decrypt';
@@ -1118,7 +1126,7 @@ async function showDecrypted(res) {
         try {
             const f = await M.fingerprint(BIP39.mnemonic(res.lang, res.indices), S.decrypted.pp);
             $('decrypted-fp').textContent = t('fp_result', { fp: f });
-        } catch { /* sin huella */ }
+        } catch { /* fingerprint unavailable */ }
         res.indices.fill(0);
     }
     setReveal(false);
@@ -1152,48 +1160,61 @@ async function copySeed() {
         await navigator.clipboard.writeText(S.decrypted.words.join(' '));
         toast(t('copied', { s: CFG.CLIPBOARD_CLEAR }), 'warning');
         clearTimeout(S.clipTimer);
-        S.clipTimer = setTimeout(async () => { try { await navigator.clipboard.writeText(''); } catch { /* sin foco */ } }, CFG.CLIPBOARD_CLEAR * 1000);
+        S.clipTimer = setTimeout(async () => { try { await navigator.clipboard.writeText(''); } catch { /* page not focused */ } }, CFG.CLIPBOARD_CLEAR * 1000);
     } catch { toast(t('copy_failed'), 'error'); }
 }
 
 // ============================================================
-// HUELLA DE VERSIÓN
+// BUILD FINGERPRINT
 // ============================================================
 async function buildFingerprint() {
-    let list = [...document.scripts].map((s) => s.integrity).filter(Boolean);
+    // Covers every script and the stylesheet (SRI on the PWA, CSP hashes in the single file)
+    let list = [...document.querySelectorAll('script[integrity], link[rel=stylesheet][integrity]')].map((el) => el.integrity);
     if (!list.length) {
         const csp = (document.querySelector('meta[http-equiv="Content-Security-Policy"]') || {}).content || '';
         list = (csp.match(/'sha(256|384)-[^']+'/g) || []).map((x) => x.slice(1, -1));
     }
     if (!list.length) return t('build_dev');
-    const h = await util.sha256Hex(new TextEncoder().encode(list.join('\n')));
+    const h = await util.sha256Hex(new TextEncoder().encode(list.sort().join('\n')));
     return h.slice(0, 16).match(/..../g).join(' ').toUpperCase();
 }
 
 // ============================================================
 // PWA
 // ============================================================
+// An update reloads the page, so it is only offered on the home screen, never in the middle of a flow
+const Update = {
+    worker: null, accepted: false, reloaded: false,
+    offer(w) { this.worker = w; this.maybeShow(); },
+    maybeShow() {
+        if (!this.worker || this.accepted || S.step !== 'home' || modalStack.length) return;
+        const w = this.worker;
+        this.worker = null;
+        toast(t('update_ready'), 'info', { duration: 15000, onClick: () => { this.accepted = true; w.postMessage({ type: 'SKIP_WAITING' }); } });
+    }
+};
 function setupPWA() {
     const single = location.protocol === 'file:' || document.documentElement.hasAttribute('data-single');
     if (!single && 'serviceWorker' in navigator) {
         navigator.serviceWorker.register(ttPolicy ? ttPolicy.createScriptURL('sw.js') : 'sw.js').then((reg) => {
+            if (reg.waiting && navigator.serviceWorker.controller) Update.offer(reg.waiting);
             reg.addEventListener('updatefound', () => {
                 const nw = reg.installing;
                 if (nw) nw.addEventListener('statechange', () => {
-                    if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                        toast(t('update_ready'), 'info', { duration: 15000, onClick: () => nw.postMessage({ type: 'SKIP_WAITING' }) });
-                    }
+                    if (nw.state === 'installed' && navigator.serviceWorker.controller) Update.offer(nw);
                 });
             });
         }).catch(() => {});
-        let reloaded = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
+        // Reload only when the user accepted an update: the first install also fires controllerchange
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (Update.accepted && !Update.reloaded) { Update.reloaded = true; location.reload(); }
+        });
     }
     Install.init();
 }
 
 // ============================================================
-// INSTALACIÓN (hoja inferior)
+// INSTALLATION (bottom sheet)
 // ============================================================
 const Install = {
     deferred: null, ios: false,
@@ -1202,18 +1223,16 @@ const Install = {
         return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     },
     pref() { try { return JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch { return {}; } },
-    save(v) { try { localStorage.setItem(this.KEY, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
+    save(v) { try { localStorage.setItem(this.KEY, JSON.stringify(v)); } catch { /* storage unavailable */ } },
     snoozed() { const p = this.pref(); return !!(p.never || (p.until && Date.now() < p.until)); },
     available() { return !this.standalone() && !!(this.deferred || this.ios) && location.protocol !== 'file:'; },
     init() {
-        // iPhone/iPad: Safari no ofrece instalación automática, se muestran los pasos manuales
+        // iPhone/iPad: no install prompt exists, so the sheet shows the manual steps
         this.ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            this.deferred = e;
-            this.refreshLink();
-            this.maybeAuto();
-        });
+        window.removeEventListener('beforeinstallprompt', onEarlyInstall);
+        const take = (e) => { e.preventDefault(); this.deferred = e; this.refreshLink(); this.maybeAuto(); };
+        window.addEventListener('beforeinstallprompt', take);
+        if (earlyInstallEvent) { take(earlyInstallEvent); earlyInstallEvent = null; }
         window.addEventListener('appinstalled', () => { this.deferred = null; this.close(); this.refreshLink(); toast(t('installed'), 'success'); });
         $('install-link').addEventListener('click', () => this.open());
         $('install-later').addEventListener('click', () => this.dismiss());
@@ -1223,7 +1242,7 @@ const Install = {
         if (this.ios) this.maybeAuto();
     },
     refreshLink() { $('install-link').hidden = !this.available(); },
-    // Solo en la pantalla de inicio, sin otros diálogos y respetando «Ahora no»
+    // Only on the home screen, with no other dialog open, honouring “Not now”
     maybeAuto() {
         setTimeout(() => {
             if (this.available() && !this.snoozed() && S.step === 'home' && !modalStack.length && $('install-sheet').hidden) this.open();
@@ -1251,7 +1270,7 @@ const Install = {
         const i = modalStack.findIndex((m) => m.el === el);
         if (i >= 0) { const m = modalStack.splice(i, 1)[0]; if (m.ret && m.ret.focus) m.ret.focus(); }
     },
-    // «Ahora no» pospone 14 días; «No volver a mostrar» lo desactiva (el enlace del pie sigue ahí)
+    // “Not now” snoozes for 14 days; “Don’t show again” disables it (the footer link stays)
     dismiss() {
         this.save($('install-never').checked ? { never: true } : { until: Date.now() + 14 * 864e5 });
         this.close();
@@ -1262,7 +1281,7 @@ const Install = {
             this.deferred = null;
             this.close();
             d.prompt();
-            try { await d.userChoice; } catch { /* cancelado */ }
+            try { await d.userChoice; } catch { /* dismissed */ }
             this.refreshLink();
         } else {
             this.save({ until: Date.now() + 30 * 864e5 });
@@ -1273,7 +1292,7 @@ const Install = {
 
 
 // ============================================================
-// IDIOMA
+// LANGUAGE
 // ============================================================
 function refreshTexts() {
     self.I18N.apply(document);
@@ -1287,20 +1306,20 @@ function refreshTexts() {
 }
 
 // ============================================================
-// EVENTOS
+// EVENTS
 // ============================================================
 function anyModalOpen() { return modalStack.length > 0; }
 
 async function init() {
-    const lists = await BIP39.init();
     self.I18N.init();
     $('ui-lang').value = self.I18N.lang;
     refreshTexts();
     setupPWA();
+    const lists = await BIP39.init();
     window.addEventListener('online', updateNetPill);
     window.addEventListener('offline', updateNetPill);
     if (!lists.en || !lists.es) {
-        $('encrypt-btn-main').disabled = true;
+        ['encrypt-btn-main', 'recover-btn', 'practice-btn'].forEach((id) => { $(id).disabled = true; });
         toast(t('wordlist_bad'), 'error', { duration: 30000 });
     }
     buildFingerprint().then((f) => { $('build-fp').textContent = f; });
@@ -1308,7 +1327,7 @@ async function init() {
     $('ui-lang').addEventListener('change', (e) => { self.I18N.set(e.target.value); refreshTexts(); });
     $('net-card').addEventListener('click', () => toast(navigator.onLine ? t('net_online_help') : t('net_offline_help'), 'info', { duration: 9000 }));
 
-    // --- cifrar ---
+    // --- encrypt ---
     $('encrypt-btn-main').addEventListener('click', () => { clearEntry(); S.practice = false; openSeedStep('real'); });
     $('practice-btn').addEventListener('click', () => openModal('practice-modal'));
     $('practice-start').addEventListener('click', async () => {
@@ -1333,7 +1352,7 @@ async function init() {
         const txt = e.clipboardData && e.clipboardData.getData('text');
         if (txt) { e.preventDefault(); fillFromText(txt); toast(t('pasted'), 'warning'); }
     });
-    // teclado físico (no pasa por el teclado virtual del sistema)
+    // physical keyboard (does not go through the system's on-screen keyboard)
     document.addEventListener('keydown', (e) => {
         trapFocus(e);
         if (e.key === 'Escape' && modalStack.length) {
@@ -1357,7 +1376,7 @@ async function init() {
         else if (e.key === 'ArrowRight') { e.preventDefault(); moveCell(1); }
     });
 
-    // --- opciones ---
+    // --- options ---
     $('pp-enable').addEventListener('change', () => { $('pp-box').hidden = !$('pp-enable').checked; if ($('pp-enable').checked) $('pp-input').focus(); });
     $('split-select').addEventListener('change', () => { $('split-custom').hidden = $('split-select').value !== 'custom'; });
     $('message-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') optionsContinue(); });
@@ -1366,7 +1385,7 @@ async function init() {
         if (b.dataset.back === 'seed') openSeedStep('real');
     }));
 
-    // --- contraseña ---
+    // --- password ---
     $('password-back').addEventListener('click', () => { if (S.opts.decoy) openSeedStep('decoy'); else { goTo('options'); renderStepper('options'); } });
     ['password-input', 'password-confirm', 'decoy-input', 'decoy-confirm'].forEach((id) => {
         $(id).addEventListener('input', updatePasswordUI);
@@ -1387,7 +1406,7 @@ async function init() {
     $('password-next').addEventListener('click', startEncryption);
     $('spinner-cancel').addEventListener('click', () => { if (S.cancelKdf) S.cancelKdf(); toast(t('cancelled'), 'info'); });
 
-    // --- resultado ---
+    // --- result ---
     $('share-prev').addEventListener('click', () => { if (S.result.index > 0) { S.result.index--; renderResult(); } });
     $('share-next').addEventListener('click', () => { if (S.result.index < S.result.texts.length - 1) { S.result.index++; renderResult(); } });
     $('qr-verify').addEventListener('click', verifyBackup);
@@ -1400,7 +1419,7 @@ async function init() {
         wipeResult(); goTo('home');
     });
 
-    // --- descifrar ---
+    // --- decrypt ---
     $('recover-btn').addEventListener('click', () => openDecrypt(false));
     $('src-scan').addEventListener('click', startScanner);
     $('src-upload').addEventListener('click', () => $('qr-file').click());
@@ -1416,14 +1435,14 @@ async function init() {
     $('decrypt-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); decryptQR(); } });
     $('decrypt-cancel').addEventListener('click', () => { closeModal('password-modal'); S.modalMode = 'decrypt'; });
 
-    // --- descifrada ---
+    // --- decrypted phrase ---
     const toggle = () => setReveal($('seed-grid').classList.contains('blurred'));
     $('seed-grid').addEventListener('click', toggle);
     $('decrypted-reveal').addEventListener('click', toggle);
     $('decrypted-copy').addEventListener('click', copySeed);
     $('decrypted-done').addEventListener('click', () => { wipeDecrypted(); goTo('home'); });
 
-    // --- modales ---
+    // --- modals ---
     $('about-btn').addEventListener('click', () => openModal('about-modal'));
     document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeModal(b.closest('.modal').id)));
     document.querySelectorAll('.modal').forEach((m) => m.addEventListener('click', (e) => {
@@ -1440,8 +1459,6 @@ async function init() {
     if (action === 'scan') openDecrypt(true);
     if (action === 'practice') $('practice-btn').click();
 
-    // para pruebas automáticas (tests.html y Playwright)
-    self.__MQR_APP = { S, QR, PDF, fillFromText, renderSeedStep, goTo };
 }
 
 document.addEventListener('DOMContentLoaded', init);

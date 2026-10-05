@@ -1,7 +1,8 @@
-# Netlify / Cloudflare Pages. frame-ancestors y Permissions-Policy solo funcionan como cabecera HTTP.
+# Netlify / Cloudflare Pages. frame-ancestors and Permissions-Policy only work as HTTP headers.
 /*
   Content-Security-Policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin

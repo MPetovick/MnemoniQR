@@ -1,5 +1,5 @@
-// MnemoniQR v5 · Textos de la interfaz (es, ca, en, fr, ru)
-// El idioma de la interfaz no afecta a las palabras BIP39: esas se eligen al escribir la frase.
+// MnemoniQR v5.1.0 · UI strings (es, ca, en, fr, ru)
+// The UI language never changes the BIP39 words: those are chosen on the recovery-phrase step.
 'use strict';
 (function (G) {
 const plural = (n, one, few, many) => {
@@ -11,7 +11,6 @@ const plural = (n, one, few, many) => {
 const es = {
     home_subtitle: "Imprime el QR, guarda la contraseña aparte y nada sale de este dispositivo.",
     encrypt_seed: "Cifrar una semilla",
-    have_qr: "¿Ya tienes un QR de MnemoniQR?",
     scan: "Escanear",
     upload: "Subir imagen",
     drop_hint: "También puedes soltar aquí las imágenes de los QR.",
@@ -31,12 +30,9 @@ const es = {
     practice_banner: "Modo práctica: esta semilla no es real",
     seed_title: "Frase de recuperación",
     seed_title_decoy: "Frase del señuelo",
-    step_of: "Paso {i} de {n}",
     word_count: "Número de palabras",
     n_words: "{n} palabras",
     seed_language: "Idioma de la frase",
-    show_words: "Mostrar palabras",
-    hide_words: "Ocultar palabras",
     seed_words: "Palabras de la frase",
     suggestions: "Sugerencias",
     keyboard: "Teclado",
@@ -274,23 +270,25 @@ const es = {
     install_title: "Instala MnemoniQR",
     install_fp: "Huella {fp}",
     install_lead: "Así la abres sin internet, en modo avión, y sin la barra del navegador.",
-    install_lead_ios: "En iPhone y iPad se instala desde Safari en tres pasos.",
+    install_lead_ios: "En iPhone y iPad se instala desde el menú Compartir, en tres pasos.",
     install_b1: "Funciona completa sin conexión",
     install_b2: "Pantalla completa, sin extensiones del navegador",
     install_b3: "Cada versión trae su huella para verificarla",
-    ios_s1: "Toca Compartir en la barra de Safari",
+    ios_s1: "Toca Compartir en la barra del navegador",
     ios_s2: "Elige «Añadir a pantalla de inicio»",
     ios_s3: "Ábrela desde el icono y activa el modo avión",
     install_later: "Ahora no",
     install_go: "Instalar",
     install_never: "No volver a mostrar",
-    installed: "App instalada"
+    installed: "App instalada",
+    link_readme: "Leer el README",
+    link_source: "Código fuente",
+    open_source: "MnemoniQR es de código abierto (licencia Apache 2.0). Puedes revisar el código y compilarlo tú mismo."
 };
 
 const ca = {
     home_subtitle: "Imprimeix el QR, desa la contrasenya a part i res no surt d’aquest dispositiu.",
     encrypt_seed: "Xifrar una llavor",
-    have_qr: "Ja tens un QR de MnemoniQR?",
     scan: "Escanejar",
     upload: "Pujar imatge",
     drop_hint: "També pots deixar anar aquí les imatges dels QR.",
@@ -310,12 +308,9 @@ const ca = {
     practice_banner: "Mode pràctica: aquesta llavor no és real",
     seed_title: "Frase de recuperació",
     seed_title_decoy: "Frase de l’esquer",
-    step_of: "Pas {i} de {n}",
     word_count: "Nombre de paraules",
     n_words: "{n} paraules",
     seed_language: "Idioma de la frase",
-    show_words: "Mostrar paraules",
-    hide_words: "Amagar paraules",
     seed_words: "Paraules de la frase",
     suggestions: "Suggeriments",
     keyboard: "Teclat",
@@ -553,23 +548,25 @@ const ca = {
     install_title: "Instal·la MnemoniQR",
     install_fp: "Empremta {fp}",
     install_lead: "Així l’obres sense internet, en mode avió, i sense la barra del navegador.",
-    install_lead_ios: "A l’iPhone i l’iPad s’instal·la des de Safari en tres passos.",
+    install_lead_ios: "A l’iPhone i l’iPad s’instal·la des del menú Compartir, en tres passos.",
     install_b1: "Funciona completa sense connexió",
     install_b2: "Pantalla completa, sense extensions del navegador",
     install_b3: "Cada versió porta la seva empremta per verificar-la",
-    ios_s1: "Toca Compartir a la barra de Safari",
+    ios_s1: "Toca Compartir a la barra del navegador",
     ios_s2: "Tria «Afegeix a la pantalla d’inici»",
     ios_s3: "Obre-la des de la icona i activa el mode avió",
     install_later: "Ara no",
     install_go: "Instal·lar",
     install_never: "No tornis a mostrar-ho",
-    installed: "App instal·lada"
+    installed: "App instal·lada",
+    link_readme: "Llegir el README",
+    link_source: "Codi font",
+    open_source: "MnemoniQR és de codi obert (llicència Apache 2.0). Pots revisar el codi i compilar-lo tu mateix."
 };
 
 const en = {
     home_subtitle: "Print the QR, keep the password separately, and nothing leaves this device.",
     encrypt_seed: "Encrypt a seed",
-    have_qr: "Already have a MnemoniQR code?",
     scan: "Scan",
     upload: "Upload image",
     drop_hint: "You can also drop the QR images here.",
@@ -589,12 +586,9 @@ const en = {
     practice_banner: "Practice mode: this seed is not real",
     seed_title: "Recovery phrase",
     seed_title_decoy: "Decoy phrase",
-    step_of: "Step {i} of {n}",
     word_count: "Number of words",
     n_words: "{n} words",
     seed_language: "Phrase language",
-    show_words: "Show words",
-    hide_words: "Hide words",
     seed_words: "Phrase words",
     suggestions: "Suggestions",
     keyboard: "Keyboard",
@@ -832,17 +826,20 @@ const en = {
     install_title: "Install MnemoniQR",
     install_fp: "Fingerprint {fp}",
     install_lead: "Open it offline, in airplane mode, without the browser bar.",
-    install_lead_ios: "On iPhone and iPad it installs from Safari in three steps.",
+    install_lead_ios: "On iPhone and iPad it installs from the Share menu in three steps.",
     install_b1: "Works fully offline",
     install_b2: "Full screen, no browser extensions",
     install_b3: "Every version has a fingerprint you can check",
-    ios_s1: "Tap Share in the Safari toolbar",
+    ios_s1: "Tap Share in the browser toolbar",
     ios_s2: "Choose “Add to Home Screen”",
     ios_s3: "Open it from the icon and turn on airplane mode",
     install_later: "Not now",
     install_go: "Install",
     install_never: "Don’t show again",
-    installed: "App installed"
+    installed: "App installed",
+    link_readme: "Read the README",
+    link_source: "Source code",
+    open_source: "MnemoniQR is open source under the Apache 2.0 license. You can review the code and build it yourself."
 };
 
 const fr = {
@@ -854,7 +851,6 @@ const fr = {
     recover: "Récupérer depuis un QR",
     recover_sub: "Scannez ou importez les images",
     practice_sub: "Avec une phrase de test",
-    have_qr: "Vous avez déjà un QR MnemoniQR ?",
     scan: "Scanner",
     upload: "Importer une image",
     drop_hint: "Vous pouvez aussi déposer ici les images des QR.",
@@ -877,7 +873,6 @@ const fr = {
     practice_banner: "Mode entraînement : cette phrase n’est pas réelle",
     seed_title: "Phrase de récupération",
     seed_title_decoy: "Phrase du leurre",
-    step_of: "Étape {i} sur {n}",
     step_phrase: "Phrase",
     step_options: "Options",
     step_decoy: "Leurre",
@@ -885,8 +880,6 @@ const fr = {
     word_count: "Nombre de mots",
     n_words: "{n} mots",
     seed_language: "Langue de la phrase",
-    show_words: "Afficher les mots",
-    hide_words: "Masquer les mots",
     bip_lang_hint: "Langue de la phrase, pas de l’app",
     mask_hint: "Les mots saisis sont masqués",
     seed_words: "Mots de la phrase",
@@ -1084,11 +1077,11 @@ const fr = {
     install_title: "Installer MnemoniQR",
     install_fp: "Empreinte {fp}",
     install_lead: "Ouvrez-la hors ligne, en mode avion, sans la barre du navigateur.",
-    install_lead_ios: "Sur iPhone et iPad, elle s’installe depuis Safari en trois étapes.",
+    install_lead_ios: "Sur iPhone et iPad, elle s’installe depuis le menu Partager en trois étapes.",
     install_b1: "Fonctionne entièrement hors ligne",
     install_b2: "Plein écran, sans extensions du navigateur",
     install_b3: "Chaque version a une empreinte vérifiable",
-    ios_s1: "Touchez Partager dans la barre de Safari",
+    ios_s1: "Touchez Partager dans la barre du navigateur",
     ios_s2: "Choisissez « Sur l’écran d’accueil »",
     ios_s3: "Ouvrez-la depuis l’icône et activez le mode avion",
     install_later: "Plus tard",
@@ -1121,7 +1114,10 @@ const fr = {
     err_no_qr_reader: "Le lecteur de QR ne s’est pas chargé",
     err_not_image: "Choisissez une image",
     err_image_big: "L’image dépasse 10 Mo",
-    err_no_qr: "Aucun QR trouvé dans {name}"
+    err_no_qr: "Aucun QR trouvé dans {name}",
+    link_readme: "Lire le README",
+    link_source: "Code source",
+    open_source: "MnemoniQR est open source (licence Apache 2.0). Vous pouvez relire le code et le compiler vous-même."
 };
 
 const ru = {
@@ -1133,7 +1129,6 @@ const ru = {
     recover: "Восстановить из QR",
     recover_sub: "Отсканируйте или загрузите изображения",
     practice_sub: "С тестовой фразой",
-    have_qr: "Уже есть QR MnemoniQR?",
     scan: "Сканировать",
     upload: "Загрузить изображение",
     drop_hint: "Изображения QR можно также перетащить сюда.",
@@ -1156,7 +1151,6 @@ const ru = {
     practice_banner: "Режим тренировки: эта фраза ненастоящая",
     seed_title: "Фраза восстановления",
     seed_title_decoy: "Фраза-приманка",
-    step_of: "Шаг {i} из {n}",
     step_phrase: "Фраза",
     step_options: "Параметры",
     step_decoy: "Приманка",
@@ -1164,8 +1158,6 @@ const ru = {
     word_count: "Количество слов",
     n_words: (v) => `${v.n} ${plural(v.n, 'слово', 'слова', 'слов')}`,
     seed_language: "Язык фразы",
-    show_words: "Показать слова",
-    hide_words: "Скрыть слова",
     bip_lang_hint: "Язык фразы, а не приложения",
     mask_hint: "Введённые слова скрываются",
     seed_words: "Слова фразы",
@@ -1363,11 +1355,11 @@ const ru = {
     install_title: "Установите MnemoniQR",
     install_fp: "Отпечаток {fp}",
     install_lead: "Открывайте без интернета, в режиме полёта и без панели браузера.",
-    install_lead_ios: "На iPhone и iPad установка выполняется из Safari в три шага.",
+    install_lead_ios: "На iPhone и iPad установка выполняется через меню «Поделиться» в три шага.",
     install_b1: "Полностью работает без сети",
     install_b2: "Полный экран, без расширений браузера",
     install_b3: "У каждой версии есть отпечаток для проверки",
-    ios_s1: "Нажмите «Поделиться» на панели Safari",
+    ios_s1: "Нажмите «Поделиться» на панели браузера",
     ios_s2: "Выберите «На экран „Домой“»",
     ios_s3: "Откройте приложение по значку и включите режим полёта",
     install_later: "Не сейчас",
@@ -1400,7 +1392,10 @@ const ru = {
     err_no_qr_reader: "Сканер QR не загрузился",
     err_not_image: "Выберите изображение",
     err_image_big: "Изображение больше 10 МБ",
-    err_no_qr: "В {name} не найден QR"
+    err_no_qr: "В {name} не найден QR",
+    link_readme: "Читать README",
+    link_source: "Исходный код",
+    open_source: "MnemoniQR — проект с открытым исходным кодом (лицензия Apache 2.0). Вы можете изучить код и собрать его сами."
 };
 
 const DICTS = { es, ca, en, fr, ru };
@@ -1410,14 +1405,14 @@ const I18N = {
     langs: LANGS,
     init() {
         let saved = null;
-        try { saved = localStorage.getItem('mqr-lang'); } catch { /* sin almacenamiento */ }
+        try { saved = localStorage.getItem('mqr-lang'); } catch { /* storage unavailable */ }
         const nav = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'es']).map((l) => l.toLowerCase().slice(0, 2));
         this.lang = DICTS[saved] ? saved : (nav.find((l) => DICTS[l]) || 'en');
     },
     set(l) {
         if (!DICTS[l]) return;
         this.lang = l;
-        try { localStorage.setItem('mqr-lang', l); } catch { /* sin almacenamiento */ }
+        try { localStorage.setItem('mqr-lang', l); } catch { /* storage unavailable */ }
     },
     tFor(lang, key, vars) {
         const d = DICTS[lang] || es;

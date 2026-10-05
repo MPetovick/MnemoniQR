@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v4 · Núcleo (sin DOM). Lo usan la app y tests.html.
+// MnemoniQR v5.1.0 · Core (no DOM). Used by the app and by tests/tests.html.
 // ============================================================
 'use strict';
 (function (G) {
@@ -37,8 +37,8 @@
     const LANG_BY_ID = ['en', 'es'];
     const KDF = Object.freeze({ ARGON2ID: 1, PBKDF2: 2 });
 
-    // ---------- utilidades ----------
-    // Pone a cero; ignora buffers ya transferidos a un worker
+    // ---------- helpers ----------
+    // Zero-fills; skips buffers already transferred to a worker
     const wipe = (...a) => a.forEach((x) => { if (x && x.fill && x.buffer && x.buffer.byteLength) x.fill(0); });
     const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
     const concat = (...arrs) => {
@@ -69,7 +69,7 @@
         return d === 0;
     }
 
-    // Errores con código para traducirlos en la interfaz
+    // Errors carry a code so the UI can translate them
     class MQRError extends Error { constructor(code) { super(code); this.code = code; } }
     class FormatError extends MQRError {}
     class WrongPassword extends MQRError { constructor() { super('wrong_password'); } }
@@ -91,56 +91,61 @@
                 ok[lang] = (await sha256Hex(enc.encode(words.join(' ')))) === C.WORDLIST_SHA256[lang];
                 if (!ok[lang]) continue;
                 const stripped = words.map(strip);
-                this.lists[lang] = { words, stripped, index: new Map(stripped.map((w, i) => [w, i])) };
+                // Indices sorted by their accent-free spelling: prefix lookups become two binary searches
+                const order = Uint16Array.from(stripped.keys()).sort((a, b) => (stripped[a] < stripped[b] ? -1 : 1));
+                this.lists[lang] = { words, stripped, order, index: new Map(stripped.map((w, i) => [w, i])) };
             }
             return ok;
         },
 
         available(lang) { return !!this.lists[lang]; },
 
-        // Índice exacto o por prefijo único de 4+ letras (BIP39 lo garantiza)
+        // [lo, hi) range in `order` of the words starting with prefix t (no caching: typed prefixes are secret)
+        range(L, t) {
+            const lb = (x) => {
+                let lo = 0, hi = L.order.length;
+                while (lo < hi) { const mid = (lo + hi) >> 1; if (L.stripped[L.order[mid]] < x) lo = mid + 1; else hi = mid; }
+                return lo;
+            };
+            return [lb(t), lb(t + '{')]; // '{' sorts right after 'z'
+        },
+
+        // Exact index, or unique prefix of 4+ letters (guaranteed unique by BIP39)
         resolve(lang, typed) {
             const L = this.lists[lang];
             const t = strip(typed);
             if (!t) return -1;
             if (L.index.has(t)) return L.index.get(t);
-            if (t.length >= 4) {
-                let found = -1;
-                for (let i = 0; i < 2048; i++) {
-                    if (L.stripped[i].startsWith(t)) { if (found >= 0) return -1; found = i; }
-                }
-                return found;
-            }
-            return -1;
+            if (t.length < 4) return -1;
+            const [lo, hi] = this.range(L, t);
+            return hi - lo === 1 ? L.order[lo] : -1;
         },
 
         candidates(lang, prefix, max = 4) {
             const L = this.lists[lang];
             const t = strip(prefix);
             if (!t) return [];
-            const out = [];
-            for (let i = 0; i < 2048 && out.length < max; i++) if (L.stripped[i].startsWith(t)) out.push(i);
-            return out;
+            const [lo, hi] = this.range(L, t);
+            return Array.from(L.order.subarray(lo, Math.min(hi, lo + max)));
         },
 
         countMatches(lang, prefix) {
             const L = this.lists[lang];
-            const t = strip(prefix);
-            let n = 0;
-            for (let i = 0; i < 2048; i++) if (L.stripped[i].startsWith(t)) n++;
-            return n;
+            const [lo, hi] = this.range(L, strip(prefix));
+            return hi - lo;
         },
 
-        // Letras que pueden continuar el prefijo (teclado inteligente)
+        // Letters that can continue the prefix (smart keyboard)
         nextLetters(lang, prefix) {
             const L = this.lists[lang];
             const t = strip(prefix);
-            const s = new Set();
-            for (const w of L.stripped) if (w.length > t.length && w.startsWith(t)) s.add(w[t.length]);
-            return s;
+            const [lo, hi] = this.range(L, t);
+            const out = new Set();
+            for (let k = lo; k < hi; k++) { const w = L.stripped[L.order[k]]; if (w.length > t.length) out.add(w[t.length]); }
+            return out;
         },
 
-        // Idioma en el que todas las palabras son válidas (o null)
+        // Language in which every word is valid (or null)
         detect(typedWords) {
             for (const lang of Object.keys(this.lists)) {
                 if (typedWords.every((w) => this.resolve(lang, w) >= 0)) return lang;
@@ -197,7 +202,7 @@
     };
 
     // ============================================================
-    // Huella de cartera BIP32 (master fingerprint)
+    // BIP32 wallet master fingerprint
     // ============================================================
     async function masterKey(seed) {
         const k = await crypto.subtle.importKey('raw', enc.encode('Bitcoin seed'), { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
@@ -217,7 +222,7 @@
     }
 
     // ============================================================
-    // Shamir sobre GF(256) (polinomio 0x11b, generador 3)
+    // Shamir secret sharing over GF(256) (polynomial 0x11b, generator 3)
     // ============================================================
     const GF = (() => {
         const exp = new Uint8Array(510), log = new Uint8Array(256);
@@ -242,7 +247,7 @@
                 coef[0] = secret[b];
                 crypto.getRandomValues(coef.subarray(1));
                 for (const s of shares) {
-                    let acc = 0; // Horner
+                    let acc = 0; // Horner's method
                     for (let j = k - 1; j >= 0; j--) acc = GF.mul(acc, s.x) ^ coef[j];
                     s.y[b] = acc;
                 }
@@ -268,7 +273,7 @@
             }
             return out;
         },
-        // Texto de un fragmento: MQS4: + [ver][set 4][k][n][x][datos]
+        // Share text: MQS4: + [version][set id 4][k][n][x][data]
         encode(setId, k, n, share) {
             return C.MAGIC_SHARE + b64urlEncode(concat(Uint8Array.of(4), setId, Uint8Array.of(k, n, share.x), share.y));
         },
@@ -283,7 +288,7 @@
     };
 
     // ============================================================
-    // Derivación de clave (Argon2id por worker o en el hilo principal)
+    // Key derivation (Argon2id in a worker or on the main thread)
     // ============================================================
     let argonImpl = async (password, salt, m, t, p) => {
         if (!G.hashwasm || typeof G.hashwasm.argon2id !== 'function') throw new MQRError('no_argon');
@@ -305,9 +310,9 @@
     const pwBytes = (s) => enc.encode(s.normalize('NFKC'));
 
     // ============================================================
-    // Texto plano v4
-    // [tipo][lang][datos][len pass][pass][len nota][nota][creado u32]
-    // tipo 1 = entropía BIP39, tipo 2 = texto libre (checksum no válido)
+    // v4 plaintext
+    // [type][lang][data][passphrase len][passphrase][note len][note][created u32]
+    // type 1 = BIP39 entropy, type 2 = free text (invalid checksum)
     // ============================================================
     function packPlaintext({ lang, entropy, rawText, passphrase = '', note = '' }) {
         const pp = enc.encode(passphrase.normalize('NFKD')).slice(0, 255);
@@ -356,9 +361,9 @@
     }
 
     // ============================================================
-    // Formato v4: cabecera + 2 huecos del mismo tamaño (real y señuelo/aleatorio)
-    // Cabecera: 'MQ' | 4 | flags | kdf | p1 u32 | p2 | p3 | salt16  (27 bytes, AAD)
-    // Hueco:    iv12 | cifrado(L) | tag16
+    // v4 format: header + 2 slots of equal size (real and decoy/random)
+    // Header: 'MQ' | 4 | flags | kdf | p1 u32 | p2 | p3 | salt16  (27 bytes, used as AAD)
+    // Slot:   iv12 | ciphertext(L) | tag16
     // ============================================================
     function buildHeader(flags, kdf, p1, p2, p3, salt) {
         const h = new Uint8Array(C.HEADER_LEN);
@@ -385,7 +390,7 @@
         let key1;
         try { key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3); }
         catch (e) {
-            // Solo se cae a PBKDF2 si el navegador no permite WebAssembly; falta de memoria o cancelación se notifican
+            // Fall back to PBKDF2 only when WebAssembly is unavailable; out-of-memory and cancellation are reported
             if (e.code !== 'no_argon') { wipe(pw1); throw e; }
             kdf = KDF.PBKDF2; p1 = C.PBKDF2_FALLBACK_ITER; p2 = 0; p3 = 0;
             key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3);
@@ -412,10 +417,10 @@
             if (onKdf) onKdf(2);
             slotOther = await seal(key2, decoy.plaintext, 'decoy');
         } else {
-            slotOther = rand(C.IV_LEN + L + C.TAG_LEN); // indistinguible de un hueco cifrado
+            slotOther = rand(C.IV_LEN + L + C.TAG_LEN); // indistinguishable from an encrypted slot
         }
         wipe(pw1);
-        const first = rand(1)[0] & 1; // orden aleatorio de los huecos
+        const first = rand(1)[0] & 1; // random slot order
         const blob = concat(header, first ? slotOther : slotReal, first ? slotReal : slotOther);
         return { blob, text: C.MAGIC_V4 + b64urlEncode(blob), kdf, hashes };
     }
@@ -439,7 +444,7 @@
         const pw = pwBytes(password);
         const key = await deriveKey(pw, P.salt, P.kdf, P.p1, P.p2, P.p3);
         wipe(pw);
-        // Siempre se prueban los dos huecos: el tiempo no delata cuál abrió
+        // Always try both slots, so timing does not reveal which one opened
         const tries = await Promise.all(P.slots.map((s) => crypto.subtle.decrypt(
             { name: 'AES-GCM', iv: s.slice(0, C.IV_LEN), additionalData: P.header, tagLength: 128 }, key, s.slice(C.IV_LEN))
             .then((b) => new Uint8Array(b), () => null)));
@@ -452,7 +457,7 @@
         return { ...res, hash, format: 4, kdf: P.kdf, practice: !!(P.flags & C.FLAG_PRACTICE) };
     }
 
-    // ---------- compatibilidad v3 ----------
+    // ---------- v3 compatibility ----------
     async function decryptV3(text, password) {
         const blob = b64urlDecode(text.slice(C.MAGIC_V3.length));
         const hl = 10 + 16 + 12;
@@ -480,7 +485,7 @@
         return { lang: 'en', words, indices: type === 1 ? words.map((w) => BIP39.resolve('en', w)) : null, passphrase: '', note, created: ts ? new Date(ts * 1000) : null, hash, format: 3, kdf, practice: false };
     }
 
-    // ---------- compatibilidad v2 ----------
+    // ---------- v2 compatibility ----------
     async function decryptV2(text, password) {
         let data;
         try { data = Uint8Array.from(atob(text.slice(C.MAGIC_V2.length)), (c) => c.charCodeAt(0)); } catch { throw new FormatError('damaged'); }
@@ -513,7 +518,7 @@
         return null;
     }
 
-    // Divide un backup v4 en fragmentos
+    // Split a v4 backup into shares
     function splitBackup(blob, n, k) {
         const setId = rand(4);
         const shares = Shamir.split(blob, n, k);
@@ -530,11 +535,11 @@
         }
         if (uniq.size < first.k) throw new MQRError('need_more');
         const blob = Shamir.combine([...uniq.values()].slice(0, first.k));
-        parseV4Blob(blob); // valida estructura
+        parseV4Blob(blob); // validates the structure
         return C.MAGIC_V4 + b64urlEncode(blob);
     }
 
-    // Contraseña: estimación heurística de entropía
+    // Password: heuristic entropy estimate
     function estimateBits(pwd) {
         if (!pwd) return 0;
         let pool = 0;
@@ -550,10 +555,10 @@
         if (unique < chars.length / 2) bits *= unique / (chars.length / 2);
         if (/(.)\1{2,}/.test(pwd)) bits -= 10;
         const lower = strip(pwd);
-        for (const c of ['password', 'contrasena', 'contrasenya', 'qwerty', 'asdf', '123456', 'abcdef', 'bitcoin', 'wallet', 'cartera', 'mnemoniqr', 'seed', 'semilla', 'admin', 'letmein', 'iloveyou', 'hola', 'hello']) if (lower.includes(c)) bits -= 20;
+        for (const c of ['password', 'contrasena', 'contrasenya', 'qwerty', 'asdf', '123456', 'abcdef', 'bitcoin', 'wallet', 'cartera', 'mnemoniqr', 'seed', 'semilla', 'admin', 'letmein', 'iloveyou', 'hola', 'hello', 'azerty', 'motdepasse', 'пароль', 'parol']) if (lower.includes(c)) bits -= 20;
         if (/(?:0123|1234|2345|3456|4567|5678|6789|abcd|bcde|cdef)/.test(lower)) bits -= 10;
         if (/(19|20)\d{2}/.test(pwd)) bits -= 6;
-        // Palabras de diccionario separadas por espacios: cuenta por palabra, no por letra
+        // Space-separated dictionary words: count per word, not per letter
         const parts = pwd.trim().split(/\s+/);
         if (parts.length >= 2 && parts.every((w) => /^[\p{L}]+$/u.test(w))) bits = Math.min(bits, parts.length * 11);
         return Math.max(0, Math.round(bits));
