@@ -2,7 +2,7 @@
   "id": "./",
   "name": "MnemoniQR · Backup cifrado de semillas",
   "short_name": "MnemoniQR",
-  "description": "Cifra tu frase de recuperación BIP39 en un QR con Argon2id y AES-256-GCM, sin conexión.",
+  "description": "Cifra tu frase de recuperación BIP39 en uno o varios QR con Argon2id y AES-256-GCM, sin conexión.",
   "lang": "es",
   "dir": "ltr",
   "start_url": "./",
@@ -11,16 +11,70 @@
   "orientation": "portrait",
   "background_color": "#f3f4f1",
   "theme_color": "#1f2a33",
-  "categories": ["security", "utilities"],
+  "categories": [
+    "security",
+    "utilities"
+  ],
   "prefer_related_applications": false,
   "icons": [
-    { "src": "assets/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "assets/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "assets/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Cifrar semilla", "short_name": "Cifrar", "url": "./?action=encrypt", "icons": [{ "src": "assets/icons/icon-96x96.png", "sizes": "96x96" }] },
-    { "name": "Escanear QR", "short_name": "Escanear", "url": "./?action=scan", "icons": [{ "src": "assets/icons/icon-96x96.png", "sizes": "96x96" }] }
+    {
+      "name": "Cifrar semilla",
+      "short_name": "Cifrar",
+      "url": "./?action=encrypt",
+      "icons": [
+        {
+          "src": "assets/icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Escanear QR",
+      "short_name": "Escanear",
+      "url": "./?action=scan",
+      "icons": [
+        {
+          "src": "assets/icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Practicar recuperación",
+      "short_name": "Practicar",
+      "url": "./?action=practice",
+      "icons": [
+        {
+          "src": "assets/icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
   ]
 }

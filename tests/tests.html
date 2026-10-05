@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>MnemoniQR · Pruebas</title>
+<link rel="stylesheet" href="tests.css">
+<script src="../vendor/argon2.min.js" defer></script>
+<script src="../vendor/noble.min.js" defer></script>
+<script src="../js/wordlists.js" defer></script>
+<script src="../js/core.js" defer></script>
+<script src="vectors.js" defer></script>
+<script src="tests.js" defer></script>
+</head>
+<body>
+<h1>MnemoniQR · Pruebas automáticas</h1>
+<p>Vectores oficiales BIP39, huella BIP32, Shamir, cifrado v4, señuelo, fragmentos y compatibilidad con v2 y v3. Todo se ejecuta en este navegador.</p>
+<p id="summary">Ejecutando…</p>
+<ol id="out"></ol>
+</body>
+</html>
