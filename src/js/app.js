@@ -97,8 +97,12 @@ function openModal(id) {
     modalStack.push({ el, ret: document.activeElement });
     el.hidden = false;
     if (id === 'password-modal') updateSourceActions();
-    const f = el.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), button:not(.modal-close)');
-    setTimeout(() => f && f.focus(), 40);
+    // First visible control (a hidden one, such as the tabs of a single-network sheet, cannot take focus)
+    setTimeout(() => {
+        const f = [...el.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), button:not(.modal-close)')]
+            .find((x) => x.offsetParent !== null && !x.disabled);
+        if (f) f.focus();
+    }, 40);
 }
 function closeModal(id) {
     const el = $(id);
@@ -106,6 +110,7 @@ function closeModal(id) {
     const i = modalStack.findIndex((m) => m.el === el);
     if (i >= 0) { const m = modalStack.splice(i, 1)[0]; if (m.ret && m.ret.focus) m.ret.focus(); }
     if (id === 'password-modal') resetDecryptModal();
+    Update.apply();   // a pending update waits for the last dialog to close
 }
 function trapFocus(e) {
     const top = modalStack[modalStack.length - 1];
@@ -712,6 +717,7 @@ async function startEncryption() {
         if (o.kfHash) util.wipe(o.kfHash);
         spinner(false);
         S.busy = false;
+        Update.apply();
         // The app was left in the background for too long during a failed or cancelled encryption
         if (S.wipeAfterBusy) {
             S.wipeAfterBusy = false;
@@ -1046,7 +1052,8 @@ async function startScanner() {
     sc.active = true;
     updateSourceActions();
     $('scanner-video').srcObject = sc.stream;
-    try { await $('scanner-video').play(); } catch { /* autoplay blocked */ }
+    try { await $('scanner-video').play(); } catch { /* autoplay blocked, or stopped meanwhile */ }
+    if (sc.stream !== stream) return;   // stopScanner() ran while the video was starting
     sc.active = true; sc.frame = 0;
     sc.detector = null;
     if ('BarcodeDetector' in self) { try { sc.detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch { /* fall back to jsQR */ } }
@@ -1288,7 +1295,7 @@ async function decryptQR() {
             if (S.attempts >= 3) { S.lockUntil = Date.now() + Math.min(30, 2 ** (S.attempts - 2)) * 1000; lockCountdown(); }
             $('decrypt-password').select();
         } else if (e.code !== 'cancelled') { if (!(e instanceof MQRError)) console.error(e); setDecryptStatus(errText(e)); }
-    } finally { spinner(false); S.busy = false; }
+    } finally { spinner(false); S.busy = false; Update.apply(); }
 }
 
 async function showDecrypted(res) {
@@ -1437,8 +1444,6 @@ function setupPWA() {
         // updateViaCache 'none': the browser HTTP cache is never used when looking for a new sw.js
         sw.register(ttPolicy ? ttPolicy.createScriptURL('sw.js') : 'sw.js', { updateViaCache: 'none' }).then((reg) => {
             Update.reg = reg;
-            // A worker left waiting by an older version is pushed through
-            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
             Update.check(true);
         }).catch(() => {});
         document.addEventListener('visibilitychange', () => { if (!document.hidden) Update.check(false); });
@@ -1504,6 +1509,7 @@ const Install = {
         el.hidden = true;
         const i = modalStack.findIndex((m) => m.el === el);
         if (i >= 0) { const m = modalStack.splice(i, 1)[0]; if (m.ret && m.ret.focus) m.ret.focus(); }
+        Update.apply();
     },
     // “Not now” snoozes for 14 days; “Don’t show again” disables it (the footer link stays)
     dismiss() {
@@ -1620,7 +1626,7 @@ const Support = {
     },
     // After the first verified, real backup only; never again on this device once shown
     nudge() {
-        if (!this.list.length || this.pref().nudged) return;
+        if (!this.list.length || this.pref().nudged || Update.pending) return;   // a reloading page would waste it
         this.save({ nudged: true });
         $('support-nudge').hidden = false;
     },

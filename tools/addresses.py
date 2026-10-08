@@ -3,7 +3,7 @@ MnemoniQR · donation address checks (Python 3 standard library only).
 
 Used by tools/build.py so that a release can never publish a mistyped address:
   - tron: Base58Check, version byte 0x41, 25 bytes
-  - evm:  0x + 40 hex digits; mixed case must match the EIP-55 checksum (Keccak-256)
+  - evm:  0x + 40 hex digits in the EIP-55 checksummed (mixed-case) form (Keccak-256)
   - btc:  Bech32 (P2WPKH/P2WSH, v0) or Bech32m (Taproot, v1+) with hrp "bc", or Base58Check P2PKH/P2SH
 """
 import hashlib
@@ -144,8 +144,9 @@ def check(kind, address):
         h = a[2:]
         if not a.startswith('0x') or len(h) != 40 or any(ch not in '0123456789abcdefABCDEF' for ch in h):
             return 'not an EVM address (0x + 40 hex digits)'
-        if h != h.lower() and h != h.upper() and eip55(h) != a:
-            return f'EIP-55 checksum does not match (expected {eip55(h)})'
+        # Only the mixed-case EIP-55 form carries a checksum: without it a typo would go unnoticed
+        if eip55(h) != a:
+            return f'EIP-55 checksummed form required (expected {eip55(h)} if the digits are right)'
         return None
     if kind == 'btc':
         if a.lower().startswith('bc1'):
@@ -160,6 +161,7 @@ if __name__ == '__main__':
     for good in ('0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed', '0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359'):
         assert check('evm', good) is None, good
     assert check('evm', '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD') is not None
+    assert check('evm', '0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed') is not None   # no checksum: refused
     assert check('btc', 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4') is None
     assert check('btc', 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5') is not None
     assert check('btc', 'bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0') is None

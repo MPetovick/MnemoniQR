@@ -2,7 +2,11 @@
 """
 MnemoniQR v6.5.0 · Reproducible build (Python 3 standard library only).
 
-    python3 tools/build.py [--no-tests]
+    python3 tools/build.py [--no-tests] [--out DIR] [--donate-test | --donate-none]
+
+    --out DIR       build into DIR instead of dist/ (an empty folder or a previous build)
+    --donate-test   public example donation addresses, for the tests only: never deploy
+    --donate-none   no donation address, for the tests only
 
 Writes dist/ with:
   - the PWA, with a strict CSP, Trusted Types and Subresource Integrity on every script and stylesheet;
@@ -77,8 +81,9 @@ DONATE_RE = re.compile(r"\{ id: '([a-z0-9-]+)', kind: '([a-z]+)', address: '([^'
 def donations(text):
     """[(id, kind, address)] from js/donate.js; refuses a malformed address."""
     rows = DONATE_RE.findall(text)
-    if not rows:
-        sys.exit('js/donate.js: no entries found (keep the { id, kind, address } shape)')
+    # Every entry must have the exact shape, so that none escapes the checks below
+    if not rows or len(rows) != len(re.findall(r'\baddress\s*:', text)):
+        sys.exit("js/donate.js: keep every entry exactly as { id: '…', kind: '…', address: '…' } (single quotes)")
     for did, kind, addr in rows:
         if addr:
             reason = addresses.check(kind, addr)
@@ -224,7 +229,16 @@ def main():
     global DIST
     with_tests = '--no-tests' not in sys.argv
     if '--out' in sys.argv:
-        DIST = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])
+        i = sys.argv.index('--out') + 1
+        if i >= len(sys.argv) or sys.argv[i].startswith('--'):
+            sys.exit('--out needs a folder')
+        DIST = os.path.abspath(sys.argv[i])
+        # The folder is deleted and rebuilt: never the project, its sources or a folder that is not a build
+        inside = os.path.commonpath([DIST, ROOT]) == ROOT
+        if DIST in (ROOT, os.path.dirname(ROOT)) or ROOT.startswith(DIST + os.sep) or (inside and not os.path.basename(DIST).startswith('dist')):
+            sys.exit(f'--out {DIST}: refusing to overwrite this folder')
+        if os.path.isdir(DIST) and os.listdir(DIST) and not os.path.exists(os.path.join(DIST, 'HASHES.txt')):
+            sys.exit(f'--out {DIST}: not empty and not a previous build')
     test_donations = '--donate-test' in sys.argv
     if test_donations:
         OVERRIDES['js/donate.js'] = donate_test_source()

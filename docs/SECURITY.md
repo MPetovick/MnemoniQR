@@ -23,7 +23,7 @@ This document records the design decisions behind MnemoniQR and the findings of 
 Donation addresses are a target: a swapped address steals donations, and clipboard malware swaps addresses after copying.
 
 - Defined only in `src/js/donate.js`, loaded under SRI: changing an address changes the build fingerprint. Every release lists them in `HASHES.txt`.
-- The build refuses a malformed address (checksums for TRON, Ethereum EIP-55 and Bitcoin), so a typo can never be published.
+- The build refuses a malformed address (checksums for TRON, Ethereum in its EIP-55 mixed-case form and Bitcoin), and any entry not written in the checked shape, so a typo cannot be published.
 - The app shows the network for every address, generates the QR locally and highlights the first and last four characters to compare after pasting.
 - No network access, no tracking, no amounts: the support screens never appear during a flow or with a phrase on screen.
 

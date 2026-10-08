@@ -170,6 +170,21 @@ def main():
         banner = wait(page, lambda: page.is_visible('#update-banner'), 10000)
         check('frozen page: not reloaded, banner once awake', banner and page.evaluate('() => window.__mark === 5'))
         other.close()
+        page.click('#seed-back')
+        wait(page, lambda: page.evaluate('() => window.__mark === undefined && !!document.querySelector(".version")'))
+
+        # 6. an update that arrives on the home screen with a dialog open applies when the dialog closes
+        page.evaluate('() => { window.__mark = 6; }')
+        page.click('#about-btn')
+        nxt4 = tempfile.mkdtemp()
+        shutil.copytree(NEW, nxt4, dirs_exist_ok=True)
+        next_sw(os.path.join(nxt4, 'sw.js'), 'next4')
+        state['dir'] = nxt4
+        page.evaluate('() => navigator.serviceWorker.getRegistration().then((r) => r.update())')
+        banner = wait(page, lambda: page.is_visible('#update-banner'))
+        page.keyboard.press('Escape')
+        reloaded = wait(page, lambda: page.evaluate('() => window.__mark === undefined && !!document.querySelector(".version")'))
+        check('dialog open on home: update waits, then applies when it closes', banner and reloaded)
         check('no page errors', not errors, '; '.join(errors[:3]))
         browser.close()
     httpd.shutdown()

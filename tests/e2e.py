@@ -351,6 +351,26 @@ def run(pw, name, base):
         page.wait_for_timeout(300)
         ended = page.evaluate("() => window.__streams.every((s) => s.getTracks().every((t) => t.readyState === 'ended'))")
         c('camera: no stream left behind, one stream per scan', live == [2, 1] and ended, str(live))
+        # the camera stopped while it is starting (app sent to the background) can be started again
+        page.evaluate('''() => {
+            const orig = HTMLMediaElement.prototype.play;
+            HTMLMediaElement.prototype.play = function () { return new Promise((r) => setTimeout(r, 500)).then(() => orig.call(this)); };
+        }''')
+        page.click('#recover-btn')
+        page.click('#src-scan')
+        page.wait_for_timeout(700)   # getUserMedia (400 ms) done, play() pending
+        page.evaluate('''() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+            document.dispatchEvent(new Event('visibilitychange'));
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+            document.dispatchEvent(new Event('visibilitychange'));
+            delete document.hidden;
+        }''')
+        page.wait_for_timeout(800)
+        page.click('#src-scan')
+        page.wait_for_timeout(1500)
+        c('camera: restarts after being stopped while starting', page.evaluate("() => !document.getElementById('scanner').hidden && window.__streams.some((s) => s.getTracks().some((t) => t.readyState === 'live'))"))
+        page.click('#decrypt-cancel')
 
     # 5. single offline file
     single = ctx.new_page()

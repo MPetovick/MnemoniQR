@@ -62,6 +62,7 @@ def main():
     none_dist = tempfile.mkdtemp(prefix='mqr-nodonate-')
     subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build.py'), '--out', none_dist, '--donate-none'], check=True, capture_output=True)
     plain, plain_url = serve(none_dist)
+    real, real_url = serve(os.path.join(ROOT, 'dist'))
     test, base = serve(test_dist)
     A = build.TEST_ADDRESSES
 
@@ -76,6 +77,19 @@ def main():
         page.goto(plain_url + '/index.html')
         page.wait_for_timeout(600)
         check('no address configured: no support link', not page.is_visible('#support-link') and page.is_hidden('#support-about'))
+        ctx.close()
+
+        # the shipped build: whatever networks it has, the sheet opens with focus inside it
+        ctx = browser.new_context(viewport={'width': 390, 'height': 844}, service_workers='block')
+        page = ctx.new_page()
+        page.on('pageerror', lambda e: errors.append(str(e)))
+        page.goto(real_url + '/index.html')
+        page.wait_for_timeout(600)
+        if page.is_visible('#support-link'):
+            page.click('#support-link')
+            page.wait_for_timeout(300)
+            check('shipped build: focus moves into the support sheet',
+                  page.evaluate("() => document.getElementById('support-sheet').contains(document.activeElement)"))
         ctx.close()
 
         # 2. test build
@@ -174,6 +188,7 @@ def main():
         check('no page errors', not errors, '; '.join(errors[:3]))
         browser.close()
     plain.shutdown()
+    real.shutdown()
     test.shutdown()
     print('\nOK' if not failed else f'\n{failed} FAILED')
     sys.exit(1 if failed else 0)

@@ -7,6 +7,16 @@
 - Nothing is fetched and nothing is tracked: the app cannot know whether anyone donated.
 - Published address: USDT on TRON (TRC-20) `TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ`. With a single network the sheet shows no tabs.
 - `tools/build.py --out DIR --donate-test` builds with public example addresses for testing; `tests/donate_e2e.py` covers the screens.
+- **Production review fixes:**
+  - A pending update now applies as soon as the last dialog on the home screen closes. Before, it waited for a whole flow.
+  - The camera can be restarted after being stopped while it was starting.
+  - The support sheet takes focus when it has a single network.
+  - The once-only support line is never used up on a page that is about to reload.
+  - Ethereum addresses must be in the EIP-55 checksummed form.
+  - Every entry in `donate.js` must have the checked shape.
+  - `--out` refuses to overwrite the project or a folder that is not a build.
+  - CI compares against the previous release tag.
+  - Dead `SKIP_WAITING` code removed.
 
 ## 6.4.1 — review fixes
 

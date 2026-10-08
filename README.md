@@ -187,9 +187,12 @@ src/
   vendor/             qrcode, jsQR, hash-wasm (Argon2), noble-secp256k1 + RIPEMD-160
   fonts/              Atkinson Hyperlegible and JetBrains Mono (OFL)
   tests/              in-browser test suite and official BIP39 vectors
-tools/build.py        deterministic build
+tools/build.py        deterministic build (--out, --donate-test, --donate-none for the tests)
+tools/addresses.py    donation address checksums (TRON, Ethereum EIP-55, Bitcoin)
 tools/recover.py      standalone recovery tool (Python)
 tests/e2e.py          end-to-end tests (Chromium, Firefox, WebKit)
+tests/update_e2e.py   forced update from an older build
+tests/donate_e2e.py   support screens and address checks
 tests/test_recover.py robustness tests for the recovery tool
 .github/workflows/    continuous integration
 docs/FORMAT.md        backup and share formats
@@ -229,7 +232,7 @@ MnemoniQR is free, open source and has no ads, accounts or tracking. Donations p
 
 The donation addresses live in one file, [`src/js/donate.js`](src/js/donate.js), and nowhere else:
 
-- `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum EIP-55 checksum, Bitcoin Bech32/Bech32m or Base58Check).
+- `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum in its EIP-55 checksummed form, Bitcoin Bech32/Bech32m or Base58Check), or if an entry is not written in the expected shape.
 - The file is loaded under Subresource Integrity, so the addresses are covered by the build fingerprint, and every release lists them in `HASHES.txt`. An address cannot be swapped without changing the fingerprint.
 - Always copy an address from the app or from the release's `HASHES.txt`, and check its first and last four characters after pasting.
 
