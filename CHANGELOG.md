@@ -1,5 +1,33 @@
 # Changelog
 
+## 6.8.0 — community goal
+
+- **Community goal: unlock multi-seed backups for everyone, 21,000 USD.** A thin progress bar in the footer ("Unlock multi-seed for everyone · Support it", with the percentage), and a progress ring with the total and the date in the Support sheet.
+- **Every balance can be checked.** Each network in the sheet shows the balance of its address (by coin, ≈ USD) and links to its block explorers: mempool.space; Etherscan, BscScan and Basescan for the same EVM address; Tronscan; Tonviewer. The count is the current balance of each address, and the wallets are not moved until the goal is reached, so anyone can add the balances up. Links open in a new tab, with no opener and no referrer; the sheet says that an explorer sees your IP address.
+- **The app still connects to nothing.** It shows a snapshot built into the version (`src/js/goal.js`), loaded under SRI, covered by the fingerprint and stated in `HASHES.txt`. The build refuses a snapshot whose totals do not add up or whose networks do not match `donate.js`; the app hides one that does not either and keeps the plain support link.
+- **Live page at mnemoniqr.app/goal**, a Vercel function shipped in `dist/api/`: it reads public explorers (mempool.space, public JSON-RPC for Ethereum/BSC/Base, TronGrid, Toncenter) and CoinGecko, with no key, cached 10 minutes. Plain HTML with no script and a hash-pinned stylesheet; the same figures as JSON at `/api/goal`. A wallet that cannot be read is left out of the total and named, never counted as zero. `vercel.json` keeps the app's headers off `/goal` and `/api/`.
+- `tools/goal.py` refreshes the snapshot with the same code as the page (or from the deployed `/api/goal`) and refuses an incomplete reading.
+- mnemoniqr.app is the reference address everywhere (README, GitHub sponsor button, README of the shares ZIP).
+- Tall sheets scroll instead of going off the top of small screens.
+- Tests: `tests/goal_e2e.py` (app), `tests/test_goal.py` (tool, build checks, routes and headers), `tests/goal_api_test.js` (function, with recorded answers). All run in CI.
+
+## 6.7.0 — GRAM
+
+- **Support sheet: GRAM (formerly Toncoin) on the TON network**, after TRON. The build checks TON addresses: 48 base64url characters, mainnet bounceable or non-bounceable flag, workchain, CRC-16. Testnet addresses are refused.
+- The sheet accepts base64url addresses (`_` and `-`).
+- Reopening the sheet focuses the tab of the network shown, not always the first one.
+- TRON text: "Lowest fees" removed (not accurate for USDT on TRON).
+- Tests: GRAM tab, mistyped and testnet TON addresses. The forced-update test server no longer answers 304 by file date, which made CI fail when the previous release was built after `dist/`.
+
+## 6.6.5
+
+- Support sheet, ETH card: *BSC* and *Base* shown in a second colour next to *Ethereum mainnet*. The same address works on the three networks.
+- TRON card: USDT, BTT or TRX.
+
+## 6.6.4
+
+- Support sheet: networks in the order BTC, ETH, TRON, with short tab labels. Each card's description says what is appreciated: Bitcoin on-chain; USDT, USDC or ETH on Ethereum; USDT, USDC or TRX on TRON.
+
 ## 6.6.3
 
 - **Donation addresses:** USDT on TRON, USDT/USDC/ETH on Ethereum and Bitcoin, checked by the build (Base58Check, EIP-55, Bech32) and listed in `HASHES.txt`.

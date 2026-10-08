@@ -27,6 +27,16 @@ This document records the design decisions behind MnemoniQR and the findings of 
 | Low | PNG/ZIP export errors were silent; a double tap exported twice | Errors shown; one export at a time |
 | Low | A canvas-read failure while preparing the PDF logo blocked the whole PDF | The PDF is printed without the shield |
 
+## v6.8.0: community goal
+
+The goal shows money, so it is built like the addresses: nothing in the app can be changed from outside.
+
+- **The app still makes no connection.** The figures are a snapshot built into the version (`src/js/goal.js`), loaded under SRI, covered by the fingerprint and stated in `HASHES.txt`. The CSP keeps `connect-src 'none'`. The build refuses a snapshot whose totals do not add up or whose networks are not those of `donate.js`; the app hides one that fails the same checks and keeps the plain support link.
+- **Verifiable without trusting MnemoniQR.** The count is the current balance of each published address, and the wallets are not moved until the goal is reached: anyone can open the addresses on independent explorers and add them up. Explorer links are built from the verified address only, open in a new tab with `noopener noreferrer`; the sheet says that the explorer sees the visitor's IP address. Nothing is opened without a tap.
+- **The live page (`/goal`, `/api/goal`) is separate from the app.** It is a server function: it reads public explorers and CoinGecko from the server, never from the visitor's browser, and its answer is cached 10 minutes. The page is plain HTML with no script, a stylesheet pinned by hash, `default-src 'none'` and `frame-ancestors 'none'`; every value is escaped. `vercel.json` keeps the app's headers off these two paths (they send their own), the service worker never caches them and never reloads them when it updates the app, so the app's policy is not weakened and they cannot reach the app's cache.
+- **Never a false total.** A wallet that cannot be fully read (an unreachable explorer, an RPC error, an empty `eth_call` answer, a missing price for a coin it holds) is left out and named on the page, never counted as zero. `tools/goal.py` refuses to write a snapshot from an incomplete reading or for other addresses.
+- Only listed coins and tokens count (contract addresses in `web/api/goal.js`, decimals read on-chain); look-alike tokens sent to the addresses are ignored.
+
 ## v6.6.1: QR codes stay plain
 
 A logo inside the QR uses part of its error correction, and a backup may have to be read decades later. Tested in a 6.6.0 build, it was removed before release: the codes are plain again, with the same error correction as 6.5.1. The shield appears only in the PDF header, outside the code. Printed PDFs are checked with an independent decoder (ZXing) at 100 and 150 dpi.
@@ -38,7 +48,7 @@ Donation addresses are a target: a swapped address steals donations, and clipboa
 - Defined only in `src/js/donate.js`, loaded under SRI: changing an address changes the build fingerprint. Every release lists them in `HASHES.txt`.
 - The build refuses a malformed address (checksums for Bitcoin, Ethereum in its EIP-55 mixed-case form, TRON and TON; TON testnet addresses are refused), and any entry not written in the checked shape, so a typo cannot be published.
 - The app shows the network for every address, generates the QR locally and highlights the first and last four characters to compare after pasting.
-- No network access, no tracking, no amounts: the support screens never appear during a flow or with a phrase on screen.
+- No network access and no tracking: the support screens never appear during a flow or with a phrase on screen. (Since 6.8.0 they show the balance of each address, from a snapshot built into the version.)
 
 ## v6.4.1 review
 

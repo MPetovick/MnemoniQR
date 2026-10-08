@@ -1,4 +1,4 @@
-// MnemoniQR v6.7.0 · UI strings (English).
+// MnemoniQR v6.8.0 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -246,6 +246,21 @@ const en = {
     support_copied_toast: "Address copied. After pasting, check the first and last characters.",
     support_done: "Done",
     support_check: "After pasting, check the highlighted first and last characters. These addresses are part of the verified build and listed in HASHES.txt.",
+    goal_foot: "Unlock multi-seed for everyone",
+    goal_foot_done: "Multi-seed unlocked, thank you",
+    goal_foot_aria: "{label} · Support it. Community goal: {pct} of {target}, as of {date}.",
+    goal_title: "Unlock multi-seed backups for everyone",
+    goal_title_done: "Goal reached: multi-seed is coming for everyone",
+    goal_ring: "Community goal progress",
+    goal_ring_text: "{pct} of the goal: {raised} of {target}",
+    goal_of_goal: "of goal",
+    goal_of: "of {target}",
+    goal_asof: "As of {date}",
+    goal_live: "Live total",
+    goal_balance: "Balance of this address",
+    goal_balance_evm: "Balance on Ethereum, BSC and Base",
+    goal_explorer: "Check on {name} (opens a block explorer)",
+    goal_note: "The wallets are not moved until the goal is reached, so anyone can check them. Explorers are outside sites and see your IP address.",
     clipboard_cleared: "Clipboard cleared.",
     clipboard_not_cleared: "The clipboard could not be cleared. Copy something else to overwrite the phrase.",
     update_pending: "A new version is installed. It will load when you return to the home screen.",

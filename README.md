@@ -4,7 +4,8 @@
 
 MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print and store on paper. Encryption, decryption, QR generation and scanning all happen locally in your browser. The app loads nothing from third parties, works offline once installed, and is also available as a single HTML file for computers that never go online.
 
-- Live app: <https://mnemoniqr.vercel.app>
+- Live app: <https://mnemoniqr.app>
+- Community goal: <https://mnemoniqr.app/goal>
 - Source code: <https://github.com/MPetovick/MnemoniQR>
 - License: [Apache 2.0](LICENSE)
 
@@ -131,7 +132,7 @@ To check a release:
 
 ## Building, testing and deploying
 
-Requirements: Python 3.8+ (standard library only). No Node.js or npm is needed to build.
+Requirements: Python 3.8+ (standard library only). No Node.js or npm is needed to build. Node.js 18+ is only used to refresh the community goal snapshot (`tools/goal.py`) and to test the goal function.
 
 ```bash
 python3 tools/build.py            # writes dist/
@@ -145,7 +146,8 @@ The build checks that the BIP39 word lists match the hashes pinned in `src/js/co
 | `dist/` | The PWA, with a strict CSP, Trusted Types and SRI |
 | `dist/mnemoniqr-offline.html` | Everything in one file, for offline computers (open it directly, no server needed) |
 | `dist/HASHES.txt` | SHA-256 of every file and the build fingerprints |
-| `dist/vercel.json`, `dist/_headers` | HTTP security headers for Vercel, Netlify or Cloudflare Pages |
+| `dist/vercel.json`, `dist/_headers` | HTTP security headers for Vercel, Netlify or Cloudflare Pages; on Vercel also the `/goal` route |
+| `dist/api/goal.js`, `dist/api/goal-config.json` | The live community goal (`/goal` page and `/api/goal` JSON), a Vercel function |
 | `dist/recover.py` | Standalone recovery tool |
 | `dist/tests/tests.html` | In-browser test suite |
 
@@ -153,16 +155,18 @@ The build checks that the BIP39 word lists match the hashes pinned in `src/js/co
 
 **Recovery-tool tests.** `python3 tests/test_recover.py` fuzzes every parser in `tools/recover.py`: it must only ever fail with a readable error, never a traceback.
 
-**End-to-end tests.** `tests/e2e.py` drives the real app in Chromium, Firefox and WebKit: a full backup with keyboard entry, passphrase (including a mistyped confirmation), decoy, keyfile, shares and a diceware password; cancelling during decryption; the largest allowed backup printed on two pages and read back by `tools/recover.py`; verification; the PDF; recovery by typing the printed text; recovery of the same text with `tools/recover.py`; the install sheet; and the offline single file. `tests/update_e2e.py OLD_DIST` checks that an installed older version updates by itself, never in the middle of a flow; `tests/brand_e2e.py` reads the PNG, the ZIP of shares and the printed PDF (rasterized at 100 and 150 dpi) with ZXing, a decoder independent from the app; `tests/donate_e2e.py` checks the support screens (QR decodes to the exact address, copy, once-only line) and that a mistyped address never builds.
+**End-to-end tests.** `tests/e2e.py` drives the real app in Chromium, Firefox and WebKit: a full backup with keyboard entry, passphrase (including a mistyped confirmation), decoy, keyfile, shares and a diceware password; cancelling during decryption; the largest allowed backup printed on two pages and read back by `tools/recover.py`; verification; the PDF; recovery by typing the printed text; recovery of the same text with `tools/recover.py`; the install sheet; and the offline single file. `tests/update_e2e.py OLD_DIST` checks that an installed older version updates by itself, never in the middle of a flow; `tests/brand_e2e.py` reads the PNG, the ZIP of shares and the printed PDF (rasterized at 100 and 150 dpi) with ZXing, a decoder independent from the app; `tests/donate_e2e.py` checks the support screens (QR decodes to the exact address, copy, once-only line) and that a mistyped address never builds; `tests/goal_e2e.py` checks the community goal in the app (footer bar, ring, balance and explorer links per network, snapshots that do not add up are not shown); `tests/test_goal.py` checks the snapshot tool and what the build ships for `/goal`; `node --test tests/goal_api_test.js` checks the live goal function with recorded answers (sums, unreadable wallets never counted as zero, the page's CSP and escaping).
 
 ```bash
 pip install playwright argon2-cffi cryptography && python -m playwright install
 python3 tools/build.py && python3 tests/e2e.py --browser all
 ```
 
-**Continuous integration.** `.github/workflows/ci.yml` builds, checks that the build is reproducible, runs the recovery-tool tests and runs the end-to-end tests in all three browsers on every push.
+**Continuous integration.** `.github/workflows/ci.yml` builds, checks that the build is reproducible and runs the end-to-end tests in all three browsers on every push. In Chromium it also runs the recovery-tool tests, the donation-address checks and support screens (`tools/addresses.py`, `tests/donate_e2e.py`), the community goal (`tests/test_goal.py`, `tests/goal_e2e.py`, `tests/goal_api_test.js`), the PDF/ZIP test with an independent decoder (`tests/brand_e2e.py`) and the forced update from the previous release (`tests/update_e2e.py`).
 
-**Deploying.** Publish the contents of `dist/`. Keep the provided headers: `frame-ancestors`, `Permissions-Policy`, HSTS and the cross-origin policies only work as HTTP headers. The site must be served over HTTPS for the service worker, camera and installation to work. `index.html`, `sw.js` and `manifest.json` must not be cached (the provided headers do this), otherwise installed copies see new versions late.
+**Deploying.** Publish the contents of `dist/` at <https://mnemoniqr.app> (on Vercel: a project whose root is `dist/`, no build command). Keep the provided headers: `frame-ancestors`, `Permissions-Policy`, HSTS and the cross-origin policies only work as HTTP headers. The site must be served over HTTPS for the service worker, camera and installation to work. `index.html`, `sw.js` and `manifest.json` must not be cached (the provided headers do this), otherwise installed copies see new versions late.
+
+The community goal page needs Vercel (or any host that runs `api/goal.js` as a Node function): `vercel.json` sends `/goal` to the function, and keeps the app's headers off `/goal` and `/api/`, which send their own (a page with no script and a hash-pinned stylesheet). It works without any key; for production, set free `COINGECKO_API_KEY` (demo) and `TRONGRID_API_KEY` in the Vercel project, since keyless limits are shared by everyone on the same servers. The other optional variables are listed at the top of `web/api/goal.js`. On Netlify or Cloudflare Pages the app works the same, only `/goal` is missing.
 
 **Updates.** Every build carries a content id of the files it ships (shown by `tools/build.py` and in `HASHES.txt`), so any change, even without raising the version number, reaches installed copies. Installed copies update by themselves the next time they are opened online: the new version is downloaded in the background and the app reloads as soon as it is on the home screen, never in the middle of a backup or a recovery.
 
@@ -183,16 +187,22 @@ src/
   js/app.js           user interface
   js/i18n.js          all UI strings (English)
   js/donate.js        donation addresses (the only place they are defined)
+  js/goal.js          community goal snapshot: target and balance of each address (written by tools/goal.py)
   js/wordlists.js     canonical BIP39 English word list
   vendor/             qrcode, jsQR, hash-wasm (Argon2), noble-secp256k1 + RIPEMD-160
   fonts/              Atkinson Hyperlegible and JetBrains Mono (OFL)
   tests/              in-browser test suite and official BIP39 vectors
-tools/build.py        deterministic build (--out, --donate-test, --donate-none for the tests)
-tools/addresses.py    donation address checksums (TRON, Ethereum EIP-55, Bitcoin)
+web/api/goal.js       live community goal for mnemoniqr.app/goal (Vercel function, no script on the page)
+tools/build.py        deterministic build (--out, --donate-test, --donate-none, --goal-test for the tests)
+tools/goal.py         refreshes the goal snapshot from the public explorers (uses tools/goal_collect.js)
+tools/addresses.py    donation address checksums (Bitcoin, Ethereum EIP-55, TRON, TON)
 tools/recover.py      standalone recovery tool (Python)
 tests/e2e.py          end-to-end tests (Chromium, Firefox, WebKit)
 tests/update_e2e.py   forced update from an older build
 tests/donate_e2e.py   support screens and address checks
+tests/goal_e2e.py     community goal in the app
+tests/test_goal.py    goal snapshot tool and what the build ships for /goal
+tests/goal_api_test.js  live goal function, with recorded answers (node --test)
 tests/brand_e2e.py    PDF logo, ZIP and printed codes, read by an independent decoder
 tests/test_recover.py robustness tests for the recovery tool
 .github/workflows/    continuous integration
@@ -229,20 +239,40 @@ MnemoniQR is free, open source and has no ads, accounts or tracking. Donations p
 
 | Network | Address |
 |---|---|
-| USDT on TRON (TRC-20 only) | `TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ` |
-| USDT, USDC or ETH on Ethereum | `0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64` |
-| Bitcoin (on-chain) | `bc1qqg7ttja7th9r02549wvdwz3wspcvlv3gu95kz0` |
+| BTC (Bitcoin on-chain) | `bc1qqg7ttja7th9r02549wvdwz3wspcvlv3gu95kz0` |
+| ETH: USDT, USDC or ETH on Ethereum, BSC or Base (same address) | `0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64` |
+| TRON: USDT, BTT or TRX on TRON | `TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ` |
+| GRAM (formerly Toncoin) on TON, no memo | `UQCus4n5xGEVKqOCZuczwdpHeDelWjVhGYyIvAQKWXiFjj_B` |
 
 The donation addresses live in one file, [`src/js/donate.js`](src/js/donate.js), and nowhere else:
 
-- `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum in its EIP-55 checksummed form, Bitcoin Bech32/Bech32m or Base58Check), or if an entry is not written in the expected shape.
+- `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum in its EIP-55 checksummed form, Bitcoin Bech32/Bech32m or Base58Check, TON with its CRC-16), or if an entry is not written in the expected shape.
 - The file is loaded under Subresource Integrity, so the addresses are covered by the build fingerprint, and every release lists them in `HASHES.txt`. An address cannot be swapped without changing the fingerprint.
 - Always copy an address from the app or from the release's `HASHES.txt`, and check its first and last four characters after pasting.
 - To change them, edit `src/js/donate.js`, run `python3 tools/build.py` and deploy `dist/`. Editing `dist/js/donate.js` directly does not work: the browser refuses a file that no longer matches its SRI hash, and the support link disappears.
 
 In the app, support never interrupts: a line in the footer, one quiet line on the home screen after your first verified backup (once per device) and after each real recovery, once the phrase has been wiped (never during a flow or in practice mode), and a mention in *How it protects you*. The app cannot know whether anyone donated. With no address configured, none of this is shown.
 
-To test the support screens without real addresses: `python3 tools/build.py --out /tmp/mqr-test --donate-test` (public example addresses; never deploy such a build).
+To test the support screens without real addresses: `python3 tools/build.py --out /tmp/mqr-test --donate-test` (public example addresses; never deploy such a build). Add `--goal-test` for made-up goal balances.
+
+### Community goal: multi-seed backups for everyone
+
+The goal is **21,000 USD**. When it is reached, multi-seed backups (up to 3 recovery phrases in one encrypted QR) ship in an update, free for everyone. Recovering a backup is always free.
+
+**How it is counted.** The current balance of each donation address, listed coins and tokens only (BTC; ETH, USDT and USDC on Ethereum; BNB, USDT and USDC on BSC; ETH, USDC and USDT on Base; TRX, USDT and BTT on TRON; GRAM on TON), valued in USD. The wallets are not moved until the goal is reached, so anyone can open each address on a block explorer (mempool.space, Etherscan, BscScan, Basescan, Tronscan, Tonviewer) and add the balances up.
+
+**Live:** <https://mnemoniqr.app/goal> reads the explorers and CoinGecko every 10 minutes at most. The page has no script; the same figures are at `/api/goal` as JSON. A network whose explorer cannot be reached is left out of the total and named on the page, never counted as zero.
+
+**In the app:** a thin bar in the footer and a ring in the Support sheet, and for each network the balance of its address with links to its explorers. The app still connects to nothing: it shows a snapshot built into the version (`src/js/goal.js`, under SRI and the fingerprint, stated in `HASHES.txt`), dated "As of …". Refresh it before each release:
+
+```bash
+python3 tools/goal.py               # reads the explorers now (Node.js 18+), refuses an incomplete reading
+python3 tools/goal.py --from-url    # or takes https://mnemoniqr.app/api/goal once deployed
+python3 tools/goal.py --target 21000
+python3 tools/build.py
+```
+
+The build refuses a snapshot whose totals do not add up or whose networks do not match `donate.js`, and the app hides one that does not either. Opening an explorer leaves the app: that site sees your IP address, as the sheet says.
 
 ## Third-party components
 

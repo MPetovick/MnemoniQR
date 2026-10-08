@@ -28,6 +28,7 @@
 <script src="js/strength.js" defer></script>
 <script src="js/i18n.js" defer></script>
 <script src="js/donate.js" defer></script>
+<script src="js/goal.js" defer></script>
 <script src="js/kdf-src.js" defer></script>
 <script src="js/app.js" defer></script>
 </head>
@@ -122,10 +123,16 @@
       </div>
       <div class="footer-meta">
         <button type="button" id="support-link" class="support-link" hidden>
-          <svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>
-          <span><span data-i18n="support_free">Free, open source, no ads.</span> <span class="u" data-i18n="support_it">Support it</span></span>
+          <span class="support-row">
+            <svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>
+            <span class="grow" id="support-plain"><span data-i18n="support_free">Free, open source, no ads.</span> <span class="u" data-i18n="support_it">Support it</span></span>
+            <!-- Community goal (js/goal.js): a thin progress bar under the line -->
+            <span class="grow" id="goal-foot" hidden><span id="goal-foot-t">Unlock multi-seed for everyone</span> · <span class="u" data-i18n="support_it">Support it</span></span>
+            <span class="goal-foot-pct" id="goal-foot-pct" hidden></span>
+          </span>
+          <span class="goal-bar" id="goal-foot-bar" aria-hidden="true" hidden><span class="goal-fill" id="goal-foot-fill"></span></span>
         </button>
-        <span class="version">v6.7.0</span>
+        <span class="version">v6.8.0</span>
       </div>
     </footer>
   </main>
@@ -494,7 +501,19 @@
         </div>
         <button type="button" class="btn-icon modal-close" id="support-x" data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </div>
-      <p class="install-lead" data-i18n="support_lead">No accounts and no tracking. Donations pay for security audits and new features, and keep it free for everyone.</p>
+      <p class="install-lead" id="support-lead" data-i18n="support_lead">No accounts and no tracking. Donations pay for security audits and new features, and keep it free for everyone.</p>
+      <!-- Community goal: a snapshot built into this version (js/goal.js); the live total is on mnemoniqr.app/goal -->
+      <div class="goal" id="goal-box" hidden>
+        <div class="goal-ring" id="goal-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-i18n-aria="goal_ring">
+          <svg viewBox="0 0 96 96" aria-hidden="true"><circle class="goal-track" cx="48" cy="48" r="40"/><circle class="goal-arc" id="goal-arc" cx="48" cy="48" r="40"/></svg>
+          <span class="goal-ring-t" aria-hidden="true"><strong id="goal-pct"></strong><span data-i18n="goal_of_goal">of goal</span></span>
+        </div>
+        <div class="goal-info">
+          <strong id="goal-title">Unlock multi-seed backups for everyone</strong>
+          <span class="goal-sum"><b id="goal-raised"></b> <span id="goal-target"></span></span>
+          <span class="goal-asof"><span id="goal-asof"></span> · <a class="link inline" href="https://mnemoniqr.app/goal" target="_blank" rel="noopener noreferrer" data-i18n="goal_live">Live total</a></span>
+        </div>
+      </div>
       <div class="seg" role="tablist" id="support-tabs" data-i18n-aria="support_network"></div>
       <div class="support-card" role="tabpanel" id="support-panel">
         <div class="support-top">
@@ -505,11 +524,16 @@
           </div>
         </div>
         <p class="support-addr" id="support-addr"></p>
+        <div class="support-bal" id="support-bal" hidden>
+          <span class="support-bal-t"><span class="support-bal-l" id="support-bal-l" data-i18n="goal_balance">Balance of this address</span><strong id="support-bal-v"></strong></span>
+          <span class="support-bal-links" id="support-bal-links"></span>
+        </div>
       </div>
       <div class="sheet-actions">
         <button type="button" id="support-done" class="btn btn-secondary" data-i18n="support_done">Done</button>
         <button type="button" id="support-copy" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="support-copy-t" data-i18n="support_copy">Copy address</span></button>
       </div>
+      <p class="help center" id="goal-note" hidden data-i18n="goal_note">The wallets are not moved until the goal is reached, so anyone can check them. Explorers are outside sites and see your IP address.</p>
       <p class="help center" data-i18n="support_check">After pasting, check the highlighted first and last characters. These addresses are part of the verified build and listed in HASHES.txt.</p>
     </section>
   </div>

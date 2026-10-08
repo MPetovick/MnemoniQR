@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.7.0 · User interface
+// MnemoniQR v6.8.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.7.0';
+const APP_VERSION = '6.8.0';
 // Version + content id stamped by tools/build.py; the service worker announces the same value
 const APP_BUILD = document.documentElement.dataset.build || APP_VERSION;
 const CFG = Object.freeze({
@@ -841,7 +841,7 @@ async function downloadZIP() {
         t('zip_readme_2'),
         t('zip_readme_3'),
         ...(R.keyfile ? [t('pdf_kf', { fp: R.keyfile })] : []),
-        '', 'https://github.com/MPetovick/MnemoniQR', ''
+        '', 'https://mnemoniqr.app', 'Source code: https://github.com/MPetovick/MnemoniQR', ''
     ].join('\r\n');
     files.push({ name: 'README.txt', data: new TextEncoder().encode(readme) });
     downloadBlob(Zip.make(files), `mnemoniqr-${set}.zip`);
@@ -1677,6 +1677,128 @@ const Install = {
 
 
 // ============================================================
+// COMMUNITY GOAL (snapshot in js/goal.js)
+// ============================================================
+// Built into each version like the addresses (SRI, fingerprint, checked by tools/build.py): the app never asks
+// anyone for the live total. Shown only together with the support UI: a thin bar in the footer, a ring in the
+// sheet and, for the network on screen, the balance of its address with links to check it on an explorer.
+const Goal = {
+    EXPLORERS: {
+        btc: [['mempool.space', 'https://mempool.space/address/']],
+        evm: [['Etherscan', 'https://etherscan.io/address/'], ['BscScan', 'https://bscscan.com/address/'], ['Basescan', 'https://basescan.org/address/']],
+        tron: [['Tronscan', 'https://tronscan.org/#/address/']],
+        ton: [['Tonviewer', 'https://tonviewer.com/']]
+    },
+    on: false, target: 0, raised: 0, asOf: '', wallets: {},
+    // The same rules as tools/build.py: a snapshot that does not add up is not shown at all
+    load(kinds) {
+        const g = self.MQR_GOAL;
+        const num = (x) => typeof x === 'number' && Number.isFinite(x) && x >= 0;
+        try {
+            const date = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
+            if (!g || typeof g !== 'object' || Object.keys(g).sort().join() !== 'as_of,start,target_usd,wallets') throw new Error('keys');
+            if (!num(g.target_usd) || !(g.target_usd > 0)) throw new Error('target');
+            if (!date(g.as_of) || !date(g.start) || g.as_of < g.start) throw new Error('date');
+            const w = g.wallets;
+            const keys = w && typeof w === 'object' ? Object.keys(w) : [];
+            if (!kinds.length || keys.length !== kinds.length || !kinds.every((k) => keys.includes(k))) throw new Error('networks');
+            const wallets = {};
+            let raised = 0;
+            for (const k of kinds) {
+                const x = w[k];
+                if (!x || !num(x.usd) || !Array.isArray(x.assets) || !x.assets.length || x.assets.length > 20) throw new Error(k);
+                let sum = 0;
+                const assets = x.assets.map((a) => {
+                    if (!a || typeof a.sym !== 'string' || !/^[A-Z]{2,6}$/.test(a.sym) || typeof a.chain !== 'string' || !/^[a-z]{2,12}$/.test(a.chain)
+                        || typeof a.amount !== 'string' || !/^\d{1,30}(\.\d{1,36})?$/.test(a.amount) || !num(a.usd)
+                        || (Number(a.amount) === 0 && a.usd !== 0)) throw new Error(k);
+                    sum += a.usd;
+                    return { sym: a.sym, amount: Number(a.amount) };
+                });
+                if (Math.abs(Math.round(sum * 100) / 100 - x.usd) > 0.011) throw new Error(k);
+                wallets[k] = { usd: x.usd, assets };
+                raised += x.usd;
+            }
+            Object.assign(this, { on: true, target: g.target_usd, raised: Math.round(raised * 100) / 100, asOf: g.as_of, wallets });
+        } catch { this.on = false; }
+        return this.on;
+    },
+    usd(v) {
+        const d = v >= 100 || v === 0 ? 0 : 2;
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+    },
+    amount(n) {
+        if (n === 0) return '0';
+        return new Intl.NumberFormat('en-US', n >= 1 ? { maximumFractionDigits: n >= 1000 ? 0 : 4 } : { maximumSignificantDigits: 6 }).format(n);
+    },
+    date() { return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${this.asOf}T00:00:00Z`)); },
+    pct() {
+        const p = Math.min(100, (this.raised / this.target) * 100);
+        return { value: p, label: this.raised > 0 && p < 1 ? '<1%' : `${Math.floor(p)}%` };
+    },
+    reached() { return this.raised >= this.target; },
+    // Footer: one line and a thin bar under it
+    renderFooter() {
+        const link = $('support-link');
+        link.classList.toggle('has-goal', this.on);
+        link.parentElement.classList.toggle('has-goal', this.on);
+        $('support-plain').hidden = this.on;
+        ['goal-foot', 'goal-foot-pct', 'goal-foot-bar'].forEach((id) => { $(id).hidden = !this.on; });
+        if (!this.on) { link.removeAttribute('aria-label'); return; }
+        const p = this.pct();
+        const label = t(this.reached() ? 'goal_foot_done' : 'goal_foot');
+        $('goal-foot-t').textContent = label;
+        $('goal-foot-pct').textContent = p.label;
+        $('goal-foot-fill').style.width = `${p.value}%`;
+        link.setAttribute('aria-label', t('goal_foot_aria', { label, pct: p.label, target: this.usd(this.target), date: this.date() }));
+    },
+    // Support sheet: the progress ring, the total and the date of the snapshot
+    renderSheet() {
+        $('goal-box').hidden = !this.on;
+        $('goal-note').hidden = !this.on;
+        $('support-lead').hidden = this.on;
+        if (!this.on) return;
+        const p = this.pct();
+        const arc = $('goal-arc');
+        const C = 2 * Math.PI * 40;
+        arc.setAttribute('stroke-dasharray', `${(C * p.value / 100).toFixed(2)} ${C.toFixed(2)}`);
+        if (p.value > 0) arc.removeAttribute('hidden'); else arc.setAttribute('hidden', '');   // a round cap would draw a dot at 0
+        const ring = $('goal-ring');
+        ring.setAttribute('aria-valuenow', String(Math.floor(p.value)));   // the same figure as the label
+        ring.setAttribute('aria-valuetext', t('goal_ring_text', { pct: p.label, raised: this.usd(this.raised), target: this.usd(this.target) }));
+        $('goal-pct').textContent = p.label;
+        $('goal-title').textContent = t(this.reached() ? 'goal_title_done' : 'goal_title');
+        $('goal-raised').textContent = this.usd(this.raised);
+        $('goal-target').textContent = t('goal_of', { target: this.usd(this.target) });
+        $('goal-asof').textContent = t('goal_asof', { date: this.date() });
+    },
+    // The network on screen: balance of its address (by coin, non-zero only) and where anyone can check it
+    renderBalance(d) {
+        const w = this.on ? this.wallets[d.kind] : null;
+        $('support-bal').hidden = !w;
+        if (!w) return;
+        const by = new Map();
+        w.assets.forEach((a) => by.set(a.sym, (by.get(a.sym) || 0) + a.amount));
+        const held = [...by].filter(([, n]) => n > 0);
+        const text = held.length ? held.slice(0, 4).map(([sym, n]) => `${this.amount(n)} ${sym}`).join(' · ') : `0 ${w.assets[0].sym}`;
+        $('support-bal-l').textContent = t(d.kind === 'evm' ? 'goal_balance_evm' : 'goal_balance');
+        const approx = document.createElement('span');
+        approx.textContent = ` ≈ ${this.usd(w.usd)}`;
+        $('support-bal-v').replaceChildren(document.createTextNode(text), approx);
+        $('support-bal-links').replaceChildren(...(this.EXPLORERS[d.kind] || []).map(([name, base]) => {
+            const a = document.createElement('a');
+            a.className = 'link';
+            a.href = base + encodeURIComponent(d.address);
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = `${name} ↗`;
+            a.setAttribute('aria-label', t('goal_explorer', { name }));
+            return a;
+        }));
+    }
+};
+
+// ============================================================
 // SUPPORT (donations)
 // ============================================================
 // Addresses come only from js/donate.js (SRI, build fingerprint, checked by tools/build.py).
@@ -1692,6 +1814,8 @@ const Support = {
         const on = this.list.length > 0;
         $('support-link').hidden = !on;
         $('support-about').hidden = !on;
+        Goal.load(on ? this.list.map((d) => d.kind) : []);
+        Goal.renderFooter();
         if (!on) return;
         $('support-link').addEventListener('click', () => this.open());
         $('support-about-go').addEventListener('click', () => { closeModal('about-modal'); this.open(); });
@@ -1724,6 +1848,7 @@ const Support = {
             return b;
         }));
         tabs.hidden = this.list.length < 2;
+        Goal.renderSheet();
         this.select((this.cur && this.list.includes(this.cur) ? this.cur : this.list[0]).id);
         openModal('support-sheet');
         // Focus the selected tab (the sheet reopens on the network shown last), not simply the first one
@@ -1761,6 +1886,7 @@ const Support = {
             return sp;
         }));
         $('support-copy-t').textContent = t('support_copy');
+        Goal.renderBalance(d);
         const c = $('support-qr');
         c.setAttribute('aria-label', t('support_qr_alt', { net }));
         try { await QR.renderSharp(c, d.address, 134, 'M'); } catch { c.width = 0; }
