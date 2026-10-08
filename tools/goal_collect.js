@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // MnemoniQR · Used by tools/goal.py: reads {target_usd, start, addresses} on stdin and prints the live goal as
 // JSON, with exactly the code the campaign page runs (web/api/goal.js). Needs Node 18 or later (fetch).
 'use strict';

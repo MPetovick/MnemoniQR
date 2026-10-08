@@ -1,6 +1,12 @@
 # MnemoniQR backup formats
 
-All binary data is encoded as unpadded base64url after a text prefix. Multi-byte integers are big-endian.
+The byte layout of every backup MnemoniQR writes and reads, complete enough to write an independent decoder. `tools/recover.py` is the reference implementation. Multi-byte integers are big-endian.
+
+- [Text encodings](#text-encodings)
+- [Backup block](#backup-block): header, key derivation, slots, plaintext
+- [Share](#share)
+- [Legacy formats](#legacy-formats-read-only)
+- [Decrypting, step by step](#decrypting-step-by-step)
 
 ## Text encodings
 
@@ -28,8 +34,6 @@ The `MQR5`/`MQS5` text uses only `A–Z`, `2–7` and `:`, so QR codes are encod
 | 11 | 16 | Salt |
 
 Accepted ranges when decrypting (anything else is rejected before deriving a key): Argon2id memory 8–512 MiB, passes 1–16, parallelism 1–8; PBKDF2 100,000–5,000,000 iterations.
-
-### Slots
 
 ### Key derivation input
 
@@ -66,7 +70,7 @@ Both plaintexts are zero-padded to the same length `L`, the smallest multiple of
 version = 4 (1) | set id (4) | k (1) | n (1) | x (1) | y (len = backup block)
 ```
 
-The complete `MQR4` block is split byte by byte with Shamir's secret sharing over GF(2⁸) (reduction polynomial 0x11B, generator 3), with fresh random coefficients for every byte. Any `k` distinct shares of the same set rebuild the block, which still needs the password. Constraints: 2 ≤ k ≤ n ≤ 16. Shares are not SLIP-39 compatible.
+The complete backup block (the bytes inside an `MQR5:` or `MQR4:` text) is split byte by byte with Shamir's secret sharing over GF(2⁸) (reduction polynomial 0x11B, generator 3), with fresh random coefficients for every byte. Any `k` distinct shares of the same set rebuild the block, which still needs the password. Constraints: 2 ≤ k ≤ n ≤ 16. Shares are not SLIP-39 compatible.
 
 ## Legacy formats (read-only)
 
@@ -77,6 +81,15 @@ The complete `MQR4` block is split byte by byte with Shamir's secret sharing ove
 
 MnemoniQR decrypts both and suggests re-encrypting them in the current format.
 
+## Decrypting, step by step
+
+1. Strip the prefix and decode the text: for `MQR5:`/`MQS5:`, uppercase, remove whitespace and dashes, map `0`→`O` and `1`→`I`, base32-decode, and check the trailing CRC-32 of the rest; for `MQR4:`/`MQS4:`, base64url-decode.
+2. For shares: group by set id, check that `k` and `n` agree, take any `k` distinct `x`, and rebuild every byte by Lagrange interpolation at 0 over GF(2⁸).
+3. Parse the header and check the magic, the version, unknown flag bits and the KDF parameter ranges.
+4. Derive the 32-byte key from the key derivation input with Argon2id version 0x13 (`m` = p1 KiB, `t` = p2, `p` = p3, salt) or PBKDF2-HMAC-SHA256 (p1 iterations, salt).
+5. Split the rest into two slots of equal length. For each: AES-256-GCM decrypt with its IV, the header as additional data, and the tag. The slot whose tag verifies is the one this password opens; if neither verifies, the password (or keyfile) is wrong.
+6. Parse the plaintext, ignoring the zero padding, and turn the entropy into words with the English BIP39 list.
+
 ## Reference implementation
 
-`tools/recover.py` implements every format in this document in about 450 lines of Python (argon2-cffi and cryptography are its only dependencies) and is tested against backups produced by the app.
+`tools/recover.py` implements every format in this document, the legacy ones included, in about 480 lines of Python (argon2-cffi and cryptography are its only dependencies) and is tested against backups produced by the app.

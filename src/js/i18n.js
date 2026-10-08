@@ -1,4 +1,6 @@
-// MnemoniQR v6.8.0 · UI strings (English).
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
+// MnemoniQR v6.9.0 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -322,7 +324,7 @@ const en = {
     installed: "App installed",
     link_readme: "Read the README",
     link_source: "Source code",
-    open_source: "MnemoniQR is open source under the Apache 2.0 license. You can review the code and build it yourself.",
+    open_source: "MnemoniQR is open source under the GNU AGPL-3.0 license: you can review the code, build it yourself and share it under the same terms.",
     err_pp_too_long: "The passphrase is too long (100 bytes at most; accented letters take more than one). It was not shortened, because a different passphrase would be a different wallet.",
     err_note_too_long: "The note is too long (100 bytes at most; accented letters and emoji take more than one).",
     err_decoy_same_seed: "The decoy phrase must be different from the real one, otherwise the decoy password would open your real wallet.",

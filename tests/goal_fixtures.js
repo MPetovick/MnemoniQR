@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // MnemoniQR · Recorded-style answers of the public explorers and CoinGecko, for tests/goal_api_test.js
 // (no network). The balances add up to $10,319.52: the same made-up figures as `tools/build.py --goal-test`.
 'use strict';

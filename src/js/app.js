@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // ============================================================
-// MnemoniQR v6.8.0 · User interface
+// MnemoniQR v6.9.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +14,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.8.0';
+const APP_VERSION = '6.9.0';
 // Version + content id stamped by tools/build.py; the service worker announces the same value
 const APP_BUILD = document.documentElement.dataset.build || APP_VERSION;
 const CFG = Object.freeze({

@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // ============================================================
-// MnemoniQR v6.8.0 · Core (no DOM). Used by the app and by tests/tests.html.
+// MnemoniQR v6.9.0 · Core (no DOM). Used by the app and by tests/tests.html.
 // ============================================================
 'use strict';
 (function (G) {

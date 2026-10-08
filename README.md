@@ -2,40 +2,51 @@
 
 **Encrypt your BIP39 recovery phrase into one or more QR codes — entirely on your device.**
 
-MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print and store on paper. Encryption, decryption, QR generation and scanning all happen locally in your browser. The app loads nothing from third parties, works offline once installed, and is also available as a single HTML file for computers that never go online.
+MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print and store on paper. Someone who finds the paper sees a code that is useless without your password. Encryption, decryption, QR generation and scanning all happen locally in your browser. The app loads nothing from third parties, works offline once installed, and is also available as a single HTML file for computers that never go online.
 
-- Live app: <https://mnemoniqr.app>
-- Community goal: <https://mnemoniqr.app/goal>
-- Source code: <https://github.com/MPetovick/MnemoniQR>
-- License: [Apache 2.0](LICENSE)
+- **App:** <https://mnemoniqr.app>
+- **Community goal:** <https://mnemoniqr.app/goal>
+- **Source code:** <https://github.com/MPetovick/MnemoniQR>
+- **License:** [GNU AGPL-3.0](LICENSE) · [commercial license](COMMERCIAL.md) · [NOTICE](NOTICE)
 
 > MnemoniQR protects a backup, it does not replace good habits. Use a long, unique password, store it separately from the QR, and practise a recovery before you rely on it.
 
 ---
 
-## Contents
+## Documentation
 
-- [Features](#features)
-- [How it works](#how-it-works)
-- [Security model](#security-model)
-- [Using MnemoniQR](#using-mnemoniqr)
-- [Recovering without the app](#recovering-without-the-app)
-- [Verifying your copy](#verifying-your-copy)
-- [Building, testing and deploying](#building-testing-and-deploying)
-- [Project structure](#project-structure)
-- [Word list](#word-list)
-- [Privacy](#privacy)
-- [Compatibility with older backups](#compatibility-with-older-backups)
-- [Contributing and reporting vulnerabilities](#contributing-and-reporting-vulnerabilities)
-- [Support the project](#support-the-project)
-- [Third-party components](#third-party-components)
+| I want to… | Read |
+|---|---|
+| Make my first backup, step by step | [User guide](docs/USER_GUIDE.md) |
+| Know which options to use (passphrase, decoy, keyfile, shares) | [User guide · Choosing the options](docs/USER_GUIDE.md#choosing-the-options) |
+| Store the backup and the password safely | [User guide · Storing the backup](docs/USER_GUIDE.md#storing-the-backup) |
+| Recover without the app, or leave instructions to my heirs | [Recovery](docs/RECOVERY.md) |
+| Find a quick answer | [FAQ](docs/FAQ.md) |
+| Know what the app stores and sends | [Privacy](docs/PRIVACY.md) |
+| Understand the security and the cryptography | [Security design and audit history](docs/AUDIT.md) |
+| Read the byte layout of a backup | [Format](docs/FORMAT.md) |
+| Donate, or follow the community goal | [Donations](docs/DONATIONS.md) |
+| Report a vulnerability | [Security policy](SECURITY.md) |
+| Build, test, deploy or contribute | [Development](docs/DEVELOPMENT.md) · [Contributing](CONTRIBUTING.md) · [CLA](CLA.md) |
+| Use MnemoniQR in a product or service | [License](#license) · [Commercial license](COMMERCIAL.md) |
+| See what changed | [Changelog](CHANGELOG.md) |
+
+## Quick start
+
+1. Open <https://mnemoniqr.app> and install it (*Install app* in the footer; on iPhone: Share → *Add to Home Screen*). Turn on airplane mode.
+2. Try **Practice a recovery** once, with a test seed.
+3. **Encrypt a seed**: type your phrase with the built-in keyboard, check the wallet fingerprint, choose options, generate a password and **write it on paper**.
+4. **Check I can recover it**, then print the PDF. Keep the QR and the password in different places.
+5. To get your wallet back: **Recover from a QR**, scan, type the password.
+
+The [user guide](docs/USER_GUIDE.md) explains every step.
 
 ## Features
 
 **Encryption**
 - Argon2id key derivation (64, 128 or 256 MiB, with the time it takes on your device shown before you choose) and AES-256-GCM authenticated encryption.
 - Falls back to PBKDF2-SHA256 with 600,000 iterations only when the browser blocks WebAssembly, and says so.
-- The QR reveals nothing: the note, date, BIP39 passphrase and number of words are all encrypted and padded.
+- The QR hides its content: the note, date, BIP39 passphrase and number of words are all encrypted and padded. Only what is needed to decrypt is visible (the protection level, and whether a keyfile is required).
 - **Optional keyfile** as a second factor: any file (a photo, a document) whose SHA-256 is mixed into the key derivation. The file itself is never stored.
 
 **Passwords**
@@ -46,7 +57,7 @@ MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print
 **Entry without leaks**
 - A built-in keyboard for the recovery phrase, so the system keyboard never sees the words (no learning, syncing or logging).
 - The keyboard disables impossible letters, suggests words and accepts 4-letter prefixes, as BIP39 allows. A physical keyboard also works on desktop.
-- Words are masked while you type, and BIP39 checksums are validated before anything is encrypted.
+- Words are masked while you type, and the BIP39 checksum is validated before anything is encrypted (a phrase that fails is saved only if you confirm).
 
 **Backups that survive real life**
 - **Shamir shares:** split a backup into 2-of-3, 3-of-5 or any k-of-n up to 16. Fewer shares than required reveal nothing; the password is still needed after combining.
@@ -62,7 +73,7 @@ MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print
 **App**
 - Installable PWA with an install sheet (native prompt on Android and desktop, step-by-step instructions on iPhone and iPad).
 - English interface and the English BIP39 word list; light and dark themes; accessible dialogs and keyboard navigation.
-- Seeds are erased from the screen after 60 seconds, when you leave the app, and when the page is closed.
+- A decrypted phrase is erased after 60 seconds and as soon as you leave the app; a phrase being typed is erased if the app stays in the background for more than 2 minutes; everything is erased when the page is closed.
 
 ## How it works
 
@@ -89,7 +100,7 @@ The full byte layout is documented in [docs/FORMAT.md](docs/FORMAT.md).
 - Someone finding one share: a single Shamir share carries no information at all.
 - Someone forcing you to decrypt: the decoy password opens a decoy wallet, and the QR does not reveal that a decoy exists. The app refuses a decoy phrase identical to the real one.
 - A modified QR: AES-GCM authentication rejects any change, including to the header and KDF parameters.
-- Network exposure: the Content Security Policy forbids the page from making any network request at all (`connect-src 'none'`) and the app loads no third-party code, fonts or images.
+- Network exposure: the Content Security Policy forbids the page from sending data anywhere (`connect-src 'none'`), and the app loads no third-party code, fonts or images. The only requests are for its own files and, when installed, update checks.
 
 **What it cannot protect against**
 - A weak or reused password. Whoever has the QR can guess offline without limit. Use the generator: 6 words (about 76 bits) or 20 characters (120 bits).
@@ -97,182 +108,47 @@ The full byte layout is documented in [docs/FORMAT.md](docs/FORMAT.md).
 - Browser memory: JavaScript cannot guarantee that every copy of the phrase is wiped. Close the tab when you finish.
 - Losing the password, the keyfile, or enough shares. There is no recovery service. A keyfile must stay byte-for-byte identical: an edited or re-saved copy will not work.
 
-A full list of what was reviewed and changed is in [docs/SECURITY.md](docs/SECURITY.md).
-
-## Using MnemoniQR
-
-1. **Encrypt a seed.** Enter the phrase with the built-in keyboard. The app checks the BIP39 checksum and shows the wallet fingerprint.
-2. **Options.** Add an encrypted note, your BIP39 passphrase, a decoy wallet, a keyfile, or split the backup into shares.
-3. **Password.** Generate 6 words or 20 characters, or choose your own (the meter explains what is weak), then pick a protection level.
-4. **Verify, then print.** Tap *Check I can recover it*, then export a PDF or PNG (with shares, also all of them in one ZIP, to move them to separate places). Store the password and each share in different places.
-5. **Recover.** Tap *Recover from a QR*, then scan, upload or type the QR text (or enough shares, in any order), add the keyfile if the backup has one, and enter the password.
-
-Before trusting a backup, run through *Practice a recovery* once.
+The threat model, the cryptography and every past review are in [docs/AUDIT.md](docs/AUDIT.md). To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Recovering without the app
 
-`tools/recover.py` (also shipped as `recover.py` in every release) decrypts any MnemoniQR backup without the app, so a backup stays recoverable even if this website disappears. It reads every format ever written (`MQR5`/`MQS5`, `MQR4`/`MQS4`, `MQR3`, `MQRv2`), combines shares, supports keyfiles and decoys, and prints the wallet fingerprint.
+Backups do not depend on this website. An installed copy keeps working offline, every release ships the single file `mnemoniqr-offline.html`, and `recover.py` (in every release and in `tools/`) decrypts every MnemoniQR format, in a short Python program:
 
 ```bash
 pip install argon2-cffi cryptography
 python3 recover.py                        # paste the text of the QR (or several shares), then Ctrl-D
-python3 recover.py --keyfile photo.jpg backup.txt
 ```
 
-Get the text by scanning the QR with any offline QR reader, or type the text printed under it. Run it on an offline computer. The format it implements is documented in [docs/FORMAT.md](docs/FORMAT.md).
+See [docs/RECOVERY.md](docs/RECOVERY.md), which also covers instructions for your heirs.
 
 ## Verifying your copy
 
-Every release has a **build fingerprint**, shown in *How it protects you* inside the app and published in `HASHES.txt`. It is derived from the Subresource Integrity hashes of every script and the stylesheet (or the CSP hashes in the single-file version), including the Argon2 worker that receives the password, so any change to the code changes the fingerprint.
+Every release has a **fingerprint**, shown in *How it protects you* in the app and published in `HASHES.txt`. It covers every script and the stylesheet (and the Argon2 worker that receives the password), so any change to the code changes it. The build is reproducible: anyone can rebuild a release and get the same `HASHES.txt`. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-To check a release:
+## Compatibility
 
-1. Compare the fingerprint in the app with `HASHES.txt` in the repository release.
-2. For full assurance, rebuild from source (below): the build is deterministic, so your `dist/HASHES.txt` must match the published one byte for byte.
-
-## Building, testing and deploying
-
-Requirements: Python 3.8+ (standard library only). No Node.js or npm is needed to build. Node.js 18+ is only used to refresh the community goal snapshot (`tools/goal.py`) and to test the goal function.
-
-```bash
-python3 tools/build.py            # writes dist/
-python3 tools/build.py --no-tests # same, without the test page
-```
-
-The build checks that the BIP39 word lists match the hashes pinned in `src/js/core.js` and that every file referenced by `index.html` and the service worker exists, then writes:
-
-| Output | Purpose |
-|---|---|
-| `dist/` | The PWA, with a strict CSP, Trusted Types and SRI |
-| `dist/mnemoniqr-offline.html` | Everything in one file, for offline computers (open it directly, no server needed) |
-| `dist/HASHES.txt` | SHA-256 of every file and the build fingerprints |
-| `dist/vercel.json`, `dist/_headers` | HTTP security headers for Vercel, Netlify or Cloudflare Pages; on Vercel also the `/goal` route |
-| `dist/api/goal.js`, `dist/api/goal-config.json` | The live community goal (`/goal` page and `/api/goal` JSON), a Vercel function |
-| `dist/recover.py` | Standalone recovery tool |
-| `dist/tests/tests.html` | In-browser test suite |
-
-**Unit tests.** Serve `dist/` (for example `cd dist && python3 -m http.server`) and open `/tests/tests.html`. It runs 39 tests in the browser: the official BIP39 vectors, the known fingerprint `73c5da0a`, the prefix index, Shamir, encryption, tampering, decoys, shares, keyfiles, the MQR5 text format (every single-character typo is caught), typed input, MQR4/v3/v2 compatibility, the password meter and generators, fuzzing of every parser with thousands of malformed inputs and hundreds of mutated backups, a check that decrypted fields are never silently shortened, a check that the largest allowed backup fits a QR at maximum error correction, and a speed check of the password meter on long repetitive input.
-
-**Recovery-tool tests.** `python3 tests/test_recover.py` fuzzes every parser in `tools/recover.py`: it must only ever fail with a readable error, never a traceback.
-
-**End-to-end tests.** `tests/e2e.py` drives the real app in Chromium, Firefox and WebKit: a full backup with keyboard entry, passphrase (including a mistyped confirmation), decoy, keyfile, shares and a diceware password; cancelling during decryption; the largest allowed backup printed on two pages and read back by `tools/recover.py`; verification; the PDF; recovery by typing the printed text; recovery of the same text with `tools/recover.py`; the install sheet; and the offline single file. `tests/update_e2e.py OLD_DIST` checks that an installed older version updates by itself, never in the middle of a flow; `tests/brand_e2e.py` reads the PNG, the ZIP of shares and the printed PDF (rasterized at 100 and 150 dpi) with ZXing, a decoder independent from the app; `tests/donate_e2e.py` checks the support screens (QR decodes to the exact address, copy, once-only line) and that a mistyped address never builds; `tests/goal_e2e.py` checks the community goal in the app (footer bar, ring, balance and explorer links per network, snapshots that do not add up are not shown); `tests/test_goal.py` checks the snapshot tool and what the build ships for `/goal`; `node --test tests/goal_api_test.js` checks the live goal function with recorded answers (sums, unreadable wallets never counted as zero, the page's CSP and escaping).
-
-```bash
-pip install playwright argon2-cffi cryptography && python -m playwright install
-python3 tools/build.py && python3 tests/e2e.py --browser all
-```
-
-**Continuous integration.** `.github/workflows/ci.yml` builds, checks that the build is reproducible and runs the end-to-end tests in all three browsers on every push. In Chromium it also runs the recovery-tool tests, the donation-address checks and support screens (`tools/addresses.py`, `tests/donate_e2e.py`), the community goal (`tests/test_goal.py`, `tests/goal_e2e.py`, `tests/goal_api_test.js`), the PDF/ZIP test with an independent decoder (`tests/brand_e2e.py`) and the forced update from the previous release (`tests/update_e2e.py`).
-
-**Deploying.** Publish the contents of `dist/` at <https://mnemoniqr.app> (on Vercel: a project whose root is `dist/`, no build command). Keep the provided headers: `frame-ancestors`, `Permissions-Policy`, HSTS and the cross-origin policies only work as HTTP headers. The site must be served over HTTPS for the service worker, camera and installation to work. `index.html`, `sw.js` and `manifest.json` must not be cached (the provided headers do this), otherwise installed copies see new versions late.
-
-The community goal page needs Vercel (or any host that runs `api/goal.js` as a Node function): `vercel.json` sends `/goal` to the function, and keeps the app's headers off `/goal` and `/api/`, which send their own (a page with no script and a hash-pinned stylesheet). It works without any key; for production, set free `COINGECKO_API_KEY` (demo) and `TRONGRID_API_KEY` in the Vercel project, since keyless limits are shared by everyone on the same servers. The other optional variables are listed at the top of `web/api/goal.js`. On Netlify or Cloudflare Pages the app works the same, only `/goal` is missing.
-
-**Updates.** Every build carries a content id of the files it ships (shown by `tools/build.py` and in `HASHES.txt`), so any change, even without raising the version number, reaches installed copies. Installed copies update by themselves the next time they are opened online: the new version is downloaded in the background and the app reloads as soon as it is on the home screen, never in the middle of a backup or a recovery.
-
-## Project structure
-
-```
-src/
-  index.html          markup (CSP placeholder filled at build time)
-  styles.css          design system, light and dark themes
-  sw.js               service worker: precaches the app, serves only its own files, installs updates by itself
-  kdf-worker.js       Argon2id in a Web Worker (cancellable); the build bundles it with hash-wasm into
-                      js/kdf-src.js, loaded with the page under SRI and started from a blob: URL
-  manifest.json       PWA manifest
-  js/core.js          crypto, BIP39, Shamir, fingerprint, formats (no DOM)
-  js/strength.js      password meter, diceware generator, phrase-reuse rules
-  js/dicts.js         ranked frequency lists for the meter (from zxcvbn)
-  js/eff-words.js     EFF diceware list without BIP39 words
-  js/app.js           user interface
-  js/i18n.js          all UI strings (English)
-  js/donate.js        donation addresses (the only place they are defined)
-  js/goal.js          community goal snapshot: target and balance of each address (written by tools/goal.py)
-  js/wordlists.js     canonical BIP39 English word list
-  vendor/             qrcode, jsQR, hash-wasm (Argon2), noble-secp256k1 + RIPEMD-160
-  fonts/              Atkinson Hyperlegible and JetBrains Mono (OFL)
-  tests/              in-browser test suite and official BIP39 vectors
-web/api/goal.js       live community goal for mnemoniqr.app/goal (Vercel function, no script on the page)
-tools/build.py        deterministic build (--out, --donate-test, --donate-none, --goal-test for the tests)
-tools/goal.py         refreshes the goal snapshot from the public explorers (uses tools/goal_collect.js)
-tools/addresses.py    donation address checksums (Bitcoin, Ethereum EIP-55, TRON, TON)
-tools/recover.py      standalone recovery tool (Python)
-tests/e2e.py          end-to-end tests (Chromium, Firefox, WebKit)
-tests/update_e2e.py   forced update from an older build
-tests/donate_e2e.py   support screens and address checks
-tests/goal_e2e.py     community goal in the app
-tests/test_goal.py    goal snapshot tool and what the build ships for /goal
-tests/goal_api_test.js  live goal function, with recorded answers (node --test)
-tests/brand_e2e.py    PDF logo, ZIP and printed codes, read by an independent decoder
-tests/test_recover.py robustness tests for the recovery tool
-.github/workflows/    continuous integration
-docs/FORMAT.md        backup and share formats
-docs/SECURITY.md      audit notes and threat model
-```
-
-## Word list
-
-MnemoniQR uses the English BIP39 word list, the one used by virtually every wallet. Words can be typed in upper or lower case, and any word can be entered by its first four letters.
-
-Versions 4.0 to 5.1.0 also accepted the Spanish word list. Backups made that way are recognised and refused with a clear message rather than decoded: the same entropy shown as English words would be a different wallet. Open them with MnemoniQR 5.1.0 and re-encrypt the phrase.
-
-## Privacy
-
-- No analytics, no network requests, no third-party code, fonts or images.
-- Recovery phrases, passwords and passphrases are never written to storage.
-- The only thing kept in `localStorage` is whether you dismissed the install prompt. Nothing records that a backup or a recovery was made on the device.
-- Copying a phrase asks for confirmation and clears the clipboard after 30 seconds when the browser allows it.
-
-## Compatibility with older backups
-
-MnemoniQR reads every earlier format: `MQR4:` and `MQS4:` (4.0–6.1), `MQR3:` (v3) and `MQRv2:` (v2). Since 6.2.0 it writes `MQR5:` and `MQS5:`, which versions before 6.2.0 cannot read: keep using 6.2.0 or later (or `recover.py`) for new backups. Backups made with older versions open normally, and the app recommends re-encrypting them with the current version for Argon2id protection. The only exception is backups written with the Spanish word list in 4.0–5.1.0 (see [Word list](#word-list)).
-
-## Contributing and reporting vulnerabilities
-
-Issues and pull requests are welcome. Please keep the project's constraints: no third-party requests, no new runtime dependencies without a strong reason, and every change covered by `tests/tests.html` or the end-to-end flow.
-
-Please report security vulnerabilities privately (GitHub → *Security* → *Report a vulnerability*) rather than in a public issue.
+- **Wallets:** any wallet with a standard BIP39 English recovery phrase of 12 to 24 words. Not Electrum native seeds, SLIP-39 or private keys.
+- **Older backups:** MnemoniQR reads every format it ever wrote: `MQR5`/`MQS5` (6.2.0 and later), `MQR4`/`MQS4` (4.0–6.1), `MQR3` and `MQRv2`. Old backups open normally and the app recommends re-encrypting them for Argon2id. Versions before 6.2.0 cannot read `MQR5`.
+- **Word list:** English only. Backups made with the Spanish list in 4.0–5.1.0 are refused with a clear message (the same entropy as English words would be a different wallet): open them with MnemoniQR 5.1.0 and re-encrypt.
 
 ## Support the project
 
-MnemoniQR is free, open source and has no ads, accounts or tracking. Donations pay for security audits and new features.
+MnemoniQR is free, open source and has no ads, accounts or tracking. Donations pay for security audits and new features. The current community goal is **210,000 USD to unlock multi-seed backups for everyone** (up to 3 recovery phrases in one QR), and every balance can be checked on public block explorers. Addresses, how to donate safely and how the goal is counted: [docs/DONATIONS.md](docs/DONATIONS.md).
 
-| Network | Address |
-|---|---|
-| BTC (Bitcoin on-chain) | `bc1qqg7ttja7th9r02549wvdwz3wspcvlv3gu95kz0` |
-| ETH: USDT, USDC or ETH on Ethereum, BSC or Base (same address) | `0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64` |
-| TRON: USDT, BTT or TRX on TRON | `TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ` |
-| GRAM (formerly Toncoin) on TON, no memo | `UQCus4n5xGEVKqOCZuczwdpHeDelWjVhGYyIvAQKWXiFjj_B` |
+## Contributing
 
-The donation addresses live in one file, [`src/js/donate.js`](src/js/donate.js), and nowhere else:
+Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Contributors sign the [Contributor License Agreement](CLA.md) once. Report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
 
-- `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum in its EIP-55 checksummed form, Bitcoin Bech32/Bech32m or Base58Check, TON with its CRC-16), or if an entry is not written in the expected shape.
-- The file is loaded under Subresource Integrity, so the addresses are covered by the build fingerprint, and every release lists them in `HASHES.txt`. An address cannot be swapped without changing the fingerprint.
-- Always copy an address from the app or from the release's `HASHES.txt`, and check its first and last four characters after pasting.
-- To change them, edit `src/js/donate.js`, run `python3 tools/build.py` and deploy `dist/`. Editing `dist/js/donate.js` directly does not work: the browser refuses a file that no longer matches its SRI hash, and the support link disappears.
+## License
 
-In the app, support never interrupts: a line in the footer, one quiet line on the home screen after your first verified backup (once per device) and after each real recovery, once the phrase has been wiped (never during a flow or in practice mode), and a mention in *How it protects you*. The app cannot know whether anyone donated. With no address configured, none of this is shown.
+MnemoniQR is free software: you can redistribute it and modify it under the terms of the **[GNU Affero General Public License, version 3](LICENSE)** (AGPL-3.0-only).
 
-To test the support screens without real addresses: `python3 tools/build.py --out /tmp/mqr-test --donate-test` (public example addresses; never deploy such a build). Add `--goal-test` for made-up goal balances.
+- **Using it** (as a person or in a company) has no conditions.
+- **Sharing it**, modified or not, or **offering a modified version as a website or service**, requires making the complete source of your version available under the same license.
+- **Building it into a proprietary product** without publishing your source requires a **[commercial license](COMMERCIAL.md)**.
+- The name "MnemoniQR" and the logo are not licensed for use by others: forks must use their own.
 
-### Community goal: multi-seed backups for everyone
-
-The goal is **210,000 USD**. When it is reached, multi-seed backups (up to 3 recovery phrases in one encrypted QR) ship in an update, free for everyone. Recovering a backup is always free.
-
-**How it is counted.** The current balance of each donation address, listed coins and tokens only (BTC; ETH, USDT and USDC on Ethereum; BNB, USDT and USDC on BSC; ETH, USDC and USDT on Base; TRX, USDT and BTT on TRON; GRAM on TON), valued in USD. The wallets are not moved until the goal is reached, so anyone can open each address on a block explorer (mempool.space, Etherscan, BscScan, Basescan, Tronscan, Tonviewer) and add the balances up.
-
-**Live:** <https://mnemoniqr.app/goal> reads the explorers and CoinGecko every 10 minutes at most. The page has no script; the same figures are at `/api/goal` as JSON. A network whose explorer cannot be reached is left out of the total and named on the page, never counted as zero.
-
-**In the app:** a thin bar in the footer and a ring in the Support sheet, and for each network the balance of its address with links to its explorers. The app still connects to nothing: it shows a snapshot built into the version (`src/js/goal.js`, under SRI and the fingerprint, stated in `HASHES.txt`), dated "As of …". Refresh it before each release:
-
-```bash
-python3 tools/goal.py               # reads the explorers now (Node.js 18+), refuses an incomplete reading
-python3 tools/goal.py --from-url    # or takes https://mnemoniqr.app/api/goal once deployed
-python3 tools/goal.py --target 210000
-python3 tools/build.py
-```
-
-The build refuses a snapshot whose totals do not add up or whose networks do not match `donate.js`, and the app hides one that does not either. Opening an explorer leaves the app: that site sees your IP address, as the sheet says.
+Versions up to and including 6.8.0 were published under the Apache License 2.0 and remain available under it as published. Third-party components keep their own licenses (below and in [NOTICE](NOTICE)).
 
 ## Third-party components
 
@@ -292,4 +168,4 @@ The build refuses a snapshot whose totals do not add up or whose networks do not
 
 ---
 
-MnemoniQR is provided "as is", without warranty of any kind. See [LICENSE](LICENSE).
+Copyright (c) MPetovick and the MnemoniQR contributors. MnemoniQR is provided "as is", without warranty of any kind. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -1,4 +1,6 @@
-// MnemoniQR v6.8.0 · Automated tests (run in the browser, no tooling needed)
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
+// MnemoniQR v6.9.0 · Automated tests (run in the browser, no tooling needed)
 'use strict';
 (async () => {
     const M = self.MQR;

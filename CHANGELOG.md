@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.9.0 — license: GNU AGPL-3.0 and commercial licenses
+
+- **MnemoniQR is now licensed under the GNU Affero General Public License v3.0** (AGPL-3.0-only), and also offered under commercial licenses ([COMMERCIAL.md](COMMERCIAL.md)). It stays open source: anyone can use, read, audit, build and share it. Whoever distributes it, or offers a modified version as a website or service, must publish the source of their version under the same license; building it into a proprietary product requires a commercial license. Versions up to and including 6.8.0 remain available under Apache 2.0 as published.
+- Contributors sign a [Contributor License Agreement](CLA.md) once, by commenting on their pull request (`.github/workflows/cla.yml`).
+- Every project file carries an `SPDX-License-Identifier: AGPL-3.0-only` header. [NOTICE](NOTICE) states the licenses, where the source of each version is, the name-and-logo policy and the third-party components.
+- *How it protects you* names the new license and links to the source code.
+- No change to encryption, formats or behaviour: every backup opens as before.
+
 ## 6.8.0 — community goal
 
 - **Community goal: unlock multi-seed backups for everyone, 210,000 USD.** A thin progress bar in the footer ("Unlock multi-seed for everyone · Support it", with the percentage), and a progress ring with the total and the date in the Support sheet.
@@ -9,6 +17,7 @@
 - `tools/goal.py` refreshes the snapshot with the same code as the page (or from the deployed `/api/goal`) and refuses an incomplete reading.
 - mnemoniqr.app is the reference address everywhere (README, GitHub sponsor button, README of the shares ZIP).
 - Tall sheets scroll instead of going off the top of small screens.
+- **Documentation for users**, all linked from the README: a [user guide](docs/USER_GUIDE.md) (every step and option, storing the backup, troubleshooting), [recovery without the app and instructions for heirs](docs/RECOVERY.md) with a letter template, an [FAQ](docs/FAQ.md), a [privacy](docs/PRIVACY.md) page listing everything stored or sent, and a [donations](docs/DONATIONS.md) page. [SECURITY.md](SECURITY.md) is now the vulnerability policy; the security design and review history moved to [docs/AUDIT.md](docs/AUDIT.md), with a cryptography summary and a fuller threat model. [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) cover building, testing, deploying and releasing. [FORMAT.md](docs/FORMAT.md) describes decryption step by step. `LICENSE` is the plain Apache 2.0 text again; the disclaimer, the name-and-logo note and third-party attributions are in [NOTICE](NOTICE).
 - Tests: `tests/goal_e2e.py` (app), `tests/test_goal.py` (tool, build checks, routes and headers), `tests/goal_api_test.js` (function, with recorded answers). All run in CI.
 
 ## 6.7.0 — GRAM
@@ -77,7 +86,7 @@
 
 ## 6.4.1 — review fixes
 
-Fixes for a full review of 6.4.0. Details in [docs/SECURITY.md](docs/SECURITY.md).
+Fixes for a full review of 6.4.0. Details in [docs/AUDIT.md](docs/AUDIT.md).
 
 - **First visit:** no more false "new version installed" banner and reload. The page compares the version announced by the service worker with its own.
 - **Frozen tabs are never force-reloaded.** Pages from 6.4.1 on say hello to the service worker, which keeps their ids; only older pages that do not answer are reloaded.
@@ -102,7 +111,7 @@ Fixes for a full review of 6.4.0. Details in [docs/SECURITY.md](docs/SECURITY.md
 
 ## 6.3.0 — production hardening
 
-Audit of 6.2.0. Details in [docs/SECURITY.md](docs/SECURITY.md).
+Audit of 6.2.0. Details in [docs/AUDIT.md](docs/AUDIT.md).
 
 - **Printable at any size:** passphrase and note are limited to 100 bytes for new backups (still read up to 255). Before, the largest backup did not fit a QR at maximum error correction (PDF export failed) and printed cards with 0.3 mm modules.
 - **PDF:** long backup text continues on a second page instead of being cut at the bottom of the sheet; cards are refused when a code would be too dense to print.
@@ -146,7 +155,7 @@ Audit of 6.2.0. Details in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## 5.1.0 — production release
 
-- Audit fixes: broken PDF export, unexpected reload on first visit, updates applied mid-flow, lost install prompt, service worker shell over-matching, recovery allowed with failed word-list integrity, global debug hook, practice decoy race, PDF punctuation, stylesheet missing from the build fingerprint, over-broad cache cleanup. Details in [docs/SECURITY.md](docs/SECURITY.md).
+- Audit fixes: broken PDF export, unexpected reload on first visit, updates applied mid-flow, lost install prompt, service worker shell over-matching, recovery allowed with failed word-list integrity, global debug hook, practice decoy race, PDF punctuation, stylesheet missing from the build fingerprint, over-broad cache cleanup. Details in [docs/AUDIT.md](docs/AUDIT.md).
 - Binary-search BIP39 lookups with no caching of typed prefixes.
 - Links to the README and the source code in the footer and in *How it protects you*, with the Apache 2.0 notice.
 - Build pre-flight checks, deterministic output, `--no-tests`, `X-Frame-Options`.

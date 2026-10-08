@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // MnemoniQR · Tests of the live goal function (web/api/goal.js) with recorded-style answers, no network.
 //
 //   node --test tests/goal_api_test.js

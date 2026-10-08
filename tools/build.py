@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 """
-MnemoniQR v6.8.0 · Reproducible build (Python 3 standard library only).
+MnemoniQR v6.9.0 · Reproducible build (Python 3 standard library only).
 
     python3 tools/build.py [--no-tests] [--out DIR] [--donate-test | --donate-none] [--goal-test]
 
@@ -14,7 +16,8 @@ Writes dist/ with:
   - mnemoniqr-offline.html: the whole app in one file, for devices that never go online;
   - HASHES.txt: SHA-256 of every file plus the build fingerprints the app displays;
   - _headers (Netlify / Cloudflare Pages) and vercel.json with the HTTP security headers;
-  - api/goal.js + api/goal-config.json: the live community goal at /goal and /api/goal (Vercel function).
+  - api/goal.js + api/goal-config.json: the live community goal at /goal and /api/goal (Vercel function);
+  - LICENSE.txt and NOTICE.txt (GNU AGPL-3.0, notices and third-party components).
 
 The same sources always produce byte-identical output, so anyone can rebuild a release
 and compare its HASHES.txt with the published one.
@@ -30,7 +33,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addresses  # noqa: E402  (tools/addresses.py)
 
-VERSION = '6.8.0'
+VERSION = '6.9.0'
 NO_CACHE = ['/', '/index.html', '/sw.js', '/manifest.json']
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')
@@ -411,6 +414,9 @@ def main():
     shutil.copytree(SRC, DIST, ignore=shutil.ignore_patterns(*ignore))
     # The standalone recovery script ships with every release
     shutil.copy2(os.path.join(ROOT, 'tools', 'recover.py'), os.path.join(DIST, 'recover.py'))
+    # The license travels with every copy of the app (AGPL-3.0: recipients get the license text)
+    for name in ('LICENSE', 'NOTICE'):
+        write(os.path.join(DIST, name + '.txt'), read(os.path.join(ROOT, name), 'rb'))
     for path in GENERATED | set(OVERRIDES):
         write(os.path.join(DIST, path), source(path))
     if published_kinds:

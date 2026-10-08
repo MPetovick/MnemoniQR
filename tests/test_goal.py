@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 """
 MnemoniQR · Community goal: the snapshot tool (tools/goal.py), the checks of tools/build.py and what the build
 ships for the campaign page (api/goal.js, goal-config.json, vercel.json routes and headers). No network, no browser.
@@ -154,6 +156,11 @@ def main():
     check('the service worker precaches goal.js and never touches /goal or /api', "'js/goal.js'" in sw and '/api' not in sw and "'goal" not in sw)
     html = build.read(os.path.join(dist, 'index.html'))
     check('goal.js is loaded under SRI, before app.js', re.search(r'<script src="js/goal\.js" integrity="sha384-[^"]+" defer></script>\s*<script src="js/kdf-src', html) is not None)
+
+    lic = build.read(os.path.join(dist, 'LICENSE.txt'))
+    check('the build ships the AGPL-3.0 text and the NOTICE', lic.startswith('                    GNU AFFERO GENERAL PUBLIC LICENSE')
+          and 'Version 3, 19 November 2007' in lic and 'AGPL-3.0-only' in build.read(os.path.join(dist, 'NOTICE.txt')))
+    check('the app says AGPL-3.0', 'GNU AGPL-3.0' in build.read(os.path.join(dist, 'js', 'i18n.js')) and 'Apache' not in build.read(os.path.join(dist, 'js', 'i18n.js')))
 
     print(f"\n{'All goal checks passed' if not failed else f'{failed} FAILED'}")
     sys.exit(1 if failed else 0)

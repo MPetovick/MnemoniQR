@@ -1,4 +1,6 @@
-// MnemoniQR v6.8.0 · Password strength and generation (no DOM).
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
+// MnemoniQR v6.9.0 · Password strength and generation (no DOM).
 // A compact estimator in the spirit of zxcvbn: it finds the patterns an attacker would try first
 // (common passwords, dictionary words, names, keyboard runs, sequences, repeats, dates, the user's own
 // words) and returns the cheapest way to guess the whole password, in bits.

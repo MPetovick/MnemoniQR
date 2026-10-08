@@ -1,4 +1,6 @@
-// MnemoniQR v6.8.0 · Community goal: "Unlock multi-seed backups for everyone".
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
+// MnemoniQR v6.9.0 · Community goal: "Unlock multi-seed backups for everyone".
 //
 // A snapshot of the balance of each donation address, shown in the footer and the Support sheet.
 // The app never fetches anything: this file is all it knows. It is loaded under SRI and covered by
