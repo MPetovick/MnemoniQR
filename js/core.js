@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.2.0 · Core (no DOM). Used by the app and by tests/tests.html.
+// MnemoniQR v6.3.0 · Core (no DOM). Used by the app and by tests/tests.html.
 // ============================================================
 'use strict';
 (function (G) {
@@ -19,8 +19,10 @@
         TAG_LEN: 16,
         PAD_BLOCK: 64,
         VALID_WORD_COUNTS: [12, 15, 18, 21, 24],
-        PASSPHRASE_MAX: 100,
-        NOTE_MAX: 100,
+        // Creation limits in UTF-8 bytes. They keep the largest backup inside a printable QR at maximum
+        // error correction. Decoding still accepts up to 255 bytes, as written by 6.0–6.2.
+        PASSPHRASE_MAX_BYTES: 100,
+        NOTE_MAX_BYTES: 100,
         LEVELS: Object.freeze({
             standard: { m: 65536, t: 3, p: 1 },
             high: { m: 131072, t: 4, p: 1 },
@@ -358,7 +360,13 @@
     }
     const pwBytes = (s) => enc.encode(s.normalize('NFKC'));
     // With a keyfile, the KDF input is SHA-256(keyfile) (32 bytes, fixed length) followed by the password
-    const kdfInput = (password, keyfile) => (keyfile ? concat(keyfile, pwBytes(password)) : pwBytes(password));
+    const kdfInput = (password, keyfile) => {
+        const pw = pwBytes(password);
+        if (!keyfile) return pw;
+        const out = concat(keyfile, pw);
+        wipe(pw);
+        return out;
+    };
 
     // ============================================================
     // v4 plaintext
@@ -370,8 +378,8 @@
         // would make the backup impossible to decode
         const pp = enc.encode(passphrase.normalize('NFKD'));
         const nt = enc.encode(note);
-        if (pp.length > 255) throw new MQRError('pp_too_long');
-        if (nt.length > 255) throw new MQRError('note_too_long');
+        if (pp.length > C.PASSPHRASE_MAX_BYTES) { wipe(pp); throw new MQRError('pp_too_long'); }
+        if (nt.length > C.NOTE_MAX_BYTES) throw new MQRError('note_too_long');
         const created = Math.floor(Date.now() / 1000);
         let body;
         if (entropy) body = concat(Uint8Array.of(1, C.LANG_IDS[lang] || 0, entropy.length), entropy);
@@ -393,32 +401,40 @@
     }
     const bucket = (n) => Math.max(C.PAD_BLOCK, Math.ceil(n / C.PAD_BLOCK) * C.PAD_BLOCK);
 
+    // Bounds-checked reader: a field that runs past the end is an error, never a silently shorter value
+    function reader(buf) {
+        let o = 0;
+        const need = (n) => { if (!(n >= 0) || o + n > buf.length) throw new FormatError('bad_content'); };
+        return {
+            u8() { need(1); return buf[o++]; },
+            u16() { need(2); const v = (buf[o] << 8) | buf[o + 1]; o += 2; return v; },
+            u32() { need(4); const v = ((buf[o] << 24) | (buf[o + 1] << 16) | (buf[o + 2] << 8) | buf[o + 3]) >>> 0; o += 4; return v; },
+            bytes(n) { need(n); const v = buf.slice(o, o + n); o += n; return v; },
+            text(n) { need(n); const v = dec.decode(buf.subarray(o, o + n)); o += n; return v; }
+        };
+    }
     // Any malformed plaintext ends as FormatError('bad_content'), never as a TypeError or RangeError
     async function unpackPlaintext(pt) {
         try { return await unpackPlaintextRaw(pt); }
         catch (e) { if (e instanceof MQRError) throw e; throw new FormatError('bad_content'); }
     }
     async function unpackPlaintextRaw(pt) {
-        let o = 0;
-        const type = pt[o++];
-        const lang = LANG_BY_ID[pt[o++]];
+        const r = reader(pt);
+        const type = r.u8();
+        const lang = LANG_BY_ID[r.u8()];
         // Never show the entropy as English words when it was written in another list: it would be a different wallet
         if (!lang) throw new MQRError('unsupported_lang');
         let indices = null, rawText = null;
         if (type === 1) {
-            const n = pt[o++];
-            const ent = pt.slice(o, o + n); o += n;
+            const ent = r.bytes(r.u8());
             indices = await BIP39.fromEntropy(ent);
             wipe(ent);
         } else if (type === 2) {
-            const n = (pt[o] << 8) | pt[o + 1]; o += 2;
-            rawText = dec.decode(pt.subarray(o, o + n)); o += n;
+            rawText = r.text(r.u16());
         } else throw new FormatError('bad_content');
-        const pl = pt[o++];
-        const passphrase = dec.decode(pt.subarray(o, o + pl)); o += pl;
-        const nl = pt[o++];
-        const note = dec.decode(pt.subarray(o, o + nl)); o += nl;
-        const created = new DataView(pt.buffer, pt.byteOffset).getUint32(o, false);
+        const passphrase = r.text(r.u8());
+        const note = r.text(r.u8());
+        const created = r.u32();
         const words = indices ? indices.map((i) => BIP39.word(lang, i)) : rawText.split(' ');
         return { lang, words, indices, passphrase, note, created: created ? new Date(created * 1000) : null };
     }
@@ -541,15 +557,17 @@
         try { pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: header.slice(26, hl), additionalData: header, tagLength: 128 }, key, blob.slice(hl))); }
         catch { throw new WrongPassword(); }
         const hash = await sha256Hex(pt);
-        let o = 0, words;
-        const type = pt[o++];
-        if (type === 1) { const n = pt[o++]; const e = pt.slice(o, o + n); o += n; words = (await BIP39.fromEntropy(e)).map((i) => BIP39.word('en', i)); wipe(e); }
-        else if (type === 2) { const n = (pt[o] << 8) | pt[o + 1]; o += 2; words = dec.decode(pt.subarray(o, o + n)).split(' '); o += n; }
-        else throw new FormatError('bad_content');
-        const nl = pt[o++];
-        const note = dec.decode(pt.subarray(o, o + nl)); o += nl;
-        const ts = new DataView(pt.buffer).getUint32(o, false);
-        wipe(pt);
+        let words, type, note, ts;
+        try {
+            const r = reader(pt);
+            type = r.u8();
+            if (type === 1) { const e = r.bytes(r.u8()); words = (await BIP39.fromEntropy(e)).map((i) => BIP39.word('en', i)); wipe(e); }
+            else if (type === 2) words = r.text(r.u16()).split(' ');
+            else throw new FormatError('bad_content');
+            note = r.text(r.u8());
+            ts = r.u32();
+        } catch (e) { throw e instanceof MQRError ? e : new FormatError('bad_content'); }
+        finally { wipe(pt); }
         return { lang: 'en', words, indices: type === 1 ? words.map((w) => BIP39.resolve('en', w)) : null, passphrase: '', note, created: ts ? new Date(ts * 1000) : null, hash, format: 3, kdf, practice: false };
     }
 
@@ -564,8 +582,9 @@
         try { pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: data.slice(160, 176), additionalData: meta, tagLength: 128 }, key, data.slice(176))); }
         catch { throw new WrongPassword(); }
         const hash = await sha256Hex(pt);
-        const p = JSON.parse(dec.decode(pt));
-        wipe(pt);
+        let p;
+        try { p = JSON.parse(dec.decode(pt)); } catch { throw new FormatError('bad_content'); } finally { wipe(pt); }
+        if (!p || typeof p !== 'object') throw new FormatError('bad_content');
         const ts = new DataView(meta.buffer).getUint32(2, false);
         const words = String(p.seed || '').trim().split(/\s+/);
         const idx = words.map((w) => BIP39.resolve('en', w));
@@ -573,6 +592,7 @@
     }
 
     async function decryptAny(text, password, keyfile = null) {
+        if (typeof text !== 'string' || typeof password !== 'string') throw new FormatError('not_mqr');
         if (isV5(text, C.MAGIC_V5) || text.startsWith(C.MAGIC_V4)) return decryptV4(text, password, keyfile);
         if (text.startsWith(C.MAGIC_V3)) return decryptV3(text, password);
         if (text.startsWith(C.MAGIC_V2)) return decryptV2(text, password);

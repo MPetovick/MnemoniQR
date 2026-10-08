@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.2.0 · User interface
+// MnemoniQR v6.3.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -47,7 +47,7 @@ const S = {
     scanner: { active: false, stream: null, raf: null, frame: 0, detector: null, canvas: null, cooldown: 0 },
     hiddenAt: 0, wasDecrypted: false, busy: false,
     decrypted: { words: [], pp: '' },
-    cancelKdf: null, calib: null, fpToken: 0
+    cancelKdf: null, calib: null, fpToken: 0, statusToken: 0
 };
 
 // ============================================================
@@ -140,16 +140,22 @@ async function argonMain(password, salt, m, t2, p) {
     } catch (e) { throw new MQRError(classifyArgonError(String(e.message || e))); }
     finally { util.wipe(password); }
 }
-function argonWorker(password, salt, m, t2, p) {
+// `background` runs (calibration) do not take over the Cancel button of a real key derivation
+function argonWorker(password, salt, m, t2, p, background = false) {
     return new Promise((resolve, reject) => {
         let wk;
         try { wk = makeWorker(); } catch { argonMain(password, salt, m, t2, p).then(resolve, reject); return; }
-        const done = () => { wk.w.terminate(); if (wk.url.startsWith('blob:')) { URL.revokeObjectURL(wk.url); blobUrls.delete(wk.url); } S.cancelKdf = null; };
         let settled = false;
         const pwCopy = password.slice();
-        S.cancelKdf = () => { if (settled) return; settled = true; done(); util.wipe(password, pwCopy); reject(new MQRError('cancelled')); };
+        const cancel = () => { if (settled) return; settled = true; done(); util.wipe(password, pwCopy); reject(new MQRError('cancelled')); };
+        const done = () => {
+            wk.w.terminate();
+            if (wk.url.startsWith('blob:')) { URL.revokeObjectURL(wk.url); blobUrls.delete(wk.url); }
+            if (S.cancelKdf === cancel) S.cancelKdf = null;
+        };
+        if (!background) S.cancelKdf = cancel;
         wk.w.onmessage = (e) => {
-            if (settled) return; settled = true; done(); util.wipe(password);
+            if (settled) return; settled = true; done(); util.wipe(password, pwCopy);
             if (e.data.error) reject(new MQRError(classifyArgonError(e.data.error)));
             else resolve(e.data.hash);
         };
@@ -169,7 +175,7 @@ async function calibrate() {
     if (S.calib) return S.calib;
     try {
         // Two runs, so worker start-up and WASM compilation cancel out
-        const run = async (m) => { const t0 = performance.now(); await argonWorker(util.rand(8), util.rand(16), m, 1, 1); return performance.now() - t0; };
+        const run = async (m) => { const t0 = performance.now(); await argonWorker(util.rand(8), util.rand(16), m, 1, 1, true); return performance.now() - t0; };
         const a = await run(8192), b = await run(32768);
         const per = Math.max((b - a) / 24576, b / 32768 / 3); // ms per KiB·pass
         S.calib = {};
@@ -205,7 +211,7 @@ function clearEntry() {
     S.lastGen = null;
     $('kf-enable').checked = false; $('kf-box').hidden = true; $('kf-info').hidden = true;
     S.rawAllowed = { real: false, decoy: false };
-    ['message-input', 'pp-input', 'password-input', 'password-confirm', 'decoy-input', 'decoy-confirm', 'decrypt-password'].forEach((id) => { $(id).value = ''; });
+    ['message-input', 'pp-input', 'pp-confirm', 'password-input', 'password-confirm', 'decoy-input', 'decoy-confirm', 'decrypt-password'].forEach((id) => { $(id).value = ''; });
     $('pp-enable').checked = false; $('pp-box').hidden = true;
     $('decoy-enable').checked = false; $('split-select').value = '1'; $('split-custom').hidden = true;
 }
@@ -442,6 +448,7 @@ function buzz() {
 
 async function updateSeedStatus() {
     const s = seed();
+    const token = ++S.statusToken;
     const idx = Array.from({ length: s.count }, (_, i) => resolvedAt(i));
     const done = idx.filter((i) => i >= 0).length;
     $('word-counter').textContent = `${done}/${s.count}`;
@@ -459,14 +466,15 @@ async function updateSeedStatus() {
     }
     if (done < s.count) { st.textContent = t('words_progress', { done, n: s.count }); return; }
     const ent = await BIP39.toEntropy(idx);
+    // The phrase may have changed while the checksum was computed: only the latest call may update the UI
+    if (token !== S.statusToken) { util.wipe(ent); return; }
     if (ent) {
         util.wipe(ent);
         st.textContent = t('checksum_ok'); st.classList.add('good');
         $('seed-next').disabled = false;
-        const token = ++S.fpToken;
         try {
             const f = await M.fingerprint(BIP39.mnemonic(s.lang, idx), '');
-            if (token === S.fpToken && S.step === 'seed') { fp.textContent = t('fp_seed', { fp: f }); fp.hidden = false; }
+            if (token === S.statusToken && S.step === 'seed') { fp.textContent = t('fp_seed', { fp: f }); fp.hidden = false; }
         } catch { /* secp256k1 unavailable */ }
     } else {
         st.textContent = t('checksum_bad'); st.classList.add('bad');
@@ -503,7 +511,9 @@ async function pasteSeed() {
     } catch { toast(t('paste_failed'), 'error'); }
 }
 
+const phraseKey = (w) => Array.from({ length: S.seeds[w].count }, (_, i) => BIP39.resolve('en', S.seeds[w].words[i] || '')).join(',');
 async function seedContinue() {
+    if (S.target === 'decoy' && phraseKey('decoy') === phraseKey('real')) { toast(t('err_decoy_same_seed'), 'error'); return; }
     if (S.rawAllowed[S.target] && !confirm(t('checksum_confirm'))) return;
     if (S.target === 'real') { goTo('options'); renderStepper('options'); }
     else openPasswordStep();
@@ -513,7 +523,7 @@ async function seedContinue() {
 // OPTIONS AND PASSWORD
 // ============================================================
 function readOptions() {
-    S.opts.note = $('message-input').value.trim().slice(0, C.NOTE_MAX);
+    S.opts.note = Array.from($('message-input').value.trim()).slice(0, 100).join('');
     S.opts.ppOn = $('pp-enable').checked;
     S.opts.pp = S.opts.ppOn ? $('pp-input').value : '';
     S.opts.decoy = $('decoy-enable').checked;
@@ -529,10 +539,13 @@ function readOptions() {
 async function optionsContinue() {
     readOptions();
     if (S.opts.ppOn && !S.opts.pp) { toast(t('pp_empty'), 'error'); return; }
+    // A mistyped passphrase is a different wallet, and the field is masked: it must be typed twice
+    if (S.opts.ppOn && S.opts.pp !== $('pp-confirm').value) { toast(t('pp_mismatch'), 'error'); $('pp-confirm').focus(); return; }
+    if (S.opts.ppOn && S.opts.pp !== S.opts.pp.trim() && !confirm(t('pp_spaces_confirm'))) return;
     if (S.opts.kfOn && !S.opts.keyfile) { toast(t('kf_missing'), 'error'); return; }
     const bytes = (x) => new TextEncoder().encode(x).length;
-    if (bytes(S.opts.pp.normalize('NFKD')) > 255) { toast(t('err_pp_too_long'), 'error'); return; }
-    if (bytes(S.opts.note) > 255) { toast(t('err_note_too_long'), 'error'); return; }
+    if (bytes(S.opts.pp.normalize('NFKD')) > C.PASSPHRASE_MAX_BYTES) { toast(t('err_pp_too_long'), 'error'); return; }
+    if (bytes(S.opts.note) > C.NOTE_MAX_BYTES) { toast(t('err_note_too_long'), 'error'); return; }
     if (S.opts.decoy) {
         if (S.practice && !S.seeds.decoy.words.some(Boolean)) await prefillRandom(S.seeds.decoy, 12);
         openSeedStep('decoy');
@@ -656,10 +669,7 @@ async function startEncryption() {
         spinner(true, t('preparing'));
         await nextPaint();
         real = await packSeed('real', true);
-        if (S.opts.decoy) {
-            const key = (w) => Array.from({ length: S.seeds[w].count }, (_, i) => BIP39.resolve('en', S.seeds[w].words[i] || '')).join(',');
-            if (key('decoy') === key('real')) throw new MQRError('decoy_same_seed');
-        }
+        if (S.opts.decoy && phraseKey('decoy') === phraseKey('real')) throw new MQRError('decoy_same_seed');
         decoy = S.opts.decoy ? await packSeed('decoy', false) : null;
         const total = decoy ? 2 : 1;
         spinner(true, t('kdf_running', { i: 1, n: total }), true);
@@ -708,7 +718,7 @@ async function renderResult() {
     $('share-label').textContent = R.kind === 'shares' ? t('share_label', { i: R.index + 1, n: R.n }) : '';
     $('share-prev').disabled = R.index === 0;
     $('share-next').disabled = R.index === R.texts.length - 1;
-    await QR.render($('qr-canvas'), R.texts[R.index], 300, 'Q');
+    await QR.renderSharp($('qr-canvas'), R.texts[R.index], 300, 'Q');
     const cap = $('qr-caption');
     cap.textContent = (R.verified ? t('verified') + ' · ' : t('unverified') + ' · ') + shareCaption(R.index);
     cap.classList.toggle('ok', R.verified);
@@ -768,7 +778,7 @@ async function labeledPNG(i) {
 }
 async function downloadPNG() {
     const R = S.result;
-    const name = R.kind === 'shares' ? `mnemoniqr-${R.setId.slice(0, 4)}-${R.index + 1}de${R.n}.png` : 'mnemoniqr-backup.png';
+    const name = R.kind === 'shares' ? `mnemoniqr-${R.setId.slice(0, 4)}-${R.index + 1}of${R.n}.png` : 'mnemoniqr-backup.png';
     downloadBlob(await labeledPNG(R.index), name);
     toast(t('png_saved'), 'success', { duration: 6000 });
 }
@@ -806,7 +816,20 @@ const QR = {
     render(canvas, text, width, ecc = 'Q') {
         return this.lib().toCanvas(canvas, text, { width, margin: 4, errorCorrectionLevel: ecc, color: { dark: '#000000', light: '#ffffff' } });
     },
-    matrix(text, ecc = 'Q') { return this.lib().create(text, { errorCorrectionLevel: ecc }).modules; },
+    // On-screen QR: a whole number of device pixels per module, so the code stays sharp enough to scan from the screen
+    async renderSharp(canvas, text, cssPx, ecc = 'Q') {
+        const modules = this.matrix(text, ecc).size + 8;
+        const dpr = Math.min(4, Math.max(1, self.devicePixelRatio || 1));
+        const scale = Math.max(2, Math.ceil((cssPx * dpr) / modules)); // never drawn smaller than shown
+        await this.lib().toCanvas(canvas, text, { scale, margin: 4, errorCorrectionLevel: ecc, color: { dark: '#000000', light: '#ffffff' } });
+        // The library sets an inline size in device pixels; the stylesheet decides the size on screen
+        canvas.style.removeProperty('width');
+        canvas.style.removeProperty('height');
+    },
+    matrix(text, ecc = 'Q') {
+        try { return this.lib().create(text, { errorCorrectionLevel: ecc }).modules; }
+        catch (e) { if (e instanceof MQRError) throw e; throw new MQRError('qr_too_big'); }
+    },
     decodeImageData(d) {
         if (typeof self.jsQR !== 'function') throw new MQRError('no_qr_reader');
         const r = self.jsQR(d.data, d.width, d.height, { inversionAttempts: 'attemptBoth' });
@@ -884,7 +907,9 @@ const PDF = {
 
     sheets(items, ecc) {
         const R = S.result;
-        const pages = items.map(({ text, i }) => {
+        const BOTTOM = 40, LINE = 12;
+        const pages = [];
+        for (const { text, i } of items) {
             let c = '';
             const qs = 290, x0 = (this.W - qs) / 2, y0 = this.H - 150 - qs;
             c += this.txt('F3', 22, 56, this.H - 72, 'MnemoniQR');
@@ -896,24 +921,36 @@ const PDF = {
             const lines = R.kind === 'shares'
                 ? [t('pdf_l_share1', { k: R.k, n: R.n }), t('pdf_l_share2'), t('pdf_l3')]
                 : [t('pdf_l1'), t('pdf_l2'), t('pdf_l3')];
+            if (R.keyfile) lines.push(t('pdf_kf', { fp: R.keyfile }));
             for (const l of lines) { c += this.txt('F1', 10, 56, y, l, 0.15); y -= 16; }
             y -= 14;
             c += this.txt('F1', 10, 56, y, t('pdf_label') + ' ______________________________________', 0.15);
             y -= 32;
             c += this.txt('F1', 9, 56, y, t('pdf_backup_text'), 0.35);
             y -= 14;
-            for (const l of this.printable(text)) { c += this.txt('F2', 8.5, 56, y, l, 0.1); y -= 12; }
-            y -= 4;
-            c += this.txt('F1', 8, 56, y, t('pdf_type_hint'), 0.35);
-            if (R.keyfile) { y -= 16; c += this.txt('F3', 9, 56, y, t('pdf_kf', { fp: R.keyfile }), 0.15); }
-            return c;
-        });
+            for (const l of this.printable(text)) {
+                if (y < BOTTOM) {
+                    pages.push(c);
+                    c = this.txt('F3', 12, 56, this.H - 72, 'MnemoniQR · ' + shareCaption(i));
+                    c += this.txt('F1', 9, 56, this.H - 90, t('pdf_backup_text_cont'), 0.35);
+                    y = this.H - 112;
+                }
+                c += this.txt('F2', 8.5, 56, y, l, 0.1);
+                y -= LINE;
+            }
+            if (y - 4 < BOTTOM) { pages.push(c); c = ''; y = this.H - 72; }
+            c += this.txt('F1', 8, 56, y - 4, t('pdf_type_hint'), 0.35);
+            pages.push(c);
+        }
         return this.build(pages);
     },
 
     cards(items, ecc, copies) {
         const R = S.result;
         const cw = 242.65, ch = 153.07, cols = 2, rows = 5;
+        // A module smaller than about 0.5 mm does not print or scan reliably
+        const densest = Math.max(...items.map(({ text }) => QR.matrix(text, ecc).size));
+        if ((ch - 20) / densest < 1.4) throw new MQRError('cards_too_dense');
         const mx = (this.W - cols * cw) / 2, my = (this.H - rows * ch) / 2;
         const all = [];
         items.forEach((it) => { for (let k = 0; k < copies; k++) all.push(it); });
@@ -1040,6 +1077,7 @@ function acceptCode(text) {
         let info;
         try { info = M.inspect(text); } catch (e) { status.textContent = errText(e); setDecryptStatus(errText(e)); return 'invalid'; }
         S.collect.backup = text; S.collect.info = info; S.collect.shares.clear();
+        S.collect.setId = null; S.collect.k = 0; S.collect.n = 0;
         updateKeyfileNeed();
         $('share-progress').hidden = true;
         $('qr-ready').hidden = false;
@@ -1060,7 +1098,13 @@ function acceptCode(text) {
             updateKeyfileNeed();
             $('qr-ready').hidden = false;
             return 'complete';
-        } catch (e) { toast(errText(e), 'error'); return 'invalid'; }
+        } catch (e) {
+            // Only possible with damaged MQS4 shares (MQS5 has a checksum): start the set again
+            col.shares.clear(); col.setId = null; col.k = 0; col.n = 0;
+            $('share-progress').hidden = true;
+            setDecryptStatus(t('shares_restart'));
+            return 'invalid';
+        }
     }
     status.textContent = t('share_next', { got: col.shares.size, k: col.k });
     return 'share';
@@ -1224,6 +1268,7 @@ async function decryptQR() {
 
 async function showDecrypted(res) {
     wipeDecrypted();
+    if (document.hidden) { res.words.fill(''); toast(t('wiped_leave'), 'info'); return; }
     S.decrypted = { words: res.words.slice(), pp: res.passphrase || '', practice: res.practice };
     res.words.fill('');
     const items = S.decrypted.words.map((w, i) => {
@@ -1467,11 +1512,15 @@ async function init() {
     document.addEventListener('paste', (e) => {
         if (S.step !== 'seed' || anyModalOpen()) return;
         const txt = e.clipboardData && e.clipboardData.getData('text');
-        if (txt) { e.preventDefault(); fillFromText(txt); toast(t('pasted'), 'warning'); }
+        if (txt) {
+            e.preventDefault(); fillFromText(txt); toast(t('pasted'), 'warning');
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText('').catch(() => { /* not allowed */ });
+        }
     });
     // physical keyboard (does not go through the system's on-screen keyboard)
     document.addEventListener('keydown', (e) => {
         trapFocus(e);
+        if (e.key === 'Escape' && !$('spinner-overlay').hidden) { if (S.cancelKdf) S.cancelKdf(); return; }
         if (e.key === 'Escape' && modalStack.length) {
             const top = modalStack[modalStack.length - 1].el.id;
             if (top === 'password-modal') $('decrypt-cancel').click();
@@ -1513,7 +1562,7 @@ async function init() {
         ['password-input', 'password-confirm', 'decoy-input', 'decoy-confirm'].forEach((id) => { $(id).type = ty; });
     });
     $('gen-words').addEventListener('click', () => {
-        const { password, bits } = Strength.generateWords(6, new Set(phraseWords()));
+        const { password, bits } = Strength.generateWords(6, phraseWords());
         useGenerated(password, bits);
     });
     $('gen-chars').addEventListener('click', () => useGenerated(M.generatePassword(), 120));
@@ -1524,7 +1573,7 @@ async function init() {
     $('src-type').addEventListener('click', () => { stopScanner(); $('type-panel').hidden = false; $('type-input').focus(); });
     $('type-use').addEventListener('click', useTypedText);
     $('password-next').addEventListener('click', startEncryption);
-    $('spinner-cancel').addEventListener('click', () => { if (S.cancelKdf) S.cancelKdf(); toast(t('cancelled'), 'info'); });
+    $('spinner-cancel').addEventListener('click', () => { if (S.cancelKdf) { S.cancelKdf(); toast(t('cancelled'), 'info'); } });
 
     // --- result ---
     $('share-prev').addEventListener('click', () => { if (S.result.index > 0) { S.result.index--; renderResult(); } });
@@ -1553,7 +1602,10 @@ async function init() {
     $('decrypt-show-password').addEventListener('change', () => { $('decrypt-password').type = $('decrypt-show-password').checked ? 'text' : 'password'; });
     $('decrypt-confirm').addEventListener('click', decryptQR);
     $('decrypt-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); decryptQR(); } });
-    $('decrypt-cancel').addEventListener('click', () => { closeModal('password-modal'); S.modalMode = 'decrypt'; });
+    $('decrypt-cancel').addEventListener('click', () => {
+        if (S.busy) { if (S.cancelKdf) S.cancelKdf(); return; }
+        closeModal('password-modal'); S.modalMode = 'decrypt';
+    });
 
     // --- decrypted phrase ---
     const toggle = () => setReveal($('seed-grid').classList.contains('blurred'));

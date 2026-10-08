@@ -1,4 +1,4 @@
-// MnemoniQR v6.2.0 · Automated tests (run in the browser, no tooling needed)
+// MnemoniQR v6.3.0 · Automated tests (run in the browser, no tooling needed)
 'use strict';
 (async () => {
     const M = self.MQR;
@@ -177,9 +177,40 @@
         const ent = await BIP39.toEntropy(REAL.split(' ').map((w) => BIP39.resolve('en', w)));
         await throwsCode(async () => M.packPlaintext({ lang: 'en', entropy: ent, passphrase: 'é'.repeat(100) }), 'pp_too_long'); // NFKD: 3 bytes each
         await throwsCode(async () => M.packPlaintext({ lang: 'en', entropy: ent, note: '€'.repeat(100) }), 'note_too_long');
-        const note = '€'.repeat(85); // 255 bytes exactly
+        const note = '€'.repeat(33) + 'x'; // 100 bytes exactly: the creation limit
         const r = await M.encryptV4({ real: { plaintext: M.packPlaintext({ lang: 'en', entropy: ent, note }), password: 'limit-test-123' } });
-        return (await M.decryptAny(r.text, 'limit-test-123')).note === note;
+        assert((await M.decryptAny(r.text, 'limit-test-123')).note === note, 'limit');
+        // Backups from 6.0–6.2 could hold up to 255 bytes: they must still open
+        const old = '€'.repeat(85);
+        const ob = new TextEncoder().encode(old);
+        const pt = util.concat(Uint8Array.of(1, 0, ent.length), ent, Uint8Array.of(0, ob.length), ob, Uint8Array.of(0, 0, 0, 1));
+        const r2 = await M.encryptV4({ real: { plaintext: pt, password: 'limit-test-123' } });
+        return (await M.decryptAny(r2.text, 'limit-test-123')).note === old;
+    });
+    await test('Truncated fields in decrypted content are refused, never shortened', async () => {
+        const ent = util.rand(16);
+        const good = M.packPlaintext({ lang: 'en', entropy: ent, passphrase: 'pp', note: 'note' });
+        await M._test.unpackPlaintext(good); // sanity
+        for (let cut = 0; cut < good.length; cut++) {
+            await throwsCode(() => M._test.unpackPlaintext(good.slice(0, cut)), 'bad_content');
+        }
+        const lying = good.slice(); lying[2 + 1 + 16 + 1 + 2] = 200; // note length larger than what follows
+        await throwsCode(() => M._test.unpackPlaintext(lying), 'bad_content');
+        return `${good.length} cut points`;
+    });
+    await test('Largest allowed backup fits a printable QR at maximum error correction', async () => {
+        const ent = util.rand(32);
+        const pt = M.packPlaintext({ lang: 'en', entropy: ent, passphrase: 'p'.repeat(100), note: 'n'.repeat(100) });
+        const dpt = M.packPlaintext({ lang: 'en', entropy: util.rand(32), passphrase: '', note: '' });
+        const saved = async (password, salt) => util.sha256(util.concat(password, salt));
+        M.setArgonImpl(saved);
+        try {
+            const r = await M.encryptV4({ real: { plaintext: pt, password: 'big-one-1' }, decoy: { plaintext: dpt, password: 'big-two-2' }, keyfile: util.rand(32) });
+            const share = M.splitBackup(r.blob, 16, 2).texts[0];
+            const versions = [r.text, share].map((x) => self.QRCode.create(x, { errorCorrectionLevel: 'H' }).version);
+            assert(versions.every((v) => v <= 30), 'versions ' + versions.join(','));
+            return `QR version ${versions.join(' / ')} at level H`;
+        } finally { M.setArgonImpl(async (password, salt, m, t, p) => self.hashwasm.argon2id({ password, salt, memorySize: m, iterations: t, parallelism: p, hashLength: 32, outputType: 'binary' })); }
     });
     await test('Practice flag', async () => {
         const r = await M.encryptV4({ real: { plaintext: await pack('en', REAL), password: 'practica-12345' }, practice: true });
@@ -277,16 +308,22 @@
         assert(ST.estimate('legal-winner-thank-you', ['legal', 'winner', 'thank']).warning === 'user', 'user words');
         return high >= 100 ? `weak ≤ ${Math.max(...low)} bits, random ${high} bits` : false;
     });
-    await test('Diceware: 6 words, uniform, never BIP39 words or excluded words', () => {
+    await test('Diceware: 6 words, never BIP39 words, never refused by the phrase rule', () => {
         const bip = new Set(BIP39.lists.en.words);
-        const excl = new Set(self.EFF_WORDS.slice(0, 3000));
-        for (let i = 0; i < 200; i++) {
-            const { password, bits } = ST.generateWords(6, excl);
+        const list = BIP39.lists.en.words;
+        let checked = 0;
+        for (let i = 0; i < 300; i++) {
+            const phrase = Array.from({ length: 24 }, () => list[Math.floor(Math.random() * 2048)]);
+            const { password, bits } = ST.generateWords(6, phrase);
             const w = password.split('-');
             assert(w.length === 6 && new Set(w).size === 6 && bits >= 70, 'shape');
-            assert(w.every((x) => !bip.has(x) && !excl.has(x)), 'excluded word used');
+            assert(w.every((x) => !bip.has(x)), 'BIP39 word used');
+            assert(ST.conflicts(password, phrase, '') === null, 'refused by its own rule: ' + password);
+            checked++;
         }
-        return `${self.EFF_WORDS.length} words, ${ST.generateWords(6).bits} bits`;
+        // Words that contain a phrase word ("thankful" ⊃ "thank") are never drawn
+        const sample = ST.generateWords(6, REAL.split(' '));
+        return `${checked} phrases, ${self.EFF_WORDS.length} words, ${sample.bits} bits`;
     });
     await test('Passwords may not reuse the phrase or the passphrase', () =>
         ST.conflicts('my-legal-pw', ['legal']) === 'pw_seed_word' && ST.conflicts('winnerwinner', ['winner']) === 'pw_seed_word' &&

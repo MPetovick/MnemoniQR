@@ -1,4 +1,4 @@
-// MnemoniQR v6.2.0 · UI strings (English).
+// MnemoniQR v6.3.0 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -205,7 +205,7 @@ const en = {
     ab5_t: "Shares and decoy",
     ab5_d: "You can split the backup into several QRs (Shamir): fewer than required reveal no information at all. You can add a decoy wallet that opens with another password, with no sign it exists, and require a keyfile as a second factor.",
     ab6_t: "Your password is the key",
-    ab6_d: "Whoever has the QR can try to guess it without limit, offline. Use a long, unique password; the dice button generates one of about 120 bits.",
+    ab6_d: "Whoever has the QR can try to guess it without limit, offline. Use a long, unique password: the generator makes 6 random words (about 76 bits) or 20 random characters (120 bits).",
     ab7_t: "Limits",
     ab7_d: "JavaScript cannot fully erase memory: close the tab when you finish. Shares are not SLIP-39 compatible. Only the English BIP39 word list is supported.",
     build_fp: "Fingerprint of this version",
@@ -273,8 +273,8 @@ const en = {
     link_readme: "Read the README",
     link_source: "Source code",
     open_source: "MnemoniQR is open source under the Apache 2.0 license. You can review the code and build it yourself.",
-    err_pp_too_long: "The passphrase is too long (255 bytes at most). It was not shortened, because a different passphrase would be a different wallet.",
-    err_note_too_long: "The note is too long (255 bytes at most; accented letters and emoji take more than one).",
+    err_pp_too_long: "The passphrase is too long (100 bytes at most; accented letters take more than one). It was not shortened, because a different passphrase would be a different wallet.",
+    err_note_too_long: "The note is too long (100 bytes at most; accented letters and emoji take more than one).",
     err_decoy_same_seed: "The decoy phrase must be different from the real one, otherwise the decoy password would open your real wallet.",
     err_image_pixels: "The image is too large (more than 40 megapixels). Crop it around the QR.",
     err_unsupported_lang: "This backup uses the Spanish BIP39 word list, which this version no longer supports. Open it with MnemoniQR 5.1.0 and re-encrypt the phrase in English.",
@@ -314,7 +314,14 @@ const en = {
     pdf_type_hint: "Spaces, line breaks and letter case do not matter when you type it back.",
     pdf_kf: "This backup also needs its keyfile (fingerprint {fp}).",
     card_kf: "+ keyfile",
-    result_help_kf: "Recovery also needs the keyfile {fp}: keep copies of it, away from the QR."
+    result_help_kf: "Recovery also needs the keyfile {fp}: keep copies of it, away from the QR.",
+    pp_repeat: "Repeat the passphrase",
+    pp_mismatch: "The two passphrases do not match. A different passphrase would be a different wallet.",
+    pp_spaces_confirm: "The passphrase starts or ends with a space. Spaces are part of a BIP39 passphrase, so your wallet must use exactly the same. Keep it?",
+    shares_restart: "These shares do not fit together (one is probably damaged). Start again with the shares in good condition.",
+    err_qr_too_big: "This backup is too large for a QR code at this error correction. Choose normal damage resistance.",
+    err_cards_too_dense: "This backup is too dense to print legibly on a card. Use the A4 sheet template instead.",
+    pdf_backup_text_cont: "Backup text (continued):"
 };
 
 const I18N = {

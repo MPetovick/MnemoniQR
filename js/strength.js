@@ -1,4 +1,4 @@
-// MnemoniQR v6.2.0 · Password strength and generation (no DOM).
+// MnemoniQR v6.3.0 · Password strength and generation (no DOM).
 // A compact estimator in the spirit of zxcvbn: it finds the patterns an attacker would try first
 // (common passwords, dictionary words, names, keyboard runs, sequences, repeats, dates, the user's own
 // words) and returns the cheapest way to guess the whole password, in bits.
@@ -191,16 +191,22 @@
         buf[0] = 0;
         return v;
     }
-    // Diceware: words from the EFF list (BIP39 words already removed), never one of the excluded words
-    function generateWords(count = 6, exclude = new Set()) {
+    // Diceware: words from the EFF list (BIP39 words already removed). Candidates that would break the
+    // phrase-reuse rule (e.g. "thankful" when the phrase has "thank") are skipped, so a generated password
+    // is never refused by conflicts(). The bits are computed on the list that remains after exclusion.
+    function generateWords(count = 6, phraseWords = []) {
         const list = G.EFF_WORDS || [];
         if (list.length < 1000) throw new Error('word list unavailable');
+        const phrase = [...phraseWords].filter(Boolean);
+        const usable = phrase.length ? list.filter((w) => !conflicts(w, phrase, '')) : list;
         const words = [];
         while (words.length < count) {
-            const w = list[uniform(list.length)];
-            if (!exclude.has(w) && !words.includes(w)) words.push(w);
+            const w = usable[uniform(usable.length)];
+            if (!words.includes(w)) words.push(w);
         }
-        return { password: words.join('-'), bits: Math.floor(count * log2(list.length)) };
+        let bits = 0;
+        for (let i = 0; i < count; i++) bits += log2(usable.length - i);
+        return { password: words.join('-'), bits: Math.floor(bits) };
     }
 
     // Hard rules: the password must not reuse the recovery phrase or the BIP39 passphrase
