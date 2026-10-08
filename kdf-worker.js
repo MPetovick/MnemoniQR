@@ -1,4 +1,6 @@
-// MnemoniQR v6.8.0 · Argon2id worker: key derivation never blocks the UI and can be cancelled.
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
+// MnemoniQR v6.9.0 · Argon2id worker: key derivation never blocks the UI and can be cancelled.
 'use strict';
 if (typeof self.hashwasm === 'undefined') {
     const tt = self.trustedTypes

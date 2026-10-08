@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // MnemoniQR · Community goal, live: https://mnemoniqr.app/goal (page) and https://mnemoniqr.app/api/goal (JSON)
 //
 // A Vercel serverless function shipped with the app as dist/api/goal.js. tools/build.py writes goal-config.json

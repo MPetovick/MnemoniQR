@@ -1,0 +1,39 @@
+MnemoniQR
+Copyright MPetovick (https://github.com/MPetovick) and the MnemoniQR contributors.
+
+License
+MnemoniQR 6.9.0 and later: GNU Affero General Public License, version 3 only
+(AGPL-3.0-only, see LICENSE), or a commercial license from the copyright holder
+(see COMMERCIAL.md). Versions up to and including 6.8.0 were published under the
+Apache License, Version 2.0, and remain available under it as published.
+
+Source code
+The complete source code of every version is at
+https://github.com/MPetovick/MnemoniQR (one tag per release). The app links to it
+in "How it protects you". If you modify MnemoniQR and let people use it over a
+network, the AGPL requires you to offer them the source of your version.
+
+Name and logo
+Neither the AGPL nor a commercial code license grants permission to use the name
+"MnemoniQR" or the MnemoniQR shield logo. Forks and derived works must use a
+different name and logo, so that people always know which build protects their
+backup. Permission to use them requires a separate written agreement.
+
+Disclaimer
+MnemoniQR is provided "AS IS", without warranty of any kind (sections 15 and 16
+of the License). It handles secrets that control funds: test it with practice
+backups, verify every backup before relying on it, keep the password safe, and
+check that your copy matches the published fingerprint.
+
+Third-party components included in this product
+- qrcode 1.5.4 - MIT License - https://github.com/soldair/node-qrcode
+- jsQR 1.4.0 - Apache License 2.0 - https://github.com/cozmo/jsQR
+- hash-wasm 4.12.0 (Argon2id) - MIT License - https://github.com/Daninet/hash-wasm
+- @noble/secp256k1 2.2.3 - MIT License - https://github.com/paulmillr/noble-secp256k1
+- @noble/hashes 1.7.1 (RIPEMD-160) - MIT License - https://github.com/paulmillr/noble-hashes
+- BIP39 English word list via @scure/bip39 1.5.4 - MIT License - https://github.com/paulmillr/scure-bip39
+- Password frequency lists from zxcvbn 4.4.2 - MIT License - https://github.com/dropbox/zxcvbn
+- EFF large diceware word list - CC BY 3.0 - https://www.eff.org/dice
+- Atkinson Hyperlegible font - SIL Open Font License 1.1 - https://www.brailleinstitute.org/freefont/
+- JetBrains Mono font - SIL Open Font License 1.1 - https://www.jetbrains.com/lp/mono/
+The license of each component is available at the address above. Font license texts are in src/fonts.

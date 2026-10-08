@@ -1,4 +1,6 @@
-// MnemoniQR v6.8.0 · Donation addresses (the only place they are defined).
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
+// MnemoniQR v6.9.0 · Donation addresses (the only place they are defined).
 //
 // Fill in `address` for each network you want to offer; leave it '' to hide that network.
 // With no address at all, the app shows no support link, line or sheet.
