@@ -21,8 +21,6 @@ Keep a copy of `mnemoniqr-offline.html` and `recover.py` with your backup materi
 
 ## Recovering with recover.py
 
-`recover.py` reads every format MnemoniQR has ever written (`MQR5`/`MQS5`, `MQR4`/`MQS4`, `MQR3`, `MQRv2`), combines shares, supports keyfiles and decoys, and prints the wallet fingerprint. Like the app, it refuses backups made with the Spanish word list in versions 4.0–5.1.0: open those with MnemoniQR 5.1.0.
-
 **1. Prepare an offline computer** with Python 3.8 or later. Install the two libraries it needs while online, then disconnect:
 
 ```bash
