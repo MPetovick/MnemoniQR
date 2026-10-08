@@ -9,6 +9,6 @@
 'use strict';
 self.MQR_DONATE = Object.freeze([
     Object.freeze({ id: 'tron', kind: 'tron', address: 'TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ' }),   // USDT on TRON (TRC-20)
-    Object.freeze({ id: 'evm', kind: 'evm', address: '' }),     // USDT, USDC or ETH on Ethereum
-    Object.freeze({ id: 'btc', kind: 'btc', address: '' })      // Bitcoin on-chain
+    Object.freeze({ id: 'evm', kind: 'evm', address: '0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64' }),     // USDT, USDC or ETH on Ethereum
+    Object.freeze({ id: 'btc', kind: 'btc', address: 'bc1qqg7ttja7th9r02549wvdwz3wspcvlv3gu95kz0' })      // Bitcoin on-chain
 ]);
