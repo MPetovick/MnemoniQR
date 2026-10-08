@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>MnemoniQR</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#E9EDE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141A1D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MnemoniQR">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="styles.css">
+<script src="vendor/qrcode.min.js" defer></script>
+<script src="vendor/jsqr.min.js" defer></script>
+<script src="vendor/argon2.min.js" defer></script>
+<script src="vendor/noble.min.js" defer></script>
+<script src="js/wordlists.js" defer></script>
+<script src="js/core.js" defer></script>
+<script src="js/dicts.js" defer></script>
+<script src="js/eff-words.js" defer></script>
+<script src="js/strength.js" defer></script>
+<script src="js/i18n.js" defer></script>
+<script src="js/app.js" defer></script>
+</head>
+<body>
+<noscript><p class="noscript">MnemoniQR needs JavaScript. Everything runs locally in your browser; nothing is sent anywhere.</p></noscript>
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M4 12h16"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/></symbol>
+  <symbol id="i-share-ios" viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></symbol>
+  <symbol id="i-add-home" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M2 14l9-3V5a1.5 1.5 0 0 1 3 0v6l8 3v2l-8-2v4l2 2v1l-3.5-1L9 21v-1l2-2v-4l-9 2z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-verify" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-del" viewBox="0 0 24 24"><path d="M9 5h11v14H9l-6-7z"/><path d="M12 9l5 6M17 9l-5 6"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="3.5"/><path d="M10 13l9-9M16 7l2 2M14 9l2 2"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+  <symbol id="i-practice" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+</svg>
+
+<div id="practice-banner" class="practice-banner" hidden data-i18n="practice_banner">Practice mode: this seed is not real</div>
+
+<div class="app">
+  <!-- ================= HOME ================= -->
+  <main class="home" id="home">
+    <header class="topbar">
+      <img src="MQR_logo.webp" alt="" class="brand-logo" width="52" height="52">
+      <div class="brand-text">
+        <span class="brand-name">MnemoniQR</span>
+        <span class="brand-sub" data-i18n="brand_sub">Encrypted seed backup</span>
+      </div>
+    </header>
+
+    <section class="ticket" id="drop-zone">
+      <div class="ticket-head">
+        <h1 data-i18n="home_title">Put your recovery phrase on paper, encrypted.</h1>
+        <p data-i18n="home_subtitle">Print the QR, keep the password separately, and nothing leaves this device.</p>
+      </div>
+      <div class="perforation" aria-hidden="true"></div>
+      <button type="button" class="row-action" id="encrypt-btn-main">
+        <span class="row-icon dark"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span>
+        <span class="row-text"><strong data-i18n="encrypt_seed">Encrypt a seed</strong><span data-i18n="encrypt_seed_sub">One QR or several shares</span></span>
+        <svg class="ic chev" aria-hidden="true"><use href="#i-next"/></svg>
+      </button>
+      <button type="button" class="row-action" id="recover-btn">
+        <span class="row-icon"><svg class="ic" aria-hidden="true"><use href="#i-scan"/></svg></span>
+        <span class="row-text"><strong data-i18n="recover">Recover from a QR</strong><span data-i18n="recover_sub">Scan or upload the images</span></span>
+        <svg class="ic chev" aria-hidden="true"><use href="#i-next"/></svg>
+      </button>
+      <button type="button" class="row-action" id="practice-btn">
+        <span class="row-icon"><svg class="ic" aria-hidden="true"><use href="#i-practice"/></svg></span>
+        <span class="row-text"><strong data-i18n="practice_cta">Practice a recovery</strong><span data-i18n="practice_sub">With a test seed</span></span>
+        <svg class="ic chev" aria-hidden="true"><use href="#i-next"/></svg>
+      </button>
+      <p class="drop-hint" data-i18n="drop_hint">You can also drop the QR images here.</p>
+    </section>
+
+    <button type="button" class="notice" id="net-card" aria-live="polite">
+      <svg class="ic" aria-hidden="true"><use href="#i-plane"/></svg>
+      <span class="notice-text"><strong id="net-title"></strong><span id="net-body"></span></span>
+    </button>
+
+    <footer class="footer">
+      <button type="button" id="about-btn" class="link" data-i18n="about">How it protects you</button>
+      <a class="link" href="https://github.com/MPetovick/MnemoniQR/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
+      <a class="link" href="https://github.com/MPetovick/MnemoniQR" target="_blank" rel="noopener noreferrer" data-i18n-aria="link_source">GitHub</a>
+      <button type="button" id="install-link" class="link" hidden data-i18n="install">Install app</button>
+      <span class="version">v6.3.0</span>
+    </footer>
+  </main>
+
+  <!-- ================= RECOVERY PHRASE ================= -->
+  <section id="step-seed" class="step" hidden aria-labelledby="h-seed">
+    <div class="step-content">
+      <header class="step-top">
+        <button type="button" class="btn-back" id="seed-back" data-i18n-aria="back"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+        <ol class="stepper" data-stepper data-i18n-aria="progress"></ol>
+      </header>
+
+      <section class="paper seed-paper">
+        <div class="paper-head">
+          <h2 id="h-seed" data-i18n="seed_title">Recovery phrase</h2>
+          <span class="count" id="word-counter" aria-live="polite"></span>
+        </div>
+        <div class="seed-controls">
+          <label class="mini-select"><span class="sr-only" data-i18n="word_count">Number of words</span><select id="seed-count"></select></label>
+        </div>
+        <ol id="word-grid" class="word-lines" data-i18n-aria="seed_words"></ol>
+        <div class="paper-foot">
+          <span class="muted small" data-i18n="mask_hint">Typed words are hidden</span>
+          <button type="button" id="seed-eye" class="link icon-link" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> <span id="seed-eye-text"></span></button>
+        </div>
+      </section>
+
+      <p id="seed-status" class="status" aria-live="polite"></p>
+      <p id="seed-fp" class="fp" hidden></p>
+      <button type="button" id="seed-next" class="btn btn-primary" disabled><span data-i18n="continue">Continue</span> <svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
+
+      <div class="kbd-area">
+        <div id="suggest-row" class="suggest-row" role="listbox" data-i18n-aria="suggestions"></div>
+        <div id="kbd" class="kbd" role="group" data-i18n-aria="keyboard"></div>
+        <div class="kbd-extra">
+          <button type="button" id="seed-paste" class="link icon-link small"><svg class="ic" aria-hidden="true"><use href="#i-paste"/></svg> <span data-i18n="paste">Paste</span></button>
+          <span class="muted small" data-i18n="kbd_help">Built-in keyboard: your system keyboard never sees the words.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= OPTIONS ================= -->
+  <section id="step-options" class="step" hidden aria-labelledby="h-opt">
+    <div class="step-content">
+      <header class="step-top">
+        <button type="button" class="btn-back" data-back="seed" data-i18n-aria="back"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+        <ol class="stepper" data-stepper data-i18n-aria="progress"></ol>
+      </header>
+      <h2 id="h-opt" class="step-title" data-i18n="options_title">Options</h2>
+
+      <section class="paper opt">
+        <label for="message-input" class="opt-label" data-i18n="note_label">Encrypted note (optional)</label>
+        <input type="text" id="message-input" maxlength="100" autocomplete="off" data-i18n-ph="note_ph" aria-describedby="msg-help">
+        <p class="help" id="msg-help" data-i18n="note_help">It goes inside the encryption. Do not write your password here.</p>
+      </section>
+
+      <section class="paper opt">
+        <label class="switch-row"><input type="checkbox" id="pp-enable"> <span class="opt-label" data-i18n="pp_label">My wallet uses a BIP39 passphrase (25th word)</span></label>
+        <div id="pp-box" class="stack" hidden>
+          <div class="field-group"><input type="password" id="pp-input" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pp_ph" data-i18n-aria="pp_ph"></div>
+          <div class="field-group"><input type="password" id="pp-confirm" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pp_repeat" data-i18n-aria="pp_repeat"></div>
+          <p class="help warn" data-i18n="pp_help">Stored encrypted with the seed. It must match your wallet exactly: case and spaces matter.</p>
+        </div>
+      </section>
+
+      <section class="paper opt">
+        <label class="switch-row"><input type="checkbox" id="decoy-enable"> <span class="opt-label" data-i18n="decoy_label">Add a decoy wallet</span></label>
+        <p class="help" data-i18n="decoy_help">With a different password, the same QR opens a different seed with small funds. Useful if someone forces you to decrypt it. Nobody can tell whether a decoy exists.</p>
+      </section>
+
+      <section class="paper opt">
+        <label class="switch-row"><input type="checkbox" id="kf-enable"> <span class="opt-label" data-i18n="kf_label">Also require a keyfile</span></label>
+        <div id="kf-box" class="stack" hidden>
+          <button type="button" id="kf-pick" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg> <span data-i18n="kf_choose">Choose a file</span></button>
+          <p class="fp" id="kf-info" hidden></p>
+          <p class="help warn" data-i18n="kf_help"></p>
+        </div>
+      </section>
+
+      <section class="paper opt">
+        <label for="split-select" class="opt-label" data-i18n="split_label">Format</label>
+        <select id="split-select">
+          <option value="1" data-i18n="split_single">A single QR</option>
+          <option value="2-3" data-i18n="split_23">Split into 3 QRs (any 2 work)</option>
+          <option value="3-5" data-i18n="split_35">Split into 5 QRs (any 3 work)</option>
+          <option value="custom" data-i18n="split_custom">Custom</option>
+        </select>
+        <div id="split-custom" class="split-custom" hidden>
+          <label><span data-i18n="split_k">Required</span> <input type="number" id="split-k" min="2" max="16" value="2" inputmode="numeric"></label>
+          <label><span data-i18n="split_n">Total</span> <input type="number" id="split-n" min="2" max="16" value="3" inputmode="numeric"></label>
+        </div>
+        <p class="help" data-i18n="split_help">Each QR on its own reveals nothing. Keep them in different places.</p>
+      </section>
+
+      <button type="button" id="options-next" class="btn btn-primary btn-large"><span data-i18n="continue">Continue</span> <svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
+    </div>
+  </section>
+
+  <!-- ================= PASSWORD ================= -->
+  <section id="step-password" class="step" hidden aria-labelledby="h-pwd">
+    <div class="step-content">
+      <header class="step-top">
+        <button type="button" class="btn-back" id="password-back" data-i18n-aria="back"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+        <ol class="stepper" data-stepper data-i18n-aria="progress"></ol>
+      </header>
+      <h2 id="h-pwd" class="step-title" data-i18n="password_title">Encryption password</h2>
+
+      <fieldset class="paper pw-set">
+        <legend id="real-legend" class="opt-label" data-i18n="pw_real">Password</legend>
+        <div class="field-group">
+          <input type="password" id="password-input" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_ph">
+        </div>
+        <div class="field-group">
+          <input type="password" id="password-confirm" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_repeat" data-i18n-aria="pw_repeat">
+        </div>
+        <div class="gen-row">
+          <span class="muted small" data-i18n="gen_label">Generate:</span>
+          <button type="button" id="gen-words" class="link small" data-i18n="gen_words">6 words</button>
+          <button type="button" id="gen-chars" class="link small" data-i18n="gen_chars">20 characters</button>
+        </div>
+        <div class="strength">
+          <div class="strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
+          <div class="strength-row"><span id="strength-label"></span><span id="strength-bits"></span></div>
+          <p class="strength-warn" id="strength-warn" aria-live="polite" hidden></p>
+        </div>
+        <ul class="requirements">
+          <li data-req="length" data-i18n="req_length">12 characters or more</li>
+          <li data-req="entropy" data-i18n="req_entropy">Hard to guess (≥ 60 bits)</li>
+          <li data-req="match" data-i18n="req_match">Both match</li>
+          <li data-req="phrase" data-i18n="req_phrase">Does not reuse your phrase or passphrase</li>
+        </ul>
+      </fieldset>
+
+      <fieldset class="paper pw-set" id="decoy-set" hidden>
+        <legend class="opt-label" data-i18n="pw_decoy">Decoy password</legend>
+        <div class="field-group"><input type="password" id="decoy-input" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_decoy"></div>
+        <div class="field-group"><input type="password" id="decoy-confirm" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_repeat" data-i18n-aria="pw_repeat"></div>
+        <ul class="requirements">
+          <li data-req="d-length" data-i18n="req_decoy_length">8 characters or more</li>
+          <li data-req="d-match" data-i18n="req_match">Both match</li>
+          <li data-req="d-diff" data-i18n="req_decoy_diff">Different from the real password</li>
+          <li data-req="d-phrase" data-i18n="req_phrase">Does not reuse your phrase or passphrase</li>
+        </ul>
+      </fieldset>
+
+      <label class="checkbox-label"><input type="checkbox" id="show-password"> <span data-i18n="show_password">Show passwords</span></label>
+
+      <fieldset class="paper levels" id="levels">
+        <legend class="opt-label" data-i18n="level_title">Protection level</legend>
+        <label class="level"><input type="radio" name="level" value="standard" checked> <span><strong data-i18n="level_standard">Standard</strong> <small>64 MiB</small></span> <span class="level-time" data-level-time="standard"></span></label>
+        <label class="level"><input type="radio" name="level" value="high"> <span><strong data-i18n="level_high">High</strong> <small>128 MiB</small></span> <span class="level-time" data-level-time="high"></span></label>
+        <label class="level"><input type="radio" name="level" value="max"> <span><strong data-i18n="level_max">Maximum</strong> <small>256 MiB</small></span> <span class="level-time" data-level-time="max"></span></label>
+        <p class="help" data-i18n="level_help">The time is how long this device will take to open it. An older phone may take several times longer or lack the memory for the maximum level.</p>
+      </fieldset>
+
+      <p class="help warn" data-i18n="pw_warn">Without this password the backup cannot be recovered. Write it on paper and keep it away from the QR.</p>
+      <button type="button" id="password-next" class="btn btn-primary btn-large" disabled><svg class="ic" aria-hidden="true"><use href="#i-qr"/></svg> <span data-i18n="generate_qr">Generate QR</span></button>
+    </div>
+  </section>
+
+  <!-- ================= RESULT ================= -->
+  <section id="step-result" class="step" hidden aria-labelledby="h-qr">
+    <div class="step-content">
+      <header class="step-top">
+        <h2 id="h-qr" class="step-title flush" data-i18n="result_title">Encrypted backup</h2>
+        <span class="badge" id="qr-badge"></span>
+      </header>
+      <section class="paper qr-paper">
+        <div class="share-nav" id="share-nav" hidden>
+          <button type="button" class="btn-icon" id="share-prev" data-i18n-aria="prev"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
+          <span id="share-label" aria-live="polite"></span>
+          <button type="button" class="btn-icon" id="share-next" data-i18n-aria="next"><svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
+        </div>
+        <figure class="qr-figure">
+          <canvas id="qr-canvas" width="300" height="300"></canvas>
+          <figcaption id="qr-caption"></figcaption>
+        </figure>
+        <div class="perforation" aria-hidden="true"></div>
+        <p class="fp" id="result-fp"></p>
+      </section>
+      <button type="button" id="qr-verify" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-verify"/></svg> <span data-i18n="verify_cta">Check I can recover it</span></button>
+      <div class="qr-actions">
+        <button type="button" id="qr-print" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> PDF</button>
+        <button type="button" id="qr-download" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> PNG</button>
+        <button type="button" id="qr-share" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span data-i18n="share">Share</span></button>
+      </div>
+      <p class="help" id="result-help"></p>
+      <button type="button" id="qr-done" class="link center-self" data-i18n="done_wipe">Finish and clear the screen</button>
+    </div>
+  </section>
+
+  <!-- ================= DECRYPTED PHRASE ================= -->
+  <section id="step-decrypted" class="step" hidden aria-labelledby="h-dec">
+    <div class="step-content">
+      <header class="step-top">
+        <h2 id="h-dec" class="step-title flush"><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="decrypted_title">Seed decrypted</span></h2>
+        <span class="count" id="decrypted-count"></span>
+      </header>
+      <section class="paper">
+        <div id="decrypted-meta" class="meta"></div>
+        <p class="fp" id="decrypted-fp"></p>
+        <div class="perforation" aria-hidden="true"></div>
+        <ol class="seed-grid blurred" id="seed-grid" data-i18n-aria="seed_words"></ol>
+        <p class="pp-line blurred" id="decrypted-pp" hidden></p>
+      </section>
+      <p class="help" data-i18n="reveal_help">Tap the grid to show or hide. It is erased when you leave the app.</p>
+      <div class="decrypted-actions">
+        <button type="button" id="decrypted-reveal" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> <span id="reveal-text"></span></button>
+        <button type="button" id="decrypted-copy" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span data-i18n="copy">Copy</span></button>
+        <button type="button" id="decrypted-done" class="btn btn-primary" data-i18n="wipe_exit">Erase and exit</button>
+      </div>
+      <div class="timer">
+        <div class="timer-bar"><div id="timer-fill" class="timer-fill"></div></div>
+        <span class="timer-label" id="timer-label"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MODAL: DECRYPT ================= -->
+  <div id="password-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-dpwd">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="decrypt-x" data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      <h2 id="h-dpwd" data-i18n="enter_password">Enter the password</h2>
+      <p class="modal-sub" id="decrypt-sub"></p>
+      <div id="scanner" class="scanner" hidden>
+        <video id="scanner-video" autoplay playsinline muted></video>
+        <div class="scanner-frame" aria-hidden="true"></div>
+        <div class="scanner-status" id="scanner-status"></div>
+      </div>
+      <div id="share-progress" class="share-progress" hidden aria-live="polite"></div>
+      <div class="row-actions" id="source-actions">
+        <button type="button" id="src-scan" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> <span data-i18n="scan">Scan</span></button>
+        <button type="button" id="src-upload" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> <span data-i18n="upload">Upload image</span></button>
+        <button type="button" id="src-type" class="btn btn-secondary span-2"><svg class="ic" aria-hidden="true"><use href="#i-type"/></svg> <span data-i18n="type_text">Type the backup text</span></button>
+        <input type="file" id="qr-file" accept="image/*" multiple hidden>
+      </div>
+      <div id="type-panel" class="stack" hidden>
+        <label for="type-input" class="opt-label" data-i18n="type_label">Backup text</label>
+        <textarea id="type-input" rows="5" autocomplete="off" autocapitalize="characters" spellcheck="false" data-i18n-ph="type_ph"></textarea>
+        <p class="help" data-i18n="type_help"></p>
+        <button type="button" id="type-use" class="btn btn-secondary" data-i18n="type_use">Use this text</button>
+      </div>
+      <p id="qr-ready" class="qr-ready" hidden><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="qr_ready">QR ready</span></p>
+      <div id="kf-need" class="stack" hidden>
+        <p class="help warn" data-i18n="kf_needed"></p>
+        <button type="button" id="kf-need-pick" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg> <span data-i18n="kf_choose">Choose a file</span></button>
+        <p class="fp" id="kf-need-info" hidden></p>
+      </div>
+      <div class="field-group">
+        <input type="password" id="decrypt-password" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_ph">
+      </div>
+      <label class="checkbox-label"><input type="checkbox" id="decrypt-show-password"> <span data-i18n="show_password_one">Show password</span></label>
+      <div id="decrypt-status" class="decrypt-status" role="alert" hidden></div>
+      <div class="modal-actions">
+        <button type="button" id="decrypt-cancel" class="btn btn-secondary" data-i18n="cancel">Cancel</button>
+        <button type="button" id="decrypt-confirm" class="btn btn-primary"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: PRINT ================= -->
+  <div id="print-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-print">
+    <div class="modal-content">
+      <button type="button" class="modal-close" data-close data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      <h2 id="h-print" data-i18n="print_title">Create a printable PDF</h2>
+      <fieldset class="radio-set">
+        <legend data-i18n="print_template">Template</legend>
+        <label><input type="radio" name="tpl" value="sheet" checked> <span data-i18n="tpl_sheet">A4 sheet with instructions</span></label>
+        <label><input type="radio" name="tpl" value="cards"> <span data-i18n="tpl_cards">Cut-out cards (10 per A4)</span></label>
+      </fieldset>
+      <fieldset class="radio-set">
+        <legend data-i18n="print_ecc">Damage resistance</legend>
+        <label><input type="radio" name="ecc" value="Q" checked> <span data-i18n="ecc_q">Normal (tolerates ~25%)</span></label>
+        <label><input type="radio" name="ecc" value="H"> <span data-i18n="ecc_h">Maximum (tolerates ~30%, denser QR)</span></label>
+      </fieldset>
+      <label class="opt-label inline-select" id="copies-row"><span data-i18n="copies">Copies of each QR</span>
+        <select id="print-copies"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
+      </label>
+      <button type="button" id="print-go" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <span data-i18n="download_pdf">Download PDF</span></button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: PRACTICE ================= -->
+  <div id="practice-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-prac">
+    <div class="modal-content">
+      <button type="button" class="modal-close" data-close data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      <h2 id="h-prac" data-i18n="practice_title">Practice a recovery</h2>
+      <p data-i18n="practice_body1">You will create a backup of a randomly generated test seed and then recover it, as you would in an emergency.</p>
+      <p class="help warn" data-i18n="practice_body2">That seed is for practice only: never send funds to it. Practice QRs are labelled as such.</p>
+      <button type="button" id="practice-start" class="btn btn-primary" data-i18n="practice_start">Start practice</button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: ABOUT ================= -->
+  <div id="about-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="h-about">
+    <div class="modal-content about">
+      <button type="button" class="modal-close" data-close data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      <h2 id="h-about" data-i18n="about">How it protects you</h2>
+      <dl class="about-list">
+        <dt data-i18n="ab1_t">Nothing leaves the device</dt><dd data-i18n="ab1_d">Nothing is loaded from third parties, not even fonts, and the security policy blocks every outside connection. Once installed it works offline. A single-file version also exists for devices that never go online.</dd>
+        <dt data-i18n="ab2_t">Built-in keyboard</dt><dd data-i18n="ab2_d">Words are typed on the app’s own keyboard, so your system keyboard cannot learn, sync or log them.</dd>
+        <dt data-i18n="ab3_t">Argon2id + AES-256-GCM</dt><dd data-i18n="ab3_d">The password is strengthened with Argon2id (64 to 256 MiB of memory), which makes GPU attacks much more expensive. Authenticated encryption detects any tampering.</dd>
+        <dt data-i18n="ab4_t">The QR reveals nothing</dt><dd data-i18n="ab4_d">The note, date, passphrase and number of words are not visible: everything is encrypted and padded.</dd>
+        <dt data-i18n="ab5_t">Shares and decoy</dt><dd data-i18n="ab5_d">You can split the backup into several QRs (Shamir): fewer than required reveal no information at all. You can also add a decoy wallet that opens with another password, with no sign it exists.</dd>
+        <dt data-i18n="ab6_t">Your password is the key</dt><dd data-i18n="ab6_d">Whoever has the QR can try to guess it without limit, offline. Use a long, unique password; the dice button generates one of about 120 bits.</dd>
+        <dt data-i18n="ab7_t">Limits</dt><dd data-i18n="ab7_d">JavaScript cannot fully erase memory: close the tab when you finish. Shares are not SLIP-39 compatible. The app language does not change the BIP39 words: you choose those when entering the phrase.</dd>
+      </dl>
+      <div class="oss">
+        <p data-i18n="open_source">MnemoniQR is open source under the Apache 2.0 license. You can review the code and build it yourself.</p>
+        <div class="oss-links">
+          <a class="link" href="https://github.com/MPetovick/MnemoniQR/blob/main/README.md" target="_blank" rel="noopener noreferrer" data-i18n="link_readme">Read the README</a>
+          <a class="link" href="https://github.com/MPetovick/MnemoniQR" target="_blank" rel="noopener noreferrer" data-i18n="link_source">Source code</a>
+        </div>
+      </div>
+      <div class="build-fp">
+        <span data-i18n="build_fp">Fingerprint of this version</span>
+        <code id="build-fp">…</code>
+        <span class="help" data-i18n="build_fp_help">Compare it with the one published in HASHES.txt.</span>
+      </div>
+      <button type="button" class="btn btn-primary" data-close data-i18n="got_it">Got it</button>
+    </div>
+  </div>
+
+  <!-- ================= SHEET: INSTALL ================= -->
+  <div id="install-sheet" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="h-install">
+      <span class="sheet-handle" aria-hidden="true"></span>
+      <div class="install-head">
+        <img src="MQR_logo.webp" alt="" width="64" height="64" class="install-icon">
+        <div class="install-titles">
+          <h2 id="h-install" data-i18n="install_title">Install MnemoniQR</h2>
+          <code class="install-fp" id="install-fp"></code>
+        </div>
+      </div>
+      <p class="install-lead" id="install-lead"></p>
+      <ul class="benefits" id="install-benefits">
+        <li><span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-plane"/></svg></span><span data-i18n="install_b1">Works fully offline</span></li>
+        <li><span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg></span><span data-i18n="install_b2">Full screen, no browser extensions</span></li>
+        <li><span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-verify"/></svg></span><span data-i18n="install_b3">Every version has a fingerprint you can check</span></li>
+      </ul>
+      <ol class="ios-steps" id="install-ios" hidden>
+        <li><span class="step-n">1</span><span class="grow" data-i18n="ios_s1">Tap Share in the browser toolbar</span><svg class="ic accent" aria-hidden="true"><use href="#i-share-ios"/></svg></li>
+        <li><span class="step-n">2</span><span class="grow" data-i18n="ios_s2">Choose “Add to Home Screen”</span><svg class="ic accent" aria-hidden="true"><use href="#i-add-home"/></svg></li>
+        <li><span class="step-n">3</span><span class="grow" data-i18n="ios_s3">Open it from the icon and turn on airplane mode</span></li>
+      </ol>
+      <div class="sheet-actions">
+        <button type="button" id="install-later" class="btn btn-secondary" data-i18n="install_later">Not now</button>
+        <button type="button" id="install-go" class="btn btn-primary"></button>
+      </div>
+      <label class="checkbox-label small"><input type="checkbox" id="install-never"> <span data-i18n="install_never">Don’t show again</span></label>
+    </section>
+  </div>
+
+  <input type="file" id="kf-file" hidden>
+  <div id="toast-container" role="status" aria-live="polite"></div>
+  <div id="spinner-overlay" class="spinner-overlay" hidden role="status" aria-live="assertive">
+    <div class="spinner"></div>
+    <p id="spinner-message"></p>
+    <button type="button" id="spinner-cancel" class="link light" hidden data-i18n="cancel">Cancel</button>
+  </div>
+  <div id="privacy-shield" class="privacy-shield" aria-hidden="true"><img src="MQR_logo.webp" alt="" width="96" height="96"></div>
+</div>
+</body>
+</html>

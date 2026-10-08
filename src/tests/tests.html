@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<title>MnemoniQR · Tests</title>
+<link rel="stylesheet" href="tests.css">
+<script src="../vendor/qrcode.min.js" defer></script>
+<script src="../vendor/argon2.min.js" defer></script>
+<script src="../vendor/noble.min.js" defer></script>
+<script src="../js/wordlists.js" defer></script>
+<script src="../js/core.js" defer></script>
+<script src="../js/dicts.js" defer></script>
+<script src="../js/eff-words.js" defer></script>
+<script src="../js/strength.js" defer></script>
+<script src="vectors.js" defer></script>
+<script src="tests.js" defer></script>
+</head>
+<body>
+<h1>MnemoniQR · Automated tests</h1>
+<p>Official BIP39 vectors, BIP32 fingerprint, Shamir, v4 encryption, decoy, shares and v2/v3 compatibility. Everything runs in this browser.</p>
+<p id="summary">Running…</p>
+<ol id="out"></ol>
+</body>
+</html>

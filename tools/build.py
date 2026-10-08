@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""
+MnemoniQR v6.3.0 · Reproducible build (Python 3 standard library only).
+
+    python3 tools/build.py [--no-tests]
+
+Writes dist/ with:
+  - the PWA, with a strict CSP, Trusted Types and Subresource Integrity on every script and stylesheet;
+  - mnemoniqr-offline.html: the whole app in one file, for devices that never go online;
+  - HASHES.txt: SHA-256 of every file plus the build fingerprints the app displays;
+  - _headers (Netlify / Cloudflare Pages) and vercel.json with the HTTP security headers.
+
+The same sources always produce byte-identical output, so anyone can rebuild a release
+and compare its HASHES.txt with the published one.
+"""
+import base64
+import hashlib
+import json
+import os
+import re
+import shutil
+import sys
+
+VERSION = '6.3.0'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SRC = os.path.join(ROOT, 'src')
+DIST = os.path.join(ROOT, 'dist')
+
+TT = "require-trusted-types-for 'script'; trusted-types mqr"
+# The page itself never fetches anything: connect-src is 'none' (the service worker has its own context)
+CSP_MULTI = ("default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self'; "
+             "img-src 'self'; connect-src 'none'; worker-src 'self' blob:; manifest-src 'self'; "
+             "base-uri 'none'; form-action 'none'; " + TT)
+CSP_TESTS = ("default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; "
+             "connect-src 'self'; base-uri 'none'; form-action 'none'")
+
+
+def read(path, mode='r'):
+    with open(path, mode, **({} if 'b' in mode else {'encoding': 'utf-8'})) as f:
+        return f.read()
+
+
+def write(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    binary = isinstance(data, bytes)
+    with open(path, 'wb' if binary else 'w', **({} if binary else {'encoding': 'utf-8', 'newline': '\n'})) as f:
+        f.write(data)
+
+
+def b64hash(data, alg):
+    return base64.b64encode(hashlib.new(alg, data if isinstance(data, bytes) else data.encode()).digest()).decode()
+
+
+def fingerprint(tokens):
+    """Same algorithm as buildFingerprint() in js/app.js: SHA-256 of the sorted script and stylesheet hashes, first 64 bits."""
+    h = hashlib.sha256('\n'.join(sorted(tokens)).encode()).hexdigest()[:16].upper()
+    return ' '.join(h[i:i + 4] for i in range(0, 16, 4))
+
+
+def check_sources():
+    """Fail early on mistakes that would otherwise only show up in the browser."""
+    core = read(os.path.join(SRC, 'js', 'core.js'))
+    lists = read(os.path.join(SRC, 'js', 'wordlists.js'))
+    for lang, digest in re.findall(r"(en): '([0-9a-f]{64})'", core):
+        words = re.search(lang + r':Object\.freeze\("([^"]+)"', lists).group(1)
+        if hashlib.sha256(words.encode()).hexdigest() != digest:
+            sys.exit(f'Word list "{lang}" does not match the hash pinned in core.js')
+    html = read(os.path.join(SRC, 'index.html'))
+    for ref in re.findall(r'(?:src|href)="((?:js|vendor|fonts|assets)/[^"]+|[\w.-]+\.(?:css|webp|png|json))"', html):
+        if not os.path.exists(os.path.join(SRC, ref)):
+            sys.exit(f'index.html references a missing file: {ref}')
+    sw = read(os.path.join(SRC, 'sw.js'))
+    for ref in re.findall(r"'((?:js|vendor|fonts|assets)/[^']+|[\w.-]+\.(?:html|css|js|json|webp|png))'", sw):
+        if not os.path.exists(os.path.join(SRC, ref)):
+            sys.exit(f'sw.js precaches a missing file: {ref}')
+
+
+def build_multi(with_tests):
+    html = read(os.path.join(SRC, 'index.html')).replace('__CSP__', CSP_MULTI)
+    tokens = []
+
+    def add_sri(tag, attr, path):
+        sri = 'sha384-' + b64hash(read(os.path.join(SRC, path), 'rb'), 'sha384')
+        tokens.append(sri)
+        return f'{attr}="{path}" integrity="{sri}"'
+
+    html = re.sub(r'<script src="([^"]+)"', lambda m: '<script ' + add_sri('script', 'src', m.group(1)), html)
+    html = re.sub(r'<link rel="stylesheet" href="([^"]+)"', lambda m: '<link rel="stylesheet" ' + add_sri('style', 'href', m.group(1)), html)
+    write(os.path.join(DIST, 'index.html'), html)
+    if with_tests:
+        write(os.path.join(DIST, 'tests', 'tests.html'), read(os.path.join(SRC, 'tests', 'tests.html')).replace('__CSP__', CSP_TESTS))
+    return fingerprint(tokens)
+
+
+def escape_inline(js):
+    return js.replace('</script', '<\\/script').replace('<!--', '<\\!--')
+
+
+def build_single():
+    html = read(os.path.join(SRC, 'index.html'))
+    html = html.replace('<html lang="en">', '<html lang="en" data-single>')
+    for pattern in (r'\s*<link rel="manifest"[^>]*>', r'\s*<link rel="apple-touch-icon"[^>]*>', r'\s*<meta name="apple-mobile-web-app[^>]*>'):
+        html = re.sub(pattern, '', html)
+    favicon = base64.b64encode(read(os.path.join(SRC, 'favicon.png'), 'rb')).decode()
+    html = html.replace('href="favicon.png"', f'href="data:image/png;base64,{favicon}"')
+    logo = base64.b64encode(read(os.path.join(SRC, 'MQR_logo.webp'), 'rb')).decode()
+    html = html.replace('src="MQR_logo.webp"', f'src="data:image/webp;base64,{logo}"')
+
+    css = read(os.path.join(SRC, 'styles.css'))
+    # Fonts become data: URIs so the single file depends on nothing else
+    css = re.sub(r'url\(fonts/([^)]+\.woff2)\)',
+                 lambda m: 'url(data:font/woff2;base64,' + base64.b64encode(read(os.path.join(SRC, 'fonts', m.group(1)), 'rb')).decode() + ')', css)
+    style_hash = "'sha256-" + b64hash(css, 'sha256') + "'"
+    html = html.replace('<link rel="stylesheet" href="styles.css">', '<style>' + css + '</style>')
+
+    script_hashes = []
+
+    def inline(m):
+        code = escape_inline(read(os.path.join(SRC, m.group(1))))
+        script_hashes.append("'sha256-" + b64hash(code, 'sha256') + "'")
+        return '<script>' + code + '</script>'
+
+    html = re.sub(r'<script src="([^"]+)" defer></script>', inline, html)
+    # The Argon2 worker is shipped as inert text and started from a blob: URL
+    worker = escape_inline(read(os.path.join(SRC, 'vendor', 'argon2.min.js')) + '\n' + read(os.path.join(SRC, 'kdf-worker.js')))
+    html = html.replace('</body>', '<script type="text/plain" id="kdf-worker-src">' + worker + '</script>\n</body>')
+
+    csp = ("default-src 'none'; script-src " + ' '.join(script_hashes) + " 'wasm-unsafe-eval'; style-src " + style_hash +
+           "; font-src data:; img-src data:; connect-src 'none'; worker-src blob:; "
+           "base-uri 'none'; form-action 'none'; " + TT)
+    html = html.replace('__CSP__', csp)
+    write(os.path.join(DIST, 'mnemoniqr-offline.html'), html)
+    return fingerprint(re.findall(r"'(sha(?:256|384)-[^']+)'", csp))
+
+
+def headers():
+    hdr = {
+        'Content-Security-Policy': CSP_MULTI + "; frame-ancestors 'none'",
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'no-referrer',
+        'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Cross-Origin-Resource-Policy': 'same-origin',
+        'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+    }
+    tests_csp = CSP_TESTS + "; frame-ancestors 'none'"
+    lines = ['# Netlify / Cloudflare Pages. frame-ancestors and Permissions-Policy only work as HTTP headers.', '/*']
+    lines += [f'  {k}: {v}' for k, v in hdr.items()]
+    lines += ['/sw.js', '  Cache-Control: no-cache', '/tests/*', '  Content-Security-Policy: ' + tests_csp, '']
+    write(os.path.join(DIST, '_headers'), '\n'.join(lines))
+    vercel = {'headers': [
+        {'source': '/(.*)', 'headers': [{'key': k, 'value': v} for k, v in hdr.items()]},
+        {'source': '/sw.js', 'headers': [{'key': 'Cache-Control', 'value': 'no-cache'}]},
+        {'source': '/tests/(.*)', 'headers': [{'key': 'Content-Security-Policy', 'value': tests_csp}]},
+    ]}
+    write(os.path.join(DIST, 'vercel.json'), json.dumps(vercel, indent=2) + '\n')
+
+
+def main():
+    with_tests = '--no-tests' not in sys.argv
+    check_sources()
+    if os.path.exists(DIST):
+        shutil.rmtree(DIST)
+    ignore = ['index.html', 'tests.html'] + ([] if with_tests else ['tests'])
+    shutil.copytree(SRC, DIST, ignore=shutil.ignore_patterns(*ignore))
+    # The standalone recovery script ships with every release
+    shutil.copy2(os.path.join(ROOT, 'tools', 'recover.py'), os.path.join(DIST, 'recover.py'))
+    fp_multi = build_multi(with_tests)
+    fp_single = build_single()
+    headers()
+    files = []
+    for base, _, names in os.walk(DIST):
+        for name in names:
+            path = os.path.join(base, name)
+            files.append((os.path.relpath(path, DIST).replace(os.sep, '/'), hashlib.sha256(read(path, 'rb')).hexdigest()))
+    files.sort()
+    out = [f'MnemoniQR v{VERSION} · Release fingerprints', '',
+           f'PWA (index.html):                  {fp_multi}',
+           f'Single file (mnemoniqr-offline.html): {fp_single}',
+           '', 'These must match "Fingerprint of this version" in the app (How it protects you).', '',
+           'SHA-256 of every file:']
+    out += [f'{digest}  {rel}' for rel, digest in files]
+    write(os.path.join(DIST, 'HASHES.txt'), '\n'.join(out) + '\n')
+    print(f'dist/ ready (v{VERSION})')
+    print('PWA fingerprint:        ', fp_multi)
+    print('Single-file fingerprint:', fp_single)
+
+
+if __name__ == '__main__':
+    main()
