@@ -45,7 +45,7 @@ Terms are agreed case by case, in a written agreement. Typically:
 
 ## How to get one
 
-Write to **licensing@mnemoniqr.app** with:
+Write to **+88806940392** with:
 
 1. your company and a contact person;
 2. the product, and how MnemoniQR would be used in it (embedded code, modified app, hosted service, device);
