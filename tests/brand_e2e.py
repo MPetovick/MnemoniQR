@@ -8,7 +8,7 @@ would keep with a decoder independent from the app (ZXing-C++, as used by many p
   - the PNG, the ZIP of shares (CRC checked, README present, no timestamp) and the printed PDF rasterized at
     100 and 150 dpi (a poor print or photo); each code must decode to exactly the text printed under it;
   - the PNGs from the ZIP are uploaded back into the app's own recovery, and the shares recover with recover.py;
-  - OpenCV's reader is reported for information only (it fails on large codes, logo or not).
+  - OpenCV's reader is reported for information only (it fails on some large codes).
 
 Usage: python3 tests/brand_e2e.py   (needs: pip install playwright zxing-cpp opencv-python-headless pypdfium2)
 """
@@ -151,8 +151,6 @@ def main():
             check(f'printed PDF at {dpi} dpi: ZXing reads the exact text', code in zx(pdf_pages_gray(p1, dpi)[0]))
         raw = open(p1, 'rb').read()
         check('PDF: the shield beside the title, not in the QR', b'/Subtype /Image' in raw and raw.count(b'/Sh Do') == len(pypdfium2.PdfDocument(p1)))
-        n = zxingcpp.read_barcodes(img)[0].symbology_identifier and None
-        version = int(next(r for r in zxingcpp.read_barcodes(img)).version) if hasattr(zxingcpp.read_barcodes(img)[0], 'version') else None
         page.click('#qr-done')
 
         # 2. the largest allowed backup, PDF at Q and H
@@ -163,7 +161,7 @@ def main():
             pth = pdf(f'big-{ecc}.pdf', ecc)
             bcode = pdf_codes(pth)[0].replace(' ', '')
             shields = open(pth, 'rb').read().count(b'/Sh Do')
-            npages = len(pypdfium2.PdfDocument(pth))   # every page header carries the shield; the QR only at H
+            npages = len(pypdfium2.PdfDocument(pth))   # every page header carries the shield
             check(f'largest backup, PDF at {ecc}: the shield in every page header only', shields == npages, f'{shields} draws, {npages} pages')
             for dpi in (100, 150):
                 check(f'largest backup, PDF at {ecc}, {dpi} dpi: ZXing reads it', bcode in zx(pdf_pages_gray(pth, dpi)[0]), f'{len(bcode)} chars')
@@ -173,8 +171,10 @@ def main():
 
         # 3. 3-of-5 shares: ZIP
         spw = practice(12, note='Shares test', split='3-5')
-        check('shares: the download button says ZIP', page.inner_text('#qr-download-t') == 'ZIP')
-        zpath = save('#qr-download', 'shares.zip')
+        check('shares: PNG saves the share on screen, ZIP is a separate choice', page.is_visible('#qr-zip'))
+        one = save('#qr-download', 'one-share.png')
+        check('shares: PNG is a single share image', open(one, 'rb').read()[:8] == b'\x89PNG\r\n\x1a\n' and one.endswith('.png'))
+        zpath = save('#qr-zip', 'shares.zip')   # the confirmation dialog is accepted
         with zipfile.ZipFile(zpath) as zf:
             names = zf.namelist()
             bad = zf.testzip()

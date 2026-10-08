@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.6.1 · User interface
+// MnemoniQR v6.6.2 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.6.1';
+const APP_VERSION = '6.6.2';
 const CFG = Object.freeze({
     AUTO_HIDE: 60, CLIPBOARD_CLEAR: 30, BACKGROUND_WIPE: 120,
     MAX_IMAGE: 10 * 1024 * 1024, MAX_PIXELS: 40e6, MAX_KEYFILE: 100 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
@@ -744,7 +744,7 @@ async function renderResult() {
     $('share-prev').disabled = R.index === 0;
     $('share-next').disabled = R.index === R.texts.length - 1;
     await QR.renderSharp($('qr-canvas'), R.texts[R.index], 300, 'Q');
-    $('qr-download-t').textContent = R.kind === 'shares' ? 'ZIP' : 'PNG';
+    $('qr-zip').hidden = R.kind !== 'shares';
     const cap = $('qr-caption');
     cap.textContent = (R.verified ? t('verified') + ' · ' : t('unverified') + ' · ') + shareCaption(R.index);
     cap.classList.toggle('ok', R.verified);
@@ -803,20 +803,32 @@ async function labeledPNG(i) {
     qr.width = 0;
     return new Promise((r) => c.toBlob(r, 'image/png'));
 }
+// One export at a time; a failure is reported instead of leaving a dead button
+async function exporting(fn) {
+    if (S.exportBusy) return;
+    S.exportBusy = true;
+    try { await fn(); } catch (e) { toast(errText(e), 'error'); } finally { S.exportBusy = false; }
+}
+async function pngBlob(i) {
+    const blob = await labeledPNG(i);
+    if (!blob) throw new MQRError('png_failed');
+    return blob;
+}
 async function downloadPNG() {
     const R = S.result;
-    if (R.kind === 'shares') { await downloadZIP(); return; }
     const name = R.kind === 'shares' ? `mnemoniqr-${R.setId.slice(0, 4)}-${R.index + 1}of${R.n}.png` : 'mnemoniqr-backup.png';
-    downloadBlob(await labeledPNG(R.index), name);
+    downloadBlob(await pngBlob(R.index), name);
     toast(t('png_saved'), 'success', { duration: 6000 });
 }
-// Every share as a PNG in one ZIP, with a short README (no secret beyond what the images hold)
+// Every share as a PNG in one ZIP, with a short README (no secret beyond what the images hold). One file that
+// holds every share is only as safe as the password, so it is a separate, confirmed choice.
 async function downloadZIP() {
     const R = S.result;
+    if (R.kind !== 'shares' || !confirm(t('zip_confirm', { n: R.n, k: R.k }))) return;
     const set = R.setId.slice(0, 4);
     const files = [];
     for (let i = 0; i < R.texts.length; i++) {
-        const blob = await labeledPNG(i);
+        const blob = await pngBlob(i);
         files.push({ name: `mnemoniqr-${set}-${i + 1}of${R.n}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
     }
     const readme = [
@@ -982,7 +994,11 @@ const Brand = {
     },
     // The shield as an uncompressed RGB image for the PDF (built once)
     pdfImage() {
-        if (this.pdf || !this.img) return this.pdf;
+        if (this.pdf !== null || !this.img) return this.pdf || null;
+        try { this.pdf = this.rgb(); } catch { this.pdf = false; }   // without it, the PDF is printed without the shield
+        return this.pdf || null;
+    },
+    rgb() {
         const h = 160, w = Math.round(this.img.naturalWidth * h / this.img.naturalHeight);
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
@@ -993,8 +1009,7 @@ const Brand = {
         let raw = '';
         for (let i = 0; i < d.length; i += 4) raw += String.fromCharCode(d[i], d[i + 1], d[i + 2]);
         c.width = 0;
-        this.pdf = { w, h, raw };
-        return this.pdf;
+        return { w, h, raw };
     }
 };
 
@@ -1013,10 +1028,6 @@ const PDF = {
         return o + ')';
     },
     txt(font, sz, x, y, s, gray = 0) { return `BT /${font} ${sz} Tf ${gray} g ${x.toFixed(2)} ${y.toFixed(2)} Td ${this.lit(s)} Tj ET\n`; },
-    qr(text, ecc, x, y, size) {
-        const m = QR.matrix(text, ecc);
-        return this.qrModules(m, m.size, size / m.size, x, y);
-    },
     // The shield beside the title in the page header
     logo(x, y, h) {
         const im = Brand.pdfImage();
@@ -1024,7 +1035,8 @@ const PDF = {
         const w = h * im.w / im.h;
         return `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Sh Do Q\n`;
     },
-    qrModules(m, n, cell, x, y) {
+    qr(text, ecc, x, y, size) {
+        const m = QR.matrix(text, ecc), n = m.size, cell = size / n;
         let c = 'q 0 g\n';
         for (let r = 0; r < n; r++) {
             let st = -1;
@@ -1668,10 +1680,9 @@ const Install = {
 // The support UI never appears during a flow: a footer link, one quiet line on the home screen
 // after the first verified backup (once per device), and a line in "How it protects you".
 const Support = {
-    KEY: 'mqr-support', KINDS: ['tron', 'evm', 'btc'], list: [], cur: null, copyTimer: null,
-    pref() { try { return JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch { return {}; } },
-    save(v) { try { localStorage.setItem(this.KEY, JSON.stringify({ ...this.pref(), ...v })); } catch { /* storage unavailable */ } },
+    KINDS: ['tron', 'evm', 'btc'], list: [], cur: null, copyTimer: null, nudged: false,
     init() {
+        try { localStorage.removeItem('mqr-support'); } catch { /* storage unavailable */ }   // flag stored by 6.5.x
         const all = Array.isArray(self.MQR_DONATE) ? self.MQR_DONATE : [];
         this.list = all.filter((d) => d && this.KINDS.includes(d.kind) && typeof d.address === 'string' && /^[0-9A-Za-z]{26,90}$/.test(d.address));
         const on = this.list.length > 0;
@@ -1754,8 +1765,9 @@ const Support = {
     },
     // After the first verified, real backup only; never again on this device once shown
     nudge() {
-        if (!this.list.length || this.pref().nudged || Update.pending) return;   // a reloading page would waste it
-        this.save({ nudged: true });
+        // Kept in memory only: a stored flag would tell anyone holding the device that a real backup was made here
+        if (!this.list.length || this.nudged || Update.pending) return;   // a reloading page would waste it
+        this.nudged = true;
         this.showNudge('backup');
     },
     // After every real recovery (never practice, never while the phrase is on screen): the moment the app proved useful
@@ -1896,7 +1908,8 @@ async function init() {
     $('share-prev').addEventListener('click', () => { if (S.result.index > 0) { S.result.index--; renderResult(); } });
     $('share-next').addEventListener('click', () => { if (S.result.index < S.result.texts.length - 1) { S.result.index++; renderResult(); } });
     $('qr-verify').addEventListener('click', verifyBackup);
-    $('qr-download').addEventListener('click', downloadPNG);
+    $('qr-download').addEventListener('click', () => exporting(downloadPNG));
+    $('qr-zip').addEventListener('click', () => exporting(downloadZIP));
     $('qr-print').addEventListener('click', () => { $('copies-row').hidden = false; openModal('print-modal'); });
     $('print-go').addEventListener('click', makePDF);
     $('qr-share').addEventListener('click', shareQR);

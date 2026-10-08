@@ -1,4 +1,4 @@
-// MnemoniQR v6.6.1 · Donation addresses (the only place they are defined).
+// MnemoniQR v6.6.2 · Donation addresses (the only place they are defined).
 //
 // Fill in `address` for each network you want to offer; leave it '' to hide that network.
 // With no address at all, the app shows no support link, line or sheet.

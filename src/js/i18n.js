@@ -1,4 +1,4 @@
-// MnemoniQR v6.6.1 · UI strings (English).
+// MnemoniQR v6.6.2 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -121,7 +121,10 @@ const en = {
     verify_btn: "Check",
     verified_real: "Backup verified: the QR reads correctly and the real password works",
     verified_decoy: "The decoy password works. Check the real one too.",
-    zip_saved: "ZIP downloaded with the {n} QR images. Keep each one in a different place, and make sure your device does not upload it to the cloud.",
+    zip_all: "All shares in one ZIP",
+    zip_confirm: "This saves all {n} shares in one file. Whoever gets it needs only the password, so use it only to move the shares to {n} different places, then delete it. Continue?",
+    err_png_failed: "The image could not be created. Try again, or use the PDF.",
+    zip_saved: "ZIP downloaded with the {n} QR images. Move each one to a different place and delete the ZIP; make sure your device does not upload it to the cloud.",
     zip_readme_1: "This archive holds {n} shares. Any {k} of them, plus the password, recover the backup.",
     zip_readme_2: "Keep each share in a different place: on its own, a share reveals nothing.",
     zip_readme_3: "To recover: open MnemoniQR, choose Recover from a QR and upload or scan the images. Or use recover.py, shipped with every release.",

@@ -102,7 +102,10 @@ def main():
         page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
         page.on('dialog', lambda d: d.accept())
         page.goto(base + '/index.html')
+        page.evaluate("() => localStorage.setItem('mqr-support', '{\"nudged\":true}')")   # left by 6.5.x
+        page.reload()
         page.wait_for_timeout(600)
+        check('the 6.5.x flag is deleted on start', page.evaluate("() => localStorage.getItem('mqr-support')") is None)
         check('addresses ship under SRI', page.evaluate("() => !!document.querySelector('script[src=\"js/donate.js\"][integrity]')"))
         check('footer link shown', page.is_visible('#support-link'))
         check('nothing shown before any backup', page.is_hidden('#support-nudge'))
@@ -198,6 +201,7 @@ def main():
         check('unverified backup: no line', page.is_hidden('#support-nudge'))
         real_backup(True)
         check('first verified backup: one quiet line', page.is_visible('#support-nudge'))
+        check('nothing stored that reveals a backup was made', page.evaluate("() => Object.keys(localStorage).filter((k) => k !== 'mqr-install')") == [])
         check('…no dialog, nothing blocks the home screen', page.is_hidden('#support-sheet') and page.evaluate('() => !document.querySelector(".modal:not([hidden])")'))
         page.click('#support-nudge-x')
         check('…dismissed with ×', page.is_hidden('#support-nudge'))

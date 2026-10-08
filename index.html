@@ -16,20 +16,20 @@
 <meta name="apple-mobile-web-app-title" content="MnemoniQR">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="styles.css" integrity="sha384-XemkON/yUWLXJ3HhA78LSkg/eiLpiioAfXZE0u25Rw7ssNru0TOCu6xWqW0VL4UQ">
+<link rel="stylesheet" href="styles.css" integrity="sha384-CZM16QrFfm+8tDj8qCL+yKxhrRt5A8hu+888Kq/N1fAFskbIhXLCZ/WdUQuBK0D1">
 <script src="vendor/qrcode.min.js" integrity="sha384-j+PCCcBcNXQs6kRs1hRdOEJ/AqyHNjdSCi1wfQ/rBqCwaTUbzWLiRNth/rf32bIS" defer></script>
 <script src="vendor/jsqr.min.js" integrity="sha384-tqHEddO9DjuacgJyfvKkCvEFCkAsa/xW7e945T69PJJyN5K2akBEMf7TWifJwpaE" defer></script>
 <script src="vendor/argon2.min.js" integrity="sha384-tP0Wy54CKmng7i9EoTlPySD0hBx6Octj0VS6MfwlnUu111MPa+JLm0CCbep6XJ1W" defer></script>
 <script src="vendor/noble.min.js" integrity="sha384-8pjPNW+iH9kw1KMMMDfKRzJindppG2jIz0C7pQXYxm2lTVaydsJeCcu4iw+Xpq9P" defer></script>
 <script src="js/wordlists.js" integrity="sha384-PX0VVPp/q6x6y0vhXTrs6pygaHtC0IvYFi95wy/nspEg7GyZDWhmjzuLhpXm79FH" defer></script>
-<script src="js/core.js" integrity="sha384-8tARbc9RUQQJVRNGpmSf4Ql4qaiFl+7Ds++JhWHTBJByq9zeKRrDuxy8m7NFJ5E/" defer></script>
+<script src="js/core.js" integrity="sha384-rKwpqb3Rch5JJAXz4K4UdamNyPD7imaG6t8KC2KLxbBy82VGQ5glF4Xek48gKsTM" defer></script>
 <script src="js/dicts.js" integrity="sha384-RbEW1u65Za+hfY6xmJefB6IFRkKnJPCa68usZzRaYBsdPb1FYzs/A25Hu2TWuW03" defer></script>
 <script src="js/eff-words.js" integrity="sha384-fX8jraGRcZLU/dfzK/YdH9MhcQ9hiYcmJiOLY2I5ddK2rulRn380Q3ijaWR8n0sL" defer></script>
-<script src="js/strength.js" integrity="sha384-053W22qM7Kl0WTXCConYbHxHmSd4oEOsxf5PhlQjgw46cs748NVMtQN08qG/sfVa" defer></script>
-<script src="js/i18n.js" integrity="sha384-vYozkhQvvPCwNOy1P9VKugnM64M972avFp/BkinZrSfMPenTv6vAFAcNjw5EJFmq" defer></script>
-<script src="js/donate.js" integrity="sha384-WR1ChT4e5XX7tD/AWaxWAm+crRRnyIrPNt5+7H3cY/wh6zEHxozNj7bHysIoAYs0" defer></script>
-<script src="js/kdf-src.js" integrity="sha384-T4i8h1V86r1drVwLmPGABlITvZZj8eH/bapiAjnmnBA50e/Nbfv8uVfINqTVrk3U" defer></script>
-<script src="js/app.js" integrity="sha384-s8DSffcM76xp07xscWRhpdrbaC7MFPbanc5RiC7jlEJw5waiuuZ/crwQx9QOOVd6" defer></script>
+<script src="js/strength.js" integrity="sha384-GctthCUgGavOHS44LHhdWniFiY9KqFLWrJZjUR/ukaN7EOsJ/KrBNzSEexX8JaRA" defer></script>
+<script src="js/i18n.js" integrity="sha384-QaZHsS8pLqQzN3ShCs+rlSD+0Lm0gPaPBysD86hMU4OHy7RvT26yGjUwGjx7IS3m" defer></script>
+<script src="js/donate.js" integrity="sha384-cmvW1Rb1hyJNUApRw/0FPtjcyvHrulj/WNc5iHH78VB/V9emq6quc8wWnNw8q4sv" defer></script>
+<script src="js/kdf-src.js" integrity="sha384-lMtSSBnIzcbbo8aATlp6aiZTwNDsSYOb8pCw2LDhGzAKYiAT/HkLFUV5k4cU5K4V" defer></script>
+<script src="js/app.js" integrity="sha384-+zJ5fhuPywNl6IW+K/ML6KV1m596qmmVCEFnbspd0h5hO/Ekgv3vmdZeaqWHRN+s" defer></script>
 </head>
 <body>
 <noscript><p class="noscript">MnemoniQR needs JavaScript. Everything runs locally in your browser; nothing is sent anywhere.</p></noscript>
@@ -125,7 +125,7 @@
           <svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>
           <span><span data-i18n="support_free">Free, open source, no ads.</span> <span class="u" data-i18n="support_it">Support it</span></span>
         </button>
-        <span class="version">v6.6.1</span>
+        <span class="version">v6.6.2</span>
       </div>
     </footer>
   </main>
@@ -313,6 +313,7 @@
         <button type="button" id="qr-download" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> <span id="qr-download-t">PNG</span></button>
         <button type="button" id="qr-share" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span data-i18n="share">Share</span></button>
       </div>
+      <button type="button" id="qr-zip" class="link center-self" hidden><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>&nbsp;<span data-i18n="zip_all">All shares in one ZIP</span></button>
       <p class="help" id="result-help"></p>
       <button type="button" id="qr-done" class="link center-self" data-i18n="done_wipe">Finish and clear the screen</button>
     </div>

@@ -53,7 +53,7 @@ MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print
 - **BIP39 passphrase** (the "25th word") stored encrypted alongside the phrase. It is typed twice, because a mistyped passphrase is a different wallet. Passphrase and note are limited to 100 bytes each, so even the largest backup stays a printable QR.
 - **Wallet fingerprint** (BIP32 master fingerprint) shown when you encrypt and decrypt, so you can check the backup matches your wallet in Sparrow, Electrum, Coldcard and others.
 - **Verification:** after encrypting, MnemoniQR re-reads the QR from its pixels and asks for the password from memory, without showing the phrase.
-- **Printing:** vector PDF as an A4 sheet with instructions or as cut-out cards (10 per page), with normal or maximum error correction. Long backup text continues on a second page instead of running off the sheet, and cards are refused when a code would be too dense to print legibly.
+- **Printing:** vector PDF as an A4 sheet with the MnemoniQR shield and instructions, or as cut-out cards (10 per page), with normal or maximum error correction. Shares can also be saved as PNG one by one or all in one ZIP (with a README, no timestamp). Long backup text continues on a second page instead of running off the sheet, and cards are refused when a code would be too dense to print legibly.
 - **Typed recovery:** the text printed under each QR can be typed back into the app if the QR is damaged. It is base32 in groups of four (any case, spaces ignored, `0`/`1` read as `O`/`I`) with a CRC-32, so a typo is reported as a typo instead of "wrong password".
 - **Compact QR codes:** the `MQR5` text uses the QR alphanumeric mode, about 20 % fewer modules than before, so codes print larger and scan more easily.
 - **Practice mode** with a random test seed. Practice QRs are marked as such.
@@ -103,7 +103,7 @@ A full list of what was reviewed and changed is in [docs/SECURITY.md](docs/SECUR
 1. **Encrypt a seed.** Enter the phrase with the built-in keyboard. The app checks the BIP39 checksum and shows the wallet fingerprint.
 2. **Options.** Add an encrypted note, your BIP39 passphrase, a decoy wallet, a keyfile, or split the backup into shares.
 3. **Password.** Generate 6 words or 20 characters, or choose your own (the meter explains what is weak), then pick a protection level.
-4. **Verify, then print.** Tap *Check I can recover it*, then export a PDF or PNG. Store the password and each share in different places.
+4. **Verify, then print.** Tap *Check I can recover it*, then export a PDF or PNG (with shares, also all of them in one ZIP, to move them to separate places). Store the password and each share in different places.
 5. **Recover.** Tap *Recover from a QR*, then scan, upload or type the QR text (or enough shares, in any order), add the keyfile if the backup has one, and enter the password.
 
 Before trusting a backup, run through *Practice a recovery* once.
@@ -210,7 +210,7 @@ Versions 4.0 to 5.1.0 also accepted the Spanish word list. Backups made that way
 
 - No analytics, no network requests, no third-party code, fonts or images.
 - Recovery phrases, passwords and passphrases are never written to storage.
-- The only thing kept in `localStorage` is whether you dismissed the install prompt.
+- The only thing kept in `localStorage` is whether you dismissed the install prompt. Nothing records that a backup or a recovery was made on the device.
 - Copying a phrase asks for confirmation and clears the clipboard after 30 seconds when the browser allows it.
 
 ## Compatibility with older backups

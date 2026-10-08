@@ -1,10 +1,18 @@
 # Changelog
 
+## 6.6.2 — production review
+
+- **ZIP is a separate, confirmed choice.** With shares, *PNG* again saves the share on screen. *All shares in one ZIP* asks first: a file that holds every share is only as safe as the password (on iPhone, downloads often sync to iCloud). Use it to move the shares to different places, then delete it.
+- **No trace of a real backup on the device.** The once-only support line after the first verified backup is now remembered in memory for the session, not in `localStorage`. The flag stored by 6.5.x is deleted on start. Before, it told anyone holding the device that a real backup had been made there, which worked against the decoy.
+- **Exports report errors** instead of leaving a dead button, and ignore a second tap while one is running.
+- The PDF is still produced, without the shield, if the logo image cannot be prepared (for example, a privacy extension that blocks canvas reads).
+- Dead code from the removed in-QR logo deleted; docs updated (README: ZIP, privacy).
+
 ## 6.6.1 — PDF logo and ZIP
 
 - **PDF:** the MnemoniQR shield beside the title on every page.
 - **ZIP for shares:** with more than one QR, the download button becomes *ZIP*. It holds one labelled PNG per share and a README with how many are needed and how to recover. Entries are stored with a fixed 1980 date, so the archive does not reveal when the backup was made. The app reads the PNGs back (tested), and so does `recover.py` from their text.
-- **QR codes stay plain.** A logo inside the QR was tried in 6.6.0 and removed. The codes keep the error correction of 6.5.1: level Q by default, H as an option when printing.
+- **QR codes stay plain.** A logo inside the QR was tried in a 6.6.0 build and removed before release. The codes keep the error correction of 6.5.1: level Q by default, H as an option when printing.
 - `tests/brand_e2e.py` reads the PNG, the ZIP and the printed PDF (rasterized at 100 and 150 dpi) with ZXing, a decoder independent from the app.
 
 ## 6.5.1 — support after a recovery

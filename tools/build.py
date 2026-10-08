@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MnemoniQR v6.6.1 · Reproducible build (Python 3 standard library only).
+MnemoniQR v6.6.2 · Reproducible build (Python 3 standard library only).
 
     python3 tools/build.py [--no-tests] [--out DIR] [--donate-test | --donate-none]
 
@@ -28,7 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addresses  # noqa: E402  (tools/addresses.py)
 
-VERSION = '6.6.1'
+VERSION = '6.6.2'
 NO_CACHE = ['/', '/index.html', '/sw.js', '/manifest.json']
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')

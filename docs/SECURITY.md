@@ -18,9 +18,18 @@ This document records the design decisions behind MnemoniQR and the findings of 
 
 **Out of scope:** a compromised operating system or browser, weak or reused passwords, and memory forensics (JavaScript strings cannot be reliably wiped).
 
+## v6.6.2 review
+
+| Severity | Finding | Fix |
+|---|---|---|
+| Medium | The download button saved every share in one ZIP: on iPhone, downloads often sync to iCloud, putting a complete set in one account | PNG saves one share again; the ZIP is a separate button with a confirmation |
+| Medium | `localStorage` kept a flag set only after a verified real backup, revealing to anyone holding the device that a backup was made (and contradicting the README) | Session memory only; the old flag is deleted on start |
+| Low | PNG/ZIP export errors were silent; a double tap exported twice | Errors shown; one export at a time |
+| Low | A canvas-read failure while preparing the PDF logo blocked the whole PDF | The PDF is printed without the shield |
+
 ## v6.6.1: QR codes stay plain
 
-A logo inside the QR uses part of its error correction, and a backup may have to be read decades later. Tested in 6.6.0, it was removed: the codes are plain again, with the same error correction as 6.5.1. The shield appears only in the PDF header, outside the code. Printed PDFs are checked with an independent decoder (ZXing) at 100 and 150 dpi.
+A logo inside the QR uses part of its error correction, and a backup may have to be read decades later. Tested in a 6.6.0 build, it was removed before release: the codes are plain again, with the same error correction as 6.5.1. The shield appears only in the PDF header, outside the code. Printed PDFs are checked with an independent decoder (ZXing) at 100 and 150 dpi.
 
 ## v6.5.0: donation addresses
 
