@@ -57,9 +57,6 @@ You will receive a proposal with the scope, the price and the agreement. Pricing
 ## Versions and history
 
 - **MnemoniQR 6.9.0 and later**: AGPL-3.0-only, or a commercial license.
-- **Versions up to and including 6.8.0** were published under the Apache License 2.0. Those releases remain available under Apache 2.0, as published. New features and fixes from 6.9.0 on are only available under the AGPL-3.0 or a commercial license.
-
-Dual licensing is possible because every contribution is made under the project's [Contributor License Agreement](CLA.md), which lets the copyright holder offer the code under both licenses.
 
 ## Questions
 
