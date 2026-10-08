@@ -128,8 +128,8 @@ Every release has a **fingerprint**, shown in *How it protects you* in the app a
 ## Compatibility
 
 - **Wallets:** any wallet with a standard BIP39 English recovery phrase of 12 to 24 words. Not Electrum native seeds, SLIP-39 or private keys.
-- **Older backups:** MnemoniQR reads every format it ever wrote: `MQR5`/`MQS5` (6.2.0 and later), `MQR4`/`MQS4` (4.0–6.1), `MQR3` and `MQRv2`. Old backups open normally and the app recommends re-encrypting them for Argon2id. Versions before 6.2.0 cannot read `MQR5`.
-- **Word list:** English only. Backups made with the Spanish list in 4.0–5.1.0 are refused with a clear message (the same entropy as English words would be a different wallet): open them with MnemoniQR 5.1.0 and re-encrypt.
+
+- **Word list:** English only.
 
 ## Support the project
 
