@@ -17,6 +17,7 @@ import http.server
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import threading
@@ -113,7 +114,8 @@ def main():
         ok = wait(page, lambda: version(page) == new_ver)
         check('new version takes over with no user action', ok, f'{old_ver} -> {version(page)}')
         keys = page.evaluate("() => caches.keys()")
-        check('only the new app cache is left', [k for k in keys if k.startswith('mnemoniqr-')] == ['mnemoniqr-' + new_ver], str(keys))
+        app_caches = [k for k in keys if k.startswith('mnemoniqr-')]
+        check('only the new app cache is left', len(app_caches) == 1 and app_caches[0].startswith('mnemoniqr-' + new_ver + '+'), str(keys))
 
         # 3. next update while the user is typing a phrase: no reload, banner, reload once home
         nxt = tempfile.mkdtemp()
@@ -123,9 +125,12 @@ def main():
         bare = new_ver[1:]
 
         def next_sw(path, tag):
+            # the build stamps CACHE and VERSION with a content id; a new deployment changes both
+            out = re.sub(r"const CACHE = '([^']+)'", lambda m: f"const CACHE = '{m.group(1)}-{tag}'", src)
+            out = re.sub(r"const VERSION = '([^']+)'", lambda m: f"const VERSION = '{m.group(1)}-{tag}'", out)
+            assert out != src
             with open(path, 'w') as f:
-                f.write(src.replace(f"'mnemoniqr-{new_ver}'", f"'mnemoniqr-{new_ver}-{tag}'")
-                        .replace(f"const VERSION = '{bare}'", f"const VERSION = '{bare}-{tag}'"))
+                f.write(out)
         next_sw(sw, 'next')
         page.evaluate('() => { window.__mark = 1; }')
         page.click('#encrypt-btn-main')
@@ -185,6 +190,21 @@ def main():
         page.keyboard.press('Escape')
         reloaded = wait(page, lambda: page.evaluate('() => window.__mark === undefined && !!document.querySelector(".version")'))
         check('dialog open on home: update waits, then applies when it closes', banner and reloaded)
+        # 7. same version number, only the content changed (here: donate.js without addresses) -> it still updates
+        page.click('#seed-back') if page.is_visible('#seed-back') else None
+        same = tempfile.mkdtemp(prefix='mqr-same-')
+        subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build.py'), '--out', same, '--donate-none'], check=True, capture_output=True)
+        state['dir'] = NEW
+        page.goto(base)
+        wait(page, lambda: page.evaluate('() => !!navigator.serviceWorker.controller'))
+        page.reload()
+        had_link = page.is_visible('#support-link')
+        page.evaluate('() => { window.__mark = 7; }')
+        state['dir'] = same
+        page.evaluate('() => navigator.serviceWorker.getRegistration().then((r) => r.update())')
+        changed = wait(page, lambda: page.evaluate('() => window.__mark === undefined && !!document.querySelector(".version")'))
+        check('same version, new content: installed copy updates by itself',
+              changed and version(page) == new_ver and had_link != page.is_visible('#support-link'), f'support link {had_link} -> {page.is_visible("#support-link")}')
         check('no page errors', not errors, '; '.join(errors[:3]))
         browser.close()
     httpd.shutdown()

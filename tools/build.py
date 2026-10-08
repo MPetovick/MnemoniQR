@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MnemoniQR v6.6.2 · Reproducible build (Python 3 standard library only).
+MnemoniQR v6.6.3 · Reproducible build (Python 3 standard library only).
 
     python3 tools/build.py [--no-tests] [--out DIR] [--donate-test | --donate-none]
 
@@ -28,7 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addresses  # noqa: E402  (tools/addresses.py)
 
-VERSION = '6.6.2'
+VERSION = '6.6.3'
 NO_CACHE = ['/', '/index.html', '/sw.js', '/manifest.json']
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')
@@ -227,6 +227,29 @@ def headers():
     write(os.path.join(DIST, 'vercel.json'), json.dumps(vercel, indent=2) + '\n')
 
 
+def stamp_build():
+    """Content id of every file the service worker precaches. It goes into the cache name and the version the
+    worker announces (sw.js) and into <html data-build> (index.html), so ANY change (an address in donate.js, a
+    line of markup) makes installed copies update, even if the version number was not raised."""
+    sw_path, idx_path = os.path.join(DIST, 'sw.js'), os.path.join(DIST, 'index.html')
+    sw = read(sw_path)
+    refs = sorted(set(re.findall(r"'((?:js|vendor|fonts|assets)/[^']+|[\w.-]+\.(?:html|css|js|json|webp|png))'", sw)) | {'index.html'})
+    h = hashlib.sha256()
+    for ref in refs:
+        h.update(ref.encode() + b'\0' + read(os.path.join(DIST, ref), 'rb') + b'\0')
+    build = f'{VERSION}+{h.hexdigest()[:10]}'
+    sw2 = re.sub(r"const CACHE = 'mnemoniqr-v[\d.]+';", f"const CACHE = 'mnemoniqr-v{build}';", sw)
+    sw2 = re.sub(r"const VERSION = '[\d.]+';", f"const VERSION = '{build}';", sw2)
+    if sw2.count(build) != 2:
+        sys.exit('sw.js: CACHE or VERSION not found')
+    write(sw_path, sw2)
+    idx = read(idx_path)
+    if idx.count('<html lang="en">') != 1:
+        sys.exit('index.html: <html lang="en"> not found')
+    write(idx_path, idx.replace('<html lang="en">', f'<html lang="en" data-build="{build}">'))
+    return build
+
+
 def main():
     global DIST
     with_tests = '--no-tests' not in sys.argv
@@ -257,6 +280,7 @@ def main():
     for path in GENERATED | set(OVERRIDES):
         write(os.path.join(DIST, path), source(path))
     fp_multi = build_multi(with_tests)
+    build_id = stamp_build()
     fp_single = build_single()
     headers()
     files = []
@@ -268,6 +292,7 @@ def main():
     out = [f'MnemoniQR v{VERSION} · Release fingerprints', '',
            f'PWA (index.html):                  {fp_multi}',
            f'Single file (mnemoniqr-offline.html): {fp_single}',
+           f'Build id (installed copies update when it changes): {build_id}',
            '', 'These must match "Fingerprint of this version" in the app (How it protects you).', '',
            ]
     published = [(did, kind, addr) for did, kind, addr in donate if addr]
@@ -280,6 +305,7 @@ def main():
     write(os.path.join(DIST, 'HASHES.txt'), '\n'.join(out) + '\n')
     print(f'{os.path.relpath(DIST, ROOT) if DIST.startswith(ROOT) else DIST}/ ready (v{VERSION})' + (' · TEST donation addresses, do not deploy' if test_donations else ''))
     print('Donation addresses:     ', ', '.join(f'{d} {a}' for d, _, a in published) or 'none (support UI hidden)')
+    print('Build id:               ', build_id)
     print('PWA fingerprint:        ', fp_multi)
     print('Single-file fingerprint:', fp_single)
 

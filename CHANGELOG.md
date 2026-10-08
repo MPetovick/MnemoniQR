@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.6.3
+
+- **Donation addresses:** USDT on TRON, USDT/USDC/ETH on Ethereum and Bitcoin, checked by the build (Base58Check, EIP-55, Bech32) and listed in `HASHES.txt`.
+- **Every build updates installed copies.** The build stamps a content id of every precached file into the cache name, the version the service worker announces and `<html data-build>`. Changing only an address or a line of markup now reaches installed copies too, even if the version number was not raised. Before, the service worker stayed byte-identical and nothing updated. Tested in `tests/update_e2e.py`.
+- `src/js/donate.js` explains where to edit. Editing `dist/js/donate.js` directly makes the browser refuse the file (SRI), which hides the support link by design.
+- A toast identical to one already on screen is not stacked again.
+
 ## 6.6.2 — production review
 
 - **ZIP is a separate, confirmed choice.** With shares, *PNG* again saves the share on screen. *All shares in one ZIP* asks first: a file that holds every share is only as safe as the password (on iPhone, downloads often sync to iCloud). Use it to move the shares to different places, then delete it.

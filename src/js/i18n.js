@@ -1,4 +1,4 @@
-// MnemoniQR v6.6.2 · UI strings (English).
+// MnemoniQR v6.6.3 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {

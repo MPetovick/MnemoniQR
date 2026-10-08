@@ -1,12 +1,15 @@
-MnemoniQR v6.6.2 · Release fingerprints
+MnemoniQR v6.6.3 · Release fingerprints
 
-PWA (index.html):                  3CD9 A8BA 53A5 B582
-Single file (mnemoniqr-offline.html): 1008 00F7 1119 DD1F
+PWA (index.html):                  0225 3F4F 0EB6 DC68
+Single file (mnemoniqr-offline.html): 9170 80BF A70A 590F
+Build id (installed copies update when it changes): 6.6.3+40db562d0b
 
 These must match "Fingerprint of this version" in the app (How it protects you).
 
 Donation addresses (also shown in the app, under the same fingerprint):
   tron   tron  TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ
+  evm    evm   0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64
+  btc    btc   bc1qqg7ttja7th9r02549wvdwz3wspcvlv3gu95kz0
 
 SHA-256 of every file:
 144a557c1d2549058e09d552fefd5cfa0b6adefe3745f1a4c942a7ebe197e03b  MQR_logo.webp
@@ -25,25 +28,25 @@ d64ba838ef5472bba248620ec4fd8b5aa7cf0db2908e0bb230600caf279ba7bc  fonts/atkinson
 140e2bd25a7315c8a062508391426b0d8c3297400c947b8d847be28f73a199f0  fonts/atkinson-hyperlegible-latin-700-normal.woff2
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  fonts/jetbrains-mono-latin-400-normal.woff2
 cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a  fonts/jetbrains-mono-latin-500-normal.woff2
-21a451eb48a22b55fdf800a9969a5073ce7191a996b973ac889a0783b75f38c3  index.html
-f55865d58a72b33303c879bf8bd5e6cf9ebc48cb22d4136c8652345c5e8f43f9  js/app.js
-1889cb22c9636a00a599f937ceb51d10e4db91e1431c25fe08858de6f3018063  js/core.js
+0546149a87241d0cd752b54857882437c549e2a09630dcdcde6dd9886e6a8ee4  index.html
+76122afcaf1155a2b610e55d5b87d7af6514a3493ce988e32610512e43d7fac7  js/app.js
+e7949d6a1d6a7ff4d952349d32ffa61c2efe414c2e02d52ee63204173290e233  js/core.js
 2ab9a0df45904bda91d5deaff1a1f2b876153a4a5245be3ea9aa3fa07d771c57  js/dicts.js
-b85e63060aab0f748dbb622453b7384442d50e8c94e71666e6d79487b32a8b9f  js/donate.js
+c36537c1cc1cff425ac0b7b4a782316112f1869cda9744b8bf030a86dc74848f  js/donate.js
 b91b23b050cbe8ac8db8ba2421eaeaae4442bc6fd9906f73feab74d154212095  js/eff-words.js
-41641a16ee76733f8f0c6ee77918def9c506a082d88234ea5e4fc36ad270c888  js/i18n.js
-dadc449d87a19b2070973f38252bf69ab7b626efac10c947ac4ef9a4674af1a0  js/kdf-src.js
-f0e6a46301762f635d5734184aa28986153f669afd70a2633573739602945679  js/strength.js
+46e4dbc42186e3e862e10c38ceeb69f19a50b47a013b86478827564dcf4eda97  js/i18n.js
+f92f1dbc1d10b6a2c77d8dcd85ab457a9e24bcd9966559d21bc7cec48db5fd8b  js/kdf-src.js
+1675eaa7bc2dd755df370cebac15eb457d8453b5c765209e9eb0d69871d75f97  js/strength.js
 ccafdf6d619282f28ad07419fcab6b2189ab531be160e37266dd69b2344d4358  js/wordlists.js
-9f7ba57be7f8e63571fe73f03776c4553e07afadb7532dbbe2d2a63bc51736b6  kdf-worker.js
+6e753528ec630ad43bd6a61727ee30c9880def1711678a723f06dbd28735c214  kdf-worker.js
 a1e76402ff67c29bfe3bf7b83eb3f539a9ab587714a487c4669e5703342679fb  manifest.json
-3e1bd8f53d57fba132485b2d18c75fa2caeb759d73e1e5b749039b4c2dd74e6e  mnemoniqr-offline.html
-dce5432309522c509b6f3feb8d30da6ebf8703a9ce3bec370482b5d605f6865b  recover.py
-17099f6bf3d3636942682567826481e40c758b87d691c7ca9ab4a694ca1d6f97  styles.css
-11ead84875486aa7481ea903c5666f6c56234779dc8b67eca71feb884461ef06  sw.js
+7317b633fbbb4220e908d2109926090ce49c99d63c1cdfc5b4acd58a5ae70bca  mnemoniqr-offline.html
+68c65774a270f1ef6055586ab20ffae7b3f58b6184916b5cc2d99fb8e87288b3  recover.py
+240e8dbec6434c53c8327a3e42cc90da319958437ca7b6e9ca9e52421c8ceeb7  styles.css
+09d0d35f8b96384141eae0911ce05742f8ab9a89a50a409ecaa7d1f5212fad53  sw.js
 4b00127ce8ed53ca36e12084adb58685661bac552a9cb9149baf799ef2b7f02b  tests/tests.css
 6e6c9e6c5aa4dc54d64a8084d1efd980536decb0bc57aada56c722e2f9975cde  tests/tests.html
-6443479af6a5f4132bf1d1cc68688bdd5dbb33751be060d58e469d5b1d6dad31  tests/tests.js
+cc1479d249279c4a8098b3a6afdf88115384a3cc8cb492e37014ebc05b709509  tests/tests.js
 ba8c517ab217728d71ab7a432db1ddb4ed56e46e534ab96fb45007b5dba099f1  tests/vectors.js
 dcec617a2e1b700fa132d1583a186cb70611113395e869f2dd6cc82b415d3094  vendor/argon2.min.js
 fc6a9b5b0735aaf4af4748e0433d7351d4b725cfb02b032c502a5b699f3e4b9d  vendor/jsqr.min.js

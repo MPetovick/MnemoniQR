@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.6.2 · User interface
+// MnemoniQR v6.6.3 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +12,9 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.6.2';
+const APP_VERSION = '6.6.3';
+// Version + content id stamped by tools/build.py; the service worker announces the same value
+const APP_BUILD = document.documentElement.dataset.build || APP_VERSION;
 const CFG = Object.freeze({
     AUTO_HIDE: 60, CLIPBOARD_CLEAR: 30, BACKGROUND_WIPE: 120,
     MAX_IMAGE: 10 * 1024 * 1024, MAX_PIXELS: 40e6, MAX_KEYFILE: 100 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
@@ -55,6 +57,8 @@ const S = {
 // UI HELPERS
 // ============================================================
 function toast(message, type = 'info', { duration, onClick } = {}) {
+    // The same message already on screen is not stacked again (e.g. several quick copies)
+    if ([...$('toast-container').children].some((x) => x.textContent === message && x.classList.contains('show'))) return;
     const el = document.createElement('div');
     el.className = `toast ${type}`;
     el.textContent = message;
@@ -1569,12 +1573,12 @@ function setupPWA() {
     if (!single && 'serviceWorker' in navigator) {
         const sw = navigator.serviceWorker;
         // Tell the controlling worker that this page updates itself, so it is never force-reloaded
-        const hello = () => { if (sw.controller) sw.controller.postMessage({ type: 'MQR_HELLO', version: APP_VERSION }); };
+        const hello = () => { if (sw.controller) sw.controller.postMessage({ type: 'MQR_HELLO', version: APP_BUILD }); };
         sw.addEventListener('message', (e) => {
             if (!e.data || e.data.type !== 'MQR_UPDATED') return;
             if (e.source && e.source.postMessage) e.source.postMessage({ type: 'MQR_ACK' });
             // A first install, or a worker of this very version: nothing to reload
-            if (e.data.version === APP_VERSION) return;
+            if (e.data.version === APP_BUILD) return;
             Update.pending = true;
             Update.apply();
         });

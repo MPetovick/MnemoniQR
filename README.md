@@ -164,7 +164,7 @@ python3 tools/build.py && python3 tests/e2e.py --browser all
 
 **Deploying.** Publish the contents of `dist/`. Keep the provided headers: `frame-ancestors`, `Permissions-Policy`, HSTS and the cross-origin policies only work as HTTP headers. The site must be served over HTTPS for the service worker, camera and installation to work. `index.html`, `sw.js` and `manifest.json` must not be cached (the provided headers do this), otherwise installed copies see new versions late.
 
-**Updates.** Installed copies update by themselves the next time they are opened online: the new version is downloaded in the background and the app reloads as soon as it is on the home screen, never in the middle of a backup or a recovery.
+**Updates.** Every build carries a content id of the files it ships (shown by `tools/build.py` and in `HASHES.txt`), so any change, even without raising the version number, reaches installed copies. Installed copies update by themselves the next time they are opened online: the new version is downloaded in the background and the app reloads as soon as it is on the home screen, never in the middle of a backup or a recovery.
 
 ## Project structure
 
@@ -230,12 +230,15 @@ MnemoniQR is free, open source and has no ads, accounts or tracking. Donations p
 | Network | Address |
 |---|---|
 | USDT on TRON (TRC-20 only) | `TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ` |
+| USDT, USDC or ETH on Ethereum | `0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64` |
+| Bitcoin (on-chain) | `bc1qqg7ttja7th9r02549wvdwz3wspcvlv3gu95kz0` |
 
 The donation addresses live in one file, [`src/js/donate.js`](src/js/donate.js), and nowhere else:
 
 - `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum in its EIP-55 checksummed form, Bitcoin Bech32/Bech32m or Base58Check), or if an entry is not written in the expected shape.
 - The file is loaded under Subresource Integrity, so the addresses are covered by the build fingerprint, and every release lists them in `HASHES.txt`. An address cannot be swapped without changing the fingerprint.
 - Always copy an address from the app or from the release's `HASHES.txt`, and check its first and last four characters after pasting.
+- To change them, edit `src/js/donate.js`, run `python3 tools/build.py` and deploy `dist/`. Editing `dist/js/donate.js` directly does not work: the browser refuses a file that no longer matches its SRI hash, and the support link disappears.
 
 In the app, support never interrupts: a line in the footer, one quiet line on the home screen after your first verified backup (once per device) and after each real recovery, once the phrase has been wiped (never during a flow or in practice mode), and a mention in *How it protects you*. The app cannot know whether anyone donated. With no address configured, none of this is shown.
 

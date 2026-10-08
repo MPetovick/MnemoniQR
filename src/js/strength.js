@@ -1,4 +1,4 @@
-// MnemoniQR v6.6.2 · Password strength and generation (no DOM).
+// MnemoniQR v6.6.3 · Password strength and generation (no DOM).
 // A compact estimator in the spirit of zxcvbn: it finds the patterns an attacker would try first
 // (common passwords, dictionary words, names, keyboard runs, sequences, repeats, dates, the user's own
 // words) and returns the cheapest way to guess the whole password, in bits.

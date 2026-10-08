@@ -1,4 +1,4 @@
-// MnemoniQR v6.6.2 · Automated tests (run in the browser, no tooling needed)
+// MnemoniQR v6.6.3 · Automated tests (run in the browser, no tooling needed)
 'use strict';
 (async () => {
     const M = self.MQR;
