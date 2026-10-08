@@ -8,7 +8,7 @@
 // and is covered by the build fingerprint, so an address cannot be swapped without changing it.
 'use strict';
 self.MQR_DONATE = Object.freeze([
-    Object.freeze({ id: 'tron', kind: 'tron', address: '' }),   // USDT on TRON (TRC-20)
+    Object.freeze({ id: 'tron', kind: 'tron', address: 'TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ' }),   // USDT on TRON (TRC-20)
     Object.freeze({ id: 'evm', kind: 'evm', address: '' }),     // USDT, USDC or ETH on Ethereum
     Object.freeze({ id: 'btc', kind: 'btc', address: '' })      // Bitcoin on-chain
 ]);

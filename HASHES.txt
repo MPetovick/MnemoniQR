@@ -1,12 +1,12 @@
 MnemoniQR v6.5.0 · Release fingerprints
 
-PWA (index.html):                  3C4A 3D36 3431 83D7
-Single file (mnemoniqr-offline.html): CC6F 2C28 B4B3 9459
+PWA (index.html):                  423C 81A9 9521 3AFB
+Single file (mnemoniqr-offline.html): A864 806B 8687 156C
 
 These must match "Fingerprint of this version" in the app (How it protects you).
 
 Donation addresses (also shown in the app, under the same fingerprint):
-  none: the app shows no support link
+  tron   tron  TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ
 
 SHA-256 of every file:
 144a557c1d2549058e09d552fefd5cfa0b6adefe3745f1a4c942a7ebe197e03b  MQR_logo.webp
@@ -24,11 +24,11 @@ d64ba838ef5472bba248620ec4fd8b5aa7cf0db2908e0bb230600caf279ba7bc  fonts/atkinson
 140e2bd25a7315c8a062508391426b0d8c3297400c947b8d847be28f73a199f0  fonts/atkinson-hyperlegible-latin-700-normal.woff2
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  fonts/jetbrains-mono-latin-400-normal.woff2
 cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a  fonts/jetbrains-mono-latin-500-normal.woff2
-c16bad2cfedd4d2fdd8637051e017580a791f4c68d6064c20aa37abdc67a74fc  index.html
+04f17fe20788de8ba2a5c690ee0a8a47db585d7a1eebebc08b34890ee738855c  index.html
 b940b17e32a1520450b2438db39cb739c71847d67c65e39f284e817412e9913e  js/app.js
 deb9b2389920961cb65f59c85762aba8899a0b87a30131537d5bd9ba854ac7cd  js/core.js
 2ab9a0df45904bda91d5deaff1a1f2b876153a4a5245be3ea9aa3fa07d771c57  js/dicts.js
-67fed055a2e8f66e21201090e61f8c4be8561b1f983b6c556b22b347ab4fb8fd  js/donate.js
+681772f901292ae4fc3c8e47068986ba36b855b1f4ac61ebb6fabbe5aeb0c3b8  js/donate.js
 b91b23b050cbe8ac8db8ba2421eaeaae4442bc6fd9906f73feab74d154212095  js/eff-words.js
 e8ae12f27cc5200ad15c9ee5f8e611563b0da892cf152b863f36daa0d001df9a  js/i18n.js
 cedbb3babd61e807021c2a80df181d883ede792a191cbb2481daac294ce0691a  js/kdf-src.js
@@ -36,7 +36,7 @@ cedbb3babd61e807021c2a80df181d883ede792a191cbb2481daac294ce0691a  js/kdf-src.js
 ccafdf6d619282f28ad07419fcab6b2189ab531be160e37266dd69b2344d4358  js/wordlists.js
 e0ba0d17ff752ff519e4c05c496c62b380fa021f2ce4b8b6407e54e1437ef22b  kdf-worker.js
 a1e76402ff67c29bfe3bf7b83eb3f539a9ab587714a487c4669e5703342679fb  manifest.json
-a37b13f4f7a9e86746e86dc71ecbf390cc14a2dace173a03be755fed0ac662ea  mnemoniqr-offline.html
+6e69641cc972d3eea4c6f88bcacf64b2cf38e35c8e080a287e7f7201d7a2de38  mnemoniqr-offline.html
 97b2a725365db666789f26a5ed20b0d14f2082669495c1aeb0c5ba3512ec77fd  recover.py
 a91ab7b8bea85c0be089d71e34c76fa4c952965337caae4e382919e162458dce  styles.css
 8bc8b9003d1085ea5ca9690f4fb38db94b0c0e13bbb432295dfcee862beb6618  sw.js

@@ -2,7 +2,7 @@
 """
 MnemoniQR · support (donation) UI test (Chromium, Playwright).
 
-  1. the normal build (no address configured) shows no support UI at all;
+  1. a build with no address configured shows no support UI at all;
   2. a test build (`tools/build.py --donate-test`, public example addresses) shows the footer link,
      the sheet with one tab per network, a QR that decodes to the exact address, grouped text with
      the first and last groups highlighted, and a working Copy button;
@@ -59,7 +59,9 @@ def main():
 
     test_dist = tempfile.mkdtemp(prefix='mqr-donate-')
     subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build.py'), '--out', test_dist, '--donate-test'], check=True, capture_output=True)
-    plain, plain_url = serve(os.path.join(ROOT, 'dist'))
+    none_dist = tempfile.mkdtemp(prefix='mqr-nodonate-')
+    subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build.py'), '--out', none_dist, '--donate-none'], check=True, capture_output=True)
+    plain, plain_url = serve(none_dist)
     test, base = serve(test_dist)
     A = build.TEST_ADDRESSES
 

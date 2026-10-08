@@ -223,6 +223,10 @@ Please report security vulnerabilities privately (GitHub → *Security* → *Rep
 
 MnemoniQR is free, open source and has no ads, accounts or tracking. Donations pay for security audits and new features.
 
+| Network | Address |
+|---|---|
+| USDT on TRON (TRC-20 only) | `TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ` |
+
 The donation addresses live in one file, [`src/js/donate.js`](src/js/donate.js), and nowhere else:
 
 - `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum EIP-55 checksum, Bitcoin Bech32/Bech32m or Base58Check).

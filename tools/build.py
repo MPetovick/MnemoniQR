@@ -87,6 +87,11 @@ def donations(text):
     return rows
 
 
+def donate_none_source():
+    text = read(os.path.join(SRC, 'js', 'donate.js'))
+    return DONATE_RE.sub(lambda m: f"{{ id: '{m.group(1)}', kind: '{m.group(2)}', address: '' }}", text)
+
+
 def donate_test_source():
     text = read(os.path.join(SRC, 'js', 'donate.js'))
     return DONATE_RE.sub(lambda m: f"{{ id: '{m.group(1)}', kind: '{m.group(2)}', address: '{TEST_ADDRESSES[m.group(2)]}' }}", text)
@@ -223,6 +228,8 @@ def main():
     test_donations = '--donate-test' in sys.argv
     if test_donations:
         OVERRIDES['js/donate.js'] = donate_test_source()
+    elif '--donate-none' in sys.argv:   # tests: a build without any address
+        OVERRIDES['js/donate.js'] = donate_none_source()
     check_sources()
     donate = donations(source('js/donate.js'))
     if os.path.exists(DIST):

@@ -5,6 +5,7 @@
 - **Donations, without getting in the way.** A footer line (*Free, open source, no ads. Support it*), one quiet line on the home screen after the first verified real backup (once per device, dismissible, never in practice mode or during a flow) and a mention in *How it protects you*. They open a sheet with one tab per network (USDT on TRON, USDT/ETH on Ethereum, Bitcoin), a locally generated QR, the address in groups of four with the first and last four characters highlighted, the network warning and a Copy button.
 - **Addresses you can trust:** defined only in `src/js/donate.js`, loaded under SRI (covered by the build fingerprint) and listed in `HASHES.txt`. The build refuses malformed addresses: TRON Base58Check, Ethereum EIP-55 (Keccak-256), Bitcoin Bech32/Bech32m and Base58Check (`tools/addresses.py`). With no address configured, no support UI is shown.
 - Nothing is fetched and nothing is tracked: the app cannot know whether anyone donated.
+- Published address: USDT on TRON (TRC-20) `TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ`. With a single network the sheet shows no tabs.
 - `tools/build.py --out DIR --donate-test` builds with public example addresses for testing; `tests/donate_e2e.py` covers the screens.
 
 ## 6.4.1 — review fixes
