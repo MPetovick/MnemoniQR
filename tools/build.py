@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MnemoniQR v6.5.1 · Reproducible build (Python 3 standard library only).
+MnemoniQR v6.6.1 · Reproducible build (Python 3 standard library only).
 
     python3 tools/build.py [--no-tests] [--out DIR] [--donate-test | --donate-none]
 
@@ -28,7 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addresses  # noqa: E402  (tools/addresses.py)
 
-VERSION = '6.5.1'
+VERSION = '6.6.1'
 NO_CACHE = ['/', '/index.html', '/sw.js', '/manifest.json']
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')
@@ -172,6 +172,8 @@ def build_single():
     html = html.replace('href="favicon.png"', f'href="data:image/png;base64,{favicon}"')
     logo = base64.b64encode(read(os.path.join(SRC, 'MQR_logo.webp'), 'rb')).decode()
     html = html.replace('src="MQR_logo.webp"', f'src="data:image/webp;base64,{logo}"')
+    shield = base64.b64encode(read(os.path.join(SRC, 'assets', 'shield.png'), 'rb')).decode()
+    html = html.replace('src="assets/shield.png"', f'src="data:image/png;base64,{shield}"')
 
     css = read(os.path.join(SRC, 'styles.css'))
     # Fonts become data: URIs so the single file depends on nothing else

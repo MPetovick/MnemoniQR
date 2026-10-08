@@ -153,7 +153,7 @@ The build checks that the BIP39 word lists match the hashes pinned in `src/js/co
 
 **Recovery-tool tests.** `python3 tests/test_recover.py` fuzzes every parser in `tools/recover.py`: it must only ever fail with a readable error, never a traceback.
 
-**End-to-end tests.** `tests/e2e.py` drives the real app in Chromium, Firefox and WebKit: a full backup with keyboard entry, passphrase (including a mistyped confirmation), decoy, keyfile, shares and a diceware password; cancelling during decryption; the largest allowed backup printed on two pages and read back by `tools/recover.py`; verification; the PDF; recovery by typing the printed text; recovery of the same text with `tools/recover.py`; the install sheet; and the offline single file. `tests/update_e2e.py OLD_DIST` checks that an installed older version updates by itself, never in the middle of a flow; `tests/donate_e2e.py` checks the support screens (QR decodes to the exact address, copy, once-only line) and that a mistyped address never builds.
+**End-to-end tests.** `tests/e2e.py` drives the real app in Chromium, Firefox and WebKit: a full backup with keyboard entry, passphrase (including a mistyped confirmation), decoy, keyfile, shares and a diceware password; cancelling during decryption; the largest allowed backup printed on two pages and read back by `tools/recover.py`; verification; the PDF; recovery by typing the printed text; recovery of the same text with `tools/recover.py`; the install sheet; and the offline single file. `tests/update_e2e.py OLD_DIST` checks that an installed older version updates by itself, never in the middle of a flow; `tests/brand_e2e.py` reads the PNG, the ZIP of shares and the printed PDF (rasterized at 100 and 150 dpi) with ZXing, a decoder independent from the app; `tests/donate_e2e.py` checks the support screens (QR decodes to the exact address, copy, once-only line) and that a mistyped address never builds.
 
 ```bash
 pip install playwright argon2-cffi cryptography && python -m playwright install
@@ -193,6 +193,7 @@ tools/recover.py      standalone recovery tool (Python)
 tests/e2e.py          end-to-end tests (Chromium, Firefox, WebKit)
 tests/update_e2e.py   forced update from an older build
 tests/donate_e2e.py   support screens and address checks
+tests/brand_e2e.py    PDF logo, ZIP and printed codes, read by an independent decoder
 tests/test_recover.py robustness tests for the recovery tool
 .github/workflows/    continuous integration
 docs/FORMAT.md        backup and share formats

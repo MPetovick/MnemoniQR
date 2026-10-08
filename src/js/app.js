@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.5.1 · User interface
+// MnemoniQR v6.6.1 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.5.1';
+const APP_VERSION = '6.6.1';
 const CFG = Object.freeze({
     AUTO_HIDE: 60, CLIPBOARD_CLEAR: 30, BACKGROUND_WIPE: 120,
     MAX_IMAGE: 10 * 1024 * 1024, MAX_PIXELS: 40e6, MAX_KEYFILE: 100 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
@@ -744,6 +744,7 @@ async function renderResult() {
     $('share-prev').disabled = R.index === 0;
     $('share-next').disabled = R.index === R.texts.length - 1;
     await QR.renderSharp($('qr-canvas'), R.texts[R.index], 300, 'Q');
+    $('qr-download-t').textContent = R.kind === 'shares' ? 'ZIP' : 'PNG';
     const cap = $('qr-caption');
     cap.textContent = (R.verified ? t('verified') + ' · ' : t('unverified') + ' · ') + shareCaption(R.index);
     cap.classList.toggle('ok', R.verified);
@@ -759,6 +760,7 @@ async function verifyBackup() {
             const c = document.createElement('canvas');
             await QR.render(c, R.texts[i], 600, 'Q');
             if ((await QR.decodeSource(c, c.width, c.height)) !== R.texts[i]) throw new MQRError('qr_unreadable');
+            c.width = 0;
         }
         if (R.kind === 'shares') {
             const dec = R.texts.map((x) => M.Shamir.decode(x));
@@ -803,10 +805,76 @@ async function labeledPNG(i) {
 }
 async function downloadPNG() {
     const R = S.result;
+    if (R.kind === 'shares') { await downloadZIP(); return; }
     const name = R.kind === 'shares' ? `mnemoniqr-${R.setId.slice(0, 4)}-${R.index + 1}of${R.n}.png` : 'mnemoniqr-backup.png';
     downloadBlob(await labeledPNG(R.index), name);
     toast(t('png_saved'), 'success', { duration: 6000 });
 }
+// Every share as a PNG in one ZIP, with a short README (no secret beyond what the images hold)
+async function downloadZIP() {
+    const R = S.result;
+    const set = R.setId.slice(0, 4);
+    const files = [];
+    for (let i = 0; i < R.texts.length; i++) {
+        const blob = await labeledPNG(i);
+        files.push({ name: `mnemoniqr-${set}-${i + 1}of${R.n}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
+    }
+    const readme = [
+        `MnemoniQR backup, set ${set.toUpperCase()}`, '',
+        t('zip_readme_1', { n: R.n, k: R.k }),
+        t('zip_readme_2'),
+        t('zip_readme_3'),
+        ...(R.keyfile ? [t('pdf_kf', { fp: R.keyfile })] : []),
+        '', 'https://github.com/MPetovick/MnemoniQR', ''
+    ].join('\r\n');
+    files.push({ name: 'README.txt', data: new TextEncoder().encode(readme) });
+    downloadBlob(Zip.make(files), `mnemoniqr-${set}.zip`);
+    toast(t('zip_saved', { n: R.n }), 'success', { duration: 7000 });
+}
+
+// Minimal ZIP writer: stored entries (PNG is already compressed), CRC-32, a fixed 1980-01-01 date so the
+// archive does not record when the backup was made.
+const Zip = {
+    table: null,
+    crc(u8) {
+        if (!this.table) {
+            this.table = new Uint32Array(256);
+            for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; this.table[n] = c >>> 0; }
+        }
+        let c = 0xFFFFFFFF;
+        for (let i = 0; i < u8.length; i++) c = this.table[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+        return (c ^ 0xFFFFFFFF) >>> 0;
+    },
+    make(files) {
+        const parts = [], central = [];
+        let offset = 0;
+        const DATE = 0x0021, TIME = 0;   // 1980-01-01 00:00
+        for (const f of files) {
+            const name = new TextEncoder().encode(f.name);
+            const crc = this.crc(f.data), size = f.data.length;
+            const local = new DataView(new ArrayBuffer(30));
+            local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint16(6, 0x0800, true);
+            local.setUint16(8, 0, true); local.setUint16(10, TIME, true); local.setUint16(12, DATE, true);
+            local.setUint32(14, crc, true); local.setUint32(18, size, true); local.setUint32(22, size, true);
+            local.setUint16(26, name.length, true); local.setUint16(28, 0, true);
+            const cen = new DataView(new ArrayBuffer(46));
+            cen.setUint32(0, 0x02014b50, true); cen.setUint16(4, 20, true); cen.setUint16(6, 20, true); cen.setUint16(8, 0x0800, true);
+            cen.setUint16(10, 0, true); cen.setUint16(12, TIME, true); cen.setUint16(14, DATE, true);
+            cen.setUint32(16, crc, true); cen.setUint32(20, size, true); cen.setUint32(24, size, true);
+            cen.setUint16(28, name.length, true); cen.setUint32(42, offset, true);
+            parts.push(new Uint8Array(local.buffer), name, f.data);
+            central.push(new Uint8Array(cen.buffer), name);
+            offset += 30 + name.length + size;
+        }
+        const cdSize = central.reduce((a, b) => a + b.length, 0);
+        const end = new DataView(new ArrayBuffer(22));
+        end.setUint32(0, 0x06054b50, true);
+        end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+        end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+        return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+    }
+};
+
 async function shareQR() {
     const R = S.result;
     if (!confirm(R.kind === 'shares' ? t('share_confirm_shares') : t('share_confirm'))) return;
@@ -816,13 +884,19 @@ async function shareQR() {
         try { await navigator.share({ files: [file] }); } catch (e) { if (e.name !== 'AbortError') toast(t('share_failed'), 'warning'); }
     } else { downloadBlob(blob, 'mnemoniqr.png'); toast(t('share_unavailable'), 'info'); }
 }
-function makePDF() {
+async function makePDF() {
+    if (S.pdfBusy) return;   // the shield check is asynchronous: ignore a second tap meanwhile
+    S.pdfBusy = true;
+    try { await makePDFNow(); } finally { S.pdfBusy = false; }
+}
+async function makePDFNow() {
     const R = S.result;
     const tpl = document.querySelector('input[name=tpl]:checked').value;
     const ecc = document.querySelector('input[name=ecc]:checked').value;
     const copies = parseInt($('print-copies').value, 10) || 1;
     try {
         const items = R.texts.map((text, i) => ({ text, i }));
+        await Brand.ready();   // the shield beside the title
         const blob = tpl === 'cards' ? PDF.cards(items, ecc, copies) : PDF.sheets(items, ecc);
         downloadBlob(blob, R.kind === 'shares' ? `mnemoniqr-${R.setId.slice(0, 4)}.pdf` : 'mnemoniqr-backup.pdf');
         closeModal('print-modal');
@@ -889,6 +963,41 @@ const QR = {
 const WINANSI = { 0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89,
     0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95,
     0x2013: 0x96, 0x2014: 0x97, 0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F };
+// ============================================================
+// BRAND: the shield in the PDF header (the QR codes themselves stay plain)
+// ============================================================
+const Brand = {
+    img: null, pdf: null,
+    // Loaded with the page (assets/shield.png; a data: URI in the single file); false if it is unavailable
+    async ready() {
+        if (this.img !== null) return !!this.img;
+        const el = $('shield-src');
+        try {
+            if (!el.complete) await new Promise((res, rej) => { el.addEventListener('load', res, { once: true }); el.addEventListener('error', rej, { once: true }); });
+            if (!el.naturalWidth) throw new Error('no image');
+            if (el.decode) await el.decode();
+            this.img = el;
+        } catch { this.img = false; }
+        return !!this.img;
+    },
+    // The shield as an uncompressed RGB image for the PDF (built once)
+    pdfImage() {
+        if (this.pdf || !this.img) return this.pdf;
+        const h = 160, w = Math.round(this.img.naturalWidth * h / this.img.naturalHeight);
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(this.img, 0, 0, w, h);
+        const d = ctx.getImageData(0, 0, w, h).data;
+        let raw = '';
+        for (let i = 0; i < d.length; i += 4) raw += String.fromCharCode(d[i], d[i + 1], d[i + 2]);
+        c.width = 0;
+        this.pdf = { w, h, raw };
+        return this.pdf;
+    }
+};
+
 const PDF = {
     W: 595.28, H: 841.89,
     lit(s) {
@@ -905,7 +1014,17 @@ const PDF = {
     },
     txt(font, sz, x, y, s, gray = 0) { return `BT /${font} ${sz} Tf ${gray} g ${x.toFixed(2)} ${y.toFixed(2)} Td ${this.lit(s)} Tj ET\n`; },
     qr(text, ecc, x, y, size) {
-        const m = QR.matrix(text, ecc), n = m.size, cell = size / n;
+        const m = QR.matrix(text, ecc);
+        return this.qrModules(m, m.size, size / m.size, x, y);
+    },
+    // The shield beside the title in the page header
+    logo(x, y, h) {
+        const im = Brand.pdfImage();
+        if (!im) return '';
+        const w = h * im.w / im.h;
+        return `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Sh Do Q\n`;
+    },
+    qrModules(m, n, cell, x, y) {
         let c = 'q 0 g\n';
         for (let r = 0; r < n; r++) {
             let st = -1;
@@ -934,12 +1053,14 @@ const PDF = {
         const R = S.result;
         const BOTTOM = 40, LINE = 12;
         const pages = [];
+        const tx = Brand.pdfImage() ? 100 : 56;   // title moves right when the shield is drawn
         for (const { text, i } of items) {
             let c = '';
             const qs = 290, x0 = (this.W - qs) / 2, y0 = this.H - 150 - qs;
-            c += this.txt('F3', 22, 56, this.H - 72, 'MnemoniQR');
-            c += this.txt('F1', 11, 56, this.H - 92, R.kind === 'shares' ? t('pdf_sub_share', { i: i + 1, n: R.n }) : t('pdf_sub'), 0.35);
-            if (R.practice) c += this.txt('F3', 12, 56, this.H - 112, t('pdf_practice'), 0.2);
+            c += this.logo(56, this.H - 98, 44);
+            c += this.txt('F3', 22, tx, this.H - 72, 'MnemoniQR');
+            c += this.txt('F1', 11, tx, this.H - 92, R.kind === 'shares' ? t('pdf_sub_share', { i: i + 1, n: R.n }) : t('pdf_sub'), 0.35);
+            if (R.practice) c += this.txt('F3', 12, 56, this.H - 122, t('pdf_practice'), 0.2);
             c += this.qr(text, ecc, x0, y0, qs);
             c += this.txt('F1', 9, x0, y0 - 18, shareCaption(i) + ' · ' + t('pdf_algo'), 0.35);
             let y = y0 - 56;
@@ -956,7 +1077,7 @@ const PDF = {
             for (const l of this.printable(text)) {
                 if (y < BOTTOM) {
                     pages.push(c);
-                    c = this.txt('F3', 12, 56, this.H - 72, 'MnemoniQR · ' + shareCaption(i));
+                    c = this.logo(56, this.H - 80, 22) + this.txt('F3', 12, Brand.pdfImage() ? 80 : 56, this.H - 72, 'MnemoniQR · ' + shareCaption(i));
                     c += this.txt('F1', 9, 56, this.H - 90, t('pdf_backup_text_cont'), 0.35);
                     y = this.H - 112;
                 }
@@ -1015,10 +1136,13 @@ const PDF = {
         const f1 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
         const f2 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>');
         const f3 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+        const im = Brand.pdfImage();
+        const sh = im ? add(`<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length ${im.raw.length} >>\nstream\n${im.raw}\nendstream`) : 0;
+        const xobj = sh ? ` /XObject << /Sh ${sh} 0 R >>` : '';
         const kids = [];
         for (const content of pages) {
             const cs = add(`<< /Length ${content.length} >>\nstream\n${content}endstream`);
-            kids.push(add(`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${this.W} ${this.H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R /F3 ${f3} 0 R >> >> /Contents ${cs} 0 R >>`));
+            kids.push(add(`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${this.W} ${this.H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R /F3 ${f3} 0 R >>${xobj} >> /Contents ${cs} 0 R >>`));
         }
         objs[catalog - 1] = `<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
         objs[pagesObj - 1] = `<< /Type /Pages /Kids [${kids.map((k) => k + ' 0 R').join(' ')}] /Count ${kids.length} >>`;

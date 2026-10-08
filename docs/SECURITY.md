@@ -18,6 +18,10 @@ This document records the design decisions behind MnemoniQR and the findings of 
 
 **Out of scope:** a compromised operating system or browser, weak or reused passwords, and memory forensics (JavaScript strings cannot be reliably wiped).
 
+## v6.6.1: QR codes stay plain
+
+A logo inside the QR uses part of its error correction, and a backup may have to be read decades later. Tested in 6.6.0, it was removed: the codes are plain again, with the same error correction as 6.5.1. The shield appears only in the PDF header, outside the code. Printed PDFs are checked with an independent decoder (ZXing) at 100 and 150 dpi.
+
 ## v6.5.0: donation addresses
 
 Donation addresses are a target: a swapped address steals donations, and clipboard malware swaps addresses after copying.

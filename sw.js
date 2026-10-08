@@ -1,7 +1,7 @@
-// MnemoniQR service worker v6.5.1
+// MnemoniQR service worker v6.6.1
 // Precaches and serves the app's own files only. No push, no background sync, no third parties.
 'use strict';
-const CACHE = 'mnemoniqr-v6.5.1';
+const CACHE = 'mnemoniqr-v6.6.1';
 const FONTS = [
     'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
     'fonts/jetbrains-mono-latin-400-normal.woff2', 'fonts/jetbrains-mono-latin-500-normal.woff2'
@@ -11,13 +11,13 @@ const ASSETS = [
     'js/wordlists.js', 'js/core.js', 'js/dicts.js', 'js/eff-words.js', 'js/strength.js', 'js/i18n.js', 'js/donate.js', 'js/app.js',
     'vendor/qrcode.min.js', 'vendor/jsqr.min.js', 'vendor/argon2.min.js', 'vendor/noble.min.js',
     ...FONTS,
-    'MQR_logo.webp', 'favicon.png',
+    'MQR_logo.webp', 'favicon.png', 'assets/shield.png',
     'assets/icons/icon-96x96.png', 'assets/icons/icon-192x192.png', 'assets/icons/icon-512x512.png',
     'assets/icons/maskable-192.png', 'assets/icons/maskable-512.png', 'assets/icons/apple-touch-icon.png'
 ];
 const SCOPE = new URL('./', self.location).pathname;
 
-const VERSION = '6.5.1';
+const VERSION = '6.6.1';
 const ACK_WAIT = 2500;
 
 self.addEventListener('install', (e) => {

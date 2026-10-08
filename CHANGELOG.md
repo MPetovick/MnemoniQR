@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.6.1 — PDF logo and ZIP
+
+- **PDF:** the MnemoniQR shield beside the title on every page.
+- **ZIP for shares:** with more than one QR, the download button becomes *ZIP*. It holds one labelled PNG per share and a README with how many are needed and how to recover. Entries are stored with a fixed 1980 date, so the archive does not reveal when the backup was made. The app reads the PNGs back (tested), and so does `recover.py` from their text.
+- **QR codes stay plain.** A logo inside the QR was tried in 6.6.0 and removed. The codes keep the error correction of 6.5.1: level Q by default, H as an option when printing.
+- `tests/brand_e2e.py` reads the PNG, the ZIP and the printed PDF (rasterized at 100 and 150 dpi) with ZXing, a decoder independent from the app.
+
 ## 6.5.1 — support after a recovery
 
 - After every real recovery, the quiet support line appears on the home screen: *Wallet recovered. If MnemoniQR helped, it stays free and ad-free thanks to people like you. Support it*. It is the moment the app has just proved useful.
