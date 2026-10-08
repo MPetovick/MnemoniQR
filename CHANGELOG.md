@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.5.1 — support after a recovery
+
+- After every real recovery, the quiet support line appears on the home screen: *Wallet recovered. If MnemoniQR helped, it stays free and ad-free thanks to people like you. Support it*. It is the moment the app has just proved useful.
+- Never while the phrase is on screen. The line appears once it has been wiped and the user is back home, whether by *Done*, the timer or leaving the app.
+- Never after a practice recovery, a backup check or when no donation address is configured. The × hides it.
+- The once-only line after the first verified backup is unchanged.
+
 ## 6.5.0 — support the project
 
 - **Donations, without getting in the way.** A footer line (*Free, open source, no ads. Support it*), one quiet line on the home screen after the first verified real backup (once per device, dismissible, never in practice mode or during a flow) and a mention in *How it protects you*. They open a sheet with one tab per network (USDT on TRON, USDT/ETH on Ethereum, Bitcoin), a locally generated QR, the address in groups of four with the first and last four characters highlighted, the network warning and a Copy button.

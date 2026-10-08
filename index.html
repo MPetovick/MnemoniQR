@@ -16,20 +16,20 @@
 <meta name="apple-mobile-web-app-title" content="MnemoniQR">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="styles.css" integrity="sha384-rQxl53Uujy9WmOPeP4UrMG3U6ql7T0TGI55apqlJEvVl2scZzrL6idH5BzUNkqkH">
+<link rel="stylesheet" href="styles.css" integrity="sha384-mLSheRK81oa0+7g+bC3nbDGIPZBThPAn39ax9QHMX0b3XMnQA+CJ3b5hNMOJ7+C9">
 <script src="vendor/qrcode.min.js" integrity="sha384-j+PCCcBcNXQs6kRs1hRdOEJ/AqyHNjdSCi1wfQ/rBqCwaTUbzWLiRNth/rf32bIS" defer></script>
 <script src="vendor/jsqr.min.js" integrity="sha384-tqHEddO9DjuacgJyfvKkCvEFCkAsa/xW7e945T69PJJyN5K2akBEMf7TWifJwpaE" defer></script>
 <script src="vendor/argon2.min.js" integrity="sha384-tP0Wy54CKmng7i9EoTlPySD0hBx6Octj0VS6MfwlnUu111MPa+JLm0CCbep6XJ1W" defer></script>
 <script src="vendor/noble.min.js" integrity="sha384-8pjPNW+iH9kw1KMMMDfKRzJindppG2jIz0C7pQXYxm2lTVaydsJeCcu4iw+Xpq9P" defer></script>
 <script src="js/wordlists.js" integrity="sha384-PX0VVPp/q6x6y0vhXTrs6pygaHtC0IvYFi95wy/nspEg7GyZDWhmjzuLhpXm79FH" defer></script>
-<script src="js/core.js" integrity="sha384-J6rq67s647PP9PI+4sH1z4LubAj374Oemgi2l6lWV7uEp3DAaInp0OfDhqASOmX3" defer></script>
+<script src="js/core.js" integrity="sha384-n5cVJd5d5tyn51fSMsyc8JJ7Fd594DTtewrKaM70fWgqfUx8sCN7XZrJeOwyvPOR" defer></script>
 <script src="js/dicts.js" integrity="sha384-RbEW1u65Za+hfY6xmJefB6IFRkKnJPCa68usZzRaYBsdPb1FYzs/A25Hu2TWuW03" defer></script>
 <script src="js/eff-words.js" integrity="sha384-fX8jraGRcZLU/dfzK/YdH9MhcQ9hiYcmJiOLY2I5ddK2rulRn380Q3ijaWR8n0sL" defer></script>
-<script src="js/strength.js" integrity="sha384-m6Vb5kWwsWibxjv5IJXf/1A1LpnWpP9et7wSkDvjryvp2unotJu4aR0KLOEePjZA" defer></script>
-<script src="js/i18n.js" integrity="sha384-JoqSesyvEeReVdu0bQJQATGSXTo0Aa17XOGlFWSDkIwH4kUnRRgVco4rQajhjkzT" defer></script>
-<script src="js/donate.js" integrity="sha384-XKgufmL8/xB47S0RDF+R50oZtbTNwQTZCky7QlznV18N9hdI9ydQAOX3pvVMgv4d" defer></script>
-<script src="js/kdf-src.js" integrity="sha384-nmWZcBbFUf0kJk91iq3aOFgLP44wvvtF0PpNZ8xux4f6eqr3auunprFHUdOf8gOA" defer></script>
-<script src="js/app.js" integrity="sha384-H8PzZLccLh+BM1wYrBpuskaA3H7vLDYoNLSB2YMQwl9jZ4DAv0hRZwX3M0UiiUdD" defer></script>
+<script src="js/strength.js" integrity="sha384-5XxzNELLGRd/NflznJi1UaOjfEQh5M8G1J7Ee+9x6w6i6hkH0BgYLoTBVNhrdujq" defer></script>
+<script src="js/i18n.js" integrity="sha384-89huO8ymrj9A9+vBzUik8zF5n/OrgZ1Ege70/3vcteMxAaPhGZUubfZ4Wudut7Wn" defer></script>
+<script src="js/donate.js" integrity="sha384-ssILt83yWxOYXB/CglvVxbpW9qV3oVfBQO0m2nkzzdb+o6zFloEMpMyurAf1ZV7B" defer></script>
+<script src="js/kdf-src.js" integrity="sha384-Xkl4WUJKWFtzTCDcESxEj1Vnkpd/If+QAZZlZsPVObXuXbcC4L8EY0D8UzbnZEe6" defer></script>
+<script src="js/app.js" integrity="sha384-t4WwbdQ1fNwEl51+1pn3uqVHQUGpSu25uMG7GItz3RePRVVjpsdoxIoVFIi+65YU" defer></script>
 </head>
 <body>
 <noscript><p class="noscript">MnemoniQR needs JavaScript. Everything runs locally in your browser; nothing is sent anywhere.</p></noscript>
@@ -105,10 +105,11 @@
       <span class="notice-text"><strong id="net-title"></strong><span id="net-body"></span></span>
     </button>
 
-    <!-- Shown once, after the first verified backup, and only when donation addresses are configured -->
+    <!-- Only when donation addresses are configured: once after the first verified backup, and after every real recovery
+         (on the home screen, once the phrase has been wiped) -->
     <div class="support-nudge" id="support-nudge" hidden>
       <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-      <p><span data-i18n="support_nudge">Backup done. MnemoniQR is free and has no ads.</span> <button type="button" class="link inline" id="support-nudge-go" data-i18n="support_it">Support it</button></p>
+      <p><span id="nudge-backup" data-i18n="support_nudge">Backup done. MnemoniQR is free and has no ads.</span><span id="nudge-recovered" hidden data-i18n="support_nudge_recovered">Wallet recovered. If MnemoniQR helped, it stays free and ad-free thanks to people like you.</span> <button type="button" class="link inline" id="support-nudge-go" data-i18n="support_it">Support it</button></p>
       <button type="button" class="btn-icon nudge-x" id="support-nudge-x" data-i18n-aria="support_dismiss"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
 
@@ -124,7 +125,7 @@
           <svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>
           <span><span data-i18n="support_free">Free, open source, no ads.</span> <span class="u" data-i18n="support_it">Support it</span></span>
         </button>
-        <span class="version">v6.5.0</span>
+        <span class="version">v6.5.1</span>
       </div>
     </footer>
   </main>

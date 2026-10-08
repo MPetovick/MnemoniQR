@@ -1,7 +1,7 @@
-MnemoniQR v6.5.0 · Release fingerprints
+MnemoniQR v6.5.1 · Release fingerprints
 
-PWA (index.html):                  423C 81A9 9521 3AFB
-Single file (mnemoniqr-offline.html): A864 806B 8687 156C
+PWA (index.html):                  53D3 54A6 34F5 5950
+Single file (mnemoniqr-offline.html): 0774 531B 8724 76FA
 
 These must match "Fingerprint of this version" in the app (How it protects you).
 
@@ -24,25 +24,25 @@ d64ba838ef5472bba248620ec4fd8b5aa7cf0db2908e0bb230600caf279ba7bc  fonts/atkinson
 140e2bd25a7315c8a062508391426b0d8c3297400c947b8d847be28f73a199f0  fonts/atkinson-hyperlegible-latin-700-normal.woff2
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  fonts/jetbrains-mono-latin-400-normal.woff2
 cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a  fonts/jetbrains-mono-latin-500-normal.woff2
-04f17fe20788de8ba2a5c690ee0a8a47db585d7a1eebebc08b34890ee738855c  index.html
-b940b17e32a1520450b2438db39cb739c71847d67c65e39f284e817412e9913e  js/app.js
-deb9b2389920961cb65f59c85762aba8899a0b87a30131537d5bd9ba854ac7cd  js/core.js
+06c1adfbd36c283d263e20de609e4cf02d7fcbb12ece022ad7d577deed1b85fd  index.html
+5e42521067f4270bd04eaabd2aa3f509a79117852cf6b3fc727c0a66fa5329f9  js/app.js
+ac19f63dedbef686ba2073626e1534404525971e0482c9bddf62b202a34ce906  js/core.js
 2ab9a0df45904bda91d5deaff1a1f2b876153a4a5245be3ea9aa3fa07d771c57  js/dicts.js
-681772f901292ae4fc3c8e47068986ba36b855b1f4ac61ebb6fabbe5aeb0c3b8  js/donate.js
+514d6fc0befafb3de789766647b98394a2422f9f1474a518780277acbb2f023b  js/donate.js
 b91b23b050cbe8ac8db8ba2421eaeaae4442bc6fd9906f73feab74d154212095  js/eff-words.js
-e8ae12f27cc5200ad15c9ee5f8e611563b0da892cf152b863f36daa0d001df9a  js/i18n.js
-cedbb3babd61e807021c2a80df181d883ede792a191cbb2481daac294ce0691a  js/kdf-src.js
-08958df712774c4f8fd0bd1d4320637f68be4805a836c82e8d373a06f869e391  js/strength.js
+566900951745f21118aa6a0fba8594bc2142707fde567a83b3efb30ac996a7f2  js/i18n.js
+52e3e12630ea844d22b547dbc608f049ae41b94837306fc179d5a91f32301cf8  js/kdf-src.js
+2e2f6eceb7b655fda9a53a26851fb66c24427a3cee32f4e5cc3d02634e650e5c  js/strength.js
 ccafdf6d619282f28ad07419fcab6b2189ab531be160e37266dd69b2344d4358  js/wordlists.js
-e0ba0d17ff752ff519e4c05c496c62b380fa021f2ce4b8b6407e54e1437ef22b  kdf-worker.js
+0494282c2ba2d1f4f5320193b359ddb4dab1ba1c68ee71530524ffd16b558e22  kdf-worker.js
 a1e76402ff67c29bfe3bf7b83eb3f539a9ab587714a487c4669e5703342679fb  manifest.json
-6e69641cc972d3eea4c6f88bcacf64b2cf38e35c8e080a287e7f7201d7a2de38  mnemoniqr-offline.html
-97b2a725365db666789f26a5ed20b0d14f2082669495c1aeb0c5ba3512ec77fd  recover.py
-a91ab7b8bea85c0be089d71e34c76fa4c952965337caae4e382919e162458dce  styles.css
-8bc8b9003d1085ea5ca9690f4fb38db94b0c0e13bbb432295dfcee862beb6618  sw.js
+24916357971b5f8067bca811f3822bdcc701e616948c58245369f48910bf4748  mnemoniqr-offline.html
+2d23e55b2ff8bcdad397c016e2e72a3d26d87bd05d2511cab64628a3c1c38c36  recover.py
+be0224913fd0ff1334bf8424b755727365ad69ff660adb568a016be05cbd7154  styles.css
+22c5b6930ea5235a5ce65d8396a36388340da19fff006bfbd0a3091bb1383eb7  sw.js
 4b00127ce8ed53ca36e12084adb58685661bac552a9cb9149baf799ef2b7f02b  tests/tests.css
 6e6c9e6c5aa4dc54d64a8084d1efd980536decb0bc57aada56c722e2f9975cde  tests/tests.html
-c243a03e7560f6618dfcaccad27f62b2abff88f7c91b4f7a2b60b923f35c6e5d  tests/tests.js
+31fa03aa64e0cedb153f5773ee47c1df040a06a1487465ad87a399143172b262  tests/tests.js
 ba8c517ab217728d71ab7a432db1ddb4ed56e46e534ab96fb45007b5dba099f1  tests/vectors.js
 dcec617a2e1b700fa132d1583a186cb70611113395e869f2dd6cc82b415d3094  vendor/argon2.min.js
 fc6a9b5b0735aaf4af4748e0433d7351d4b725cfb02b032c502a5b699f3e4b9d  vendor/jsqr.min.js

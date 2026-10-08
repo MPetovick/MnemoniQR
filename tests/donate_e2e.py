@@ -25,6 +25,8 @@ from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import build  # noqa: E402
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
+from e2e import pdf_codes  # noqa: E402
 
 REAL = 'legal winner thank year wave sausage worth useful legal winner thank yellow'
 
@@ -154,7 +156,24 @@ def main():
         page.click('#qr-done')
         check('practice backup: no line', page.is_hidden('#support-nudge'))
 
-        def real_backup(verify):
+        def print_code():
+            page.click('#qr-print')
+            with page.expect_download() as d:
+                page.click('#print-go')
+            path = os.path.join(tempfile.mkdtemp(), 'b.pdf')
+            d.value.save_as(path)
+            return pdf_codes(path)[0]
+
+        def recover(code, password):
+            page.click('#recover-btn')
+            page.click('#src-type')
+            page.fill('#type-input', code)
+            page.click('#type-use')
+            page.fill('#decrypt-password', password)
+            page.click('#decrypt-confirm')
+            page.wait_for_selector('#step-decrypted:not([hidden])', timeout=120000)
+
+        def real_backup(verify, keep=False):
             page.click('#encrypt-btn-main')
             for w in REAL.split():
                 page.keyboard.type(w[:4])
@@ -171,7 +190,9 @@ def main():
                 page.fill('#decrypt-password', pw_)
                 page.click('#decrypt-confirm')
                 page.wait_for_selector('#qr-caption.ok', timeout=120000)
+            code = print_code() if keep else None
             page.click('#qr-done')
+            return code, pw_
 
         real_backup(False)
         check('unverified backup: no line', page.is_hidden('#support-nudge'))
@@ -180,8 +201,46 @@ def main():
         check('…no dialog, nothing blocks the home screen', page.is_hidden('#support-sheet') and page.evaluate('() => !document.querySelector(".modal:not([hidden])")'))
         page.click('#support-nudge-x')
         check('…dismissed with ×', page.is_hidden('#support-nudge'))
-        real_backup(True)
+        code, pw_ = real_backup(True, keep=True)
         check('never shown twice', page.is_hidden('#support-nudge'))
+
+        # after every real recovery: the line comes back once the phrase is wiped and the user is home
+        for n in (1, 2):
+            recover(code, pw_)
+            check(f'recovery {n}: nothing while the phrase is on screen', page.is_hidden('#home') and page.is_hidden('#support-nudge'))
+            page.click('#decrypted-done')
+            check(f'recovery {n}: line on the home screen', page.is_visible('#support-nudge') and page.is_visible('#nudge-recovered') and page.is_hidden('#nudge-backup'),
+                  page.inner_text('#support-nudge').strip()[:60])
+            page.click('#support-nudge-x')
+        # also when the phrase is wiped because the app went to the background
+        recover(code, pw_)
+        page.evaluate('''() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+            document.dispatchEvent(new Event('visibilitychange'));
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+            document.dispatchEvent(new Event('visibilitychange'));
+            delete document.hidden;
+        }''')
+        check('recovery: line also after the background wipe', page.is_visible('#home') and page.is_visible('#nudge-recovered'))
+        page.click('#support-nudge-go')
+        check('recovery line opens the support sheet', page.is_visible('#support-sheet'))
+        page.click('#support-done')
+
+        # practice recoveries never show it
+        page.click('#practice-btn')
+        page.click('#practice-start')
+        page.click('#seed-next')
+        page.click('#options-next')
+        page.click('#gen-chars')
+        ppw = page.input_value('#password-input')
+        page.click('#password-next')
+        page.wait_for_selector('#step-result:not([hidden])', timeout=120000)
+        pcode = print_code()
+        page.click('#qr-done')
+        page.click('#support-nudge-x') if page.is_visible('#support-nudge') else None
+        recover(pcode, ppw)
+        page.click('#decrypted-done')
+        check('practice recovery: no line', page.is_hidden('#support-nudge'))
         page.click('#encrypt-btn-main')
         check('support link not reachable during a flow', not page.is_visible('#support-link'))
 

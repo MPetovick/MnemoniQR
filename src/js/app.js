@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.5.0 · User interface
+// MnemoniQR v6.5.1 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.5.0';
+const APP_VERSION = '6.5.1';
 const CFG = Object.freeze({
     AUTO_HIDE: 60, CLIPBOARD_CLEAR: 30, BACKGROUND_WIPE: 120,
     MAX_IMAGE: 10 * 1024 * 1024, MAX_PIXELS: 40e6, MAX_KEYFILE: 100 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
@@ -46,7 +46,7 @@ const S = {
     attempts: 0, lockUntil: 0,
     timer: null, timerLeft: 0, clipTimer: null,
     scanner: { active: false, starting: null, stream: null, raf: null, frame: 0, detector: null, canvas: null, cooldown: 0 },
-    hiddenAt: 0, wasDecrypted: false, busy: false, wipeAfterBusy: false, clipDirty: false,
+    hiddenAt: 0, wasDecrypted: false, recoveredReal: false, busy: false, wipeAfterBusy: false, clipDirty: false,
     decrypted: { words: [], pp: '' },
     cancelKdf: null, calib: null, fpToken: 0, statusToken: 0
 };
@@ -80,6 +80,7 @@ function errText(e) {
 }
 const STEPS = ['seed', 'options', 'password', 'result', 'decrypted'];
 function goTo(step) {
+    const from = S.step;
     STEPS.forEach((s) => { $('step-' + s).hidden = s !== step; });
     $('home').hidden = step !== 'home';
     S.step = step;
@@ -88,6 +89,8 @@ function goTo(step) {
     window.scrollTo(0, 0);
     const h = document.querySelector(step === 'home' ? '#encrypt-btn-main' : `#step-${step} h2`);
     if (h && step !== 'home') { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    // Back home after a real recovery (Done, timer or app left): the phrase is already wiped
+    if (step === 'home' && from === 'decrypted' && S.recoveredReal) { S.recoveredReal = false; Support.afterRecovery(); }
 }
 
 // ---------- modals with a focus trap ----------
@@ -1331,6 +1334,7 @@ async function showDecrypted(res) {
     if (document.hidden) { wipeDecrypted(); toast(t('wiped_leave'), 'info'); return; }
     setReveal(false);
     S.wasDecrypted = true;
+    S.recoveredReal = !res.practice;
     goTo('decrypted');
     startTimer();
 }
@@ -1628,6 +1632,16 @@ const Support = {
     nudge() {
         if (!this.list.length || this.pref().nudged || Update.pending) return;   // a reloading page would waste it
         this.save({ nudged: true });
+        this.showNudge('backup');
+    },
+    // After every real recovery (never practice, never while the phrase is on screen): the moment the app proved useful
+    afterRecovery() {
+        if (!this.list.length || Update.pending) return;
+        this.showNudge('recovered');
+    },
+    showNudge(kind) {
+        $('nudge-backup').hidden = kind !== 'backup';
+        $('nudge-recovered').hidden = kind !== 'recovered';
         $('support-nudge').hidden = false;
     },
     hideNudge() { $('support-nudge').hidden = true; }

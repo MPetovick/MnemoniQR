@@ -105,10 +105,11 @@
       <span class="notice-text"><strong id="net-title"></strong><span id="net-body"></span></span>
     </button>
 
-    <!-- Shown once, after the first verified backup, and only when donation addresses are configured -->
+    <!-- Only when donation addresses are configured: once after the first verified backup, and after every real recovery
+         (on the home screen, once the phrase has been wiped) -->
     <div class="support-nudge" id="support-nudge" hidden>
       <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
-      <p><span data-i18n="support_nudge">Backup done. MnemoniQR is free and has no ads.</span> <button type="button" class="link inline" id="support-nudge-go" data-i18n="support_it">Support it</button></p>
+      <p><span id="nudge-backup" data-i18n="support_nudge">Backup done. MnemoniQR is free and has no ads.</span><span id="nudge-recovered" hidden data-i18n="support_nudge_recovered">Wallet recovered. If MnemoniQR helped, it stays free and ad-free thanks to people like you.</span> <button type="button" class="link inline" id="support-nudge-go" data-i18n="support_it">Support it</button></p>
       <button type="button" class="btn-icon nudge-x" id="support-nudge-x" data-i18n-aria="support_dismiss"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
 
@@ -124,7 +125,7 @@
           <svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>
           <span><span data-i18n="support_free">Free, open source, no ads.</span> <span class="u" data-i18n="support_it">Support it</span></span>
         </button>
-        <span class="version">v6.5.0</span>
+        <span class="version">v6.5.1</span>
       </div>
     </footer>
   </main>

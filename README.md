@@ -236,7 +236,7 @@ The donation addresses live in one file, [`src/js/donate.js`](src/js/donate.js),
 - The file is loaded under Subresource Integrity, so the addresses are covered by the build fingerprint, and every release lists them in `HASHES.txt`. An address cannot be swapped without changing the fingerprint.
 - Always copy an address from the app or from the release's `HASHES.txt`, and check its first and last four characters after pasting.
 
-In the app, support never interrupts: a line in the footer, one quiet line on the home screen after your first verified backup (shown once per device, never during a flow or in practice mode), and a mention in *How it protects you*. The app cannot know whether anyone donated. With no address configured, none of this is shown.
+In the app, support never interrupts: a line in the footer, one quiet line on the home screen after your first verified backup (once per device) and after each real recovery, once the phrase has been wiped (never during a flow or in practice mode), and a mention in *How it protects you*. The app cannot know whether anyone donated. With no address configured, none of this is shown.
 
 To test the support screens without real addresses: `python3 tools/build.py --out /tmp/mqr-test --donate-test` (public example addresses; never deploy such a build).
 

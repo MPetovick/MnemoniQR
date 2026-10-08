@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.5.0 · Core (no DOM). Used by the app and by tests/tests.html.
+// MnemoniQR v6.5.1 · Core (no DOM). Used by the app and by tests/tests.html.
 // ============================================================
 'use strict';
 (function (G) {

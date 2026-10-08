@@ -1,4 +1,4 @@
-// MnemoniQR v6.5.0 · UI strings (English).
+// MnemoniQR v6.5.1 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -216,6 +216,7 @@ const en = {
     support_free: "Free, open source, no ads.",
     support_it: "Support it",
     support_nudge: "Backup done. MnemoniQR is free and has no ads.",
+    support_nudge_recovered: "Wallet recovered. If MnemoniQR helped, it stays free and ad-free thanks to people like you.",
     support_dismiss: "Dismiss",
     support_about: "It stays free and ad-free thanks to the people who support it.",
     support_project: "Support the project",

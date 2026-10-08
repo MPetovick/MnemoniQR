@@ -1,7 +1,7 @@
-// MnemoniQR service worker v6.5.0
+// MnemoniQR service worker v6.5.1
 // Precaches and serves the app's own files only. No push, no background sync, no third parties.
 'use strict';
-const CACHE = 'mnemoniqr-v6.5.0';
+const CACHE = 'mnemoniqr-v6.5.1';
 const FONTS = [
     'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
     'fonts/jetbrains-mono-latin-400-normal.woff2', 'fonts/jetbrains-mono-latin-500-normal.woff2'
@@ -17,7 +17,7 @@ const ASSETS = [
 ];
 const SCOPE = new URL('./', self.location).pathname;
 
-const VERSION = '6.5.0';
+const VERSION = '6.5.1';
 const ACK_WAIT = 2500;
 
 self.addEventListener('install', (e) => {
@@ -28,10 +28,10 @@ self.addEventListener('install', (e) => {
         .then(() => self.skipWaiting()));
 });
 
-// Pages from v6.5.0 on say hello when they start and reload themselves at a safe moment.
+// Pages from v6.4.1 on say hello when they start and reload themselves at a safe moment.
 // Their ids are kept in a small cache (a worker can be stopped at any time, so memory is not enough):
 // such a page is never navigated, even when it is frozen in the background and cannot answer.
-// Older pages (v5.x - v6.5.0) never say hello: if they do not answer MQR_UPDATED either, they are
+// Older pages (v5.x - v6.4.0) never say hello: if they do not answer MQR_UPDATED either, they are
 // reloaded into the new version.
 const META = 'mqr-clients';
 const acks = new Set();
@@ -51,7 +51,6 @@ self.addEventListener('message', (e) => {
     const d = e.data || {};
     if (d.type === 'MQR_HELLO' && e.source) e.waitUntil(rememberClient(e.source.id));
     if (d.type === 'MQR_ACK' && e.source) acks.add(e.source.id);
-    if (d.type === 'SKIP_WAITING') self.skipWaiting();   // kept for pages older than v6.5.0
     if (d.type === 'MQR_VERSION' && e.ports && e.ports[0]) e.ports[0].postMessage({ version: VERSION });
 });
 
