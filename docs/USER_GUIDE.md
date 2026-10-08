@@ -187,7 +187,7 @@ The donation addresses shown in the app are part of the same fingerprint and lis
 
 An installed app updates by itself the next time it is opened online. The new version downloads in the background and loads when you are back on the home screen, never in the middle of a backup or a recovery. A banner says when an update is waiting.
 
-Backups do not expire: new versions read every earlier format (the only exception is the Spanish word list of versions 4.0–5.1.0, see Troubleshooting). A backup made with a newer version may need an updated app to open, and the app says so. The single-file version never updates by itself: download the new file from the release.
+Backups do not expire: new versions read every earlier format. A backup made with a newer version may need an updated app to open, and the app says so. The single-file version never updates by itself: download the new file from the release.
 
 ## Troubleshooting
 
