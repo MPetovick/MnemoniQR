@@ -33,6 +33,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **k):
         super().__init__(*a, directory=state['dir'], **k)
 
+    def send_head(self):
+        # No 304 by date: in CI the previous release is built after dist/, so file times say nothing about content
+        if 'If-Modified-Since' in self.headers:
+            del self.headers['If-Modified-Since']
+        return super().send_head()
+
     def end_headers(self):
         # Worst case for the old client: let the HTTP cache keep everything except what the build marks no-cache
         if self.path.split('?')[0] in ('/', '/index.html', '/sw.js', '/manifest.json'):

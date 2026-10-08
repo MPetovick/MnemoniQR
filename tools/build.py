@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MnemoniQR v6.6.3 · Reproducible build (Python 3 standard library only).
+MnemoniQR v6.7.0 · Reproducible build (Python 3 standard library only).
 
     python3 tools/build.py [--no-tests] [--out DIR] [--donate-test | --donate-none]
 
@@ -28,7 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import addresses  # noqa: E402  (tools/addresses.py)
 
-VERSION = '6.6.3'
+VERSION = '6.7.0'
 NO_CACHE = ['/', '/index.html', '/sw.js', '/manifest.json']
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')
@@ -74,8 +74,9 @@ TEST_ADDRESSES = {
     'tron': 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
     'evm': '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed',
     'btc': 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+    'ton': 'UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ',
 }
-DONATE_RE = re.compile(r"\{ id: '([a-z0-9-]+)', kind: '([a-z]+)', address: '([^']*)' \}")
+DONATE_RE = re.compile(r"\{ id: '([a-z0-9-]+)', kind: '([a-z]+)', address: '([^']*)' \}")   # noqa
 
 
 def donations(text):

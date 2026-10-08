@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.6.3 · User interface
+// MnemoniQR v6.7.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.6.3';
+const APP_VERSION = '6.7.0';
 // Version + content id stamped by tools/build.py; the service worker announces the same value
 const APP_BUILD = document.documentElement.dataset.build || APP_VERSION;
 const CFG = Object.freeze({
@@ -1684,11 +1684,11 @@ const Install = {
 // The support UI never appears during a flow: a footer link, one quiet line on the home screen
 // after the first verified backup (once per device), and a line in "How it protects you".
 const Support = {
-    KINDS: ['tron', 'evm', 'btc'], list: [], cur: null, copyTimer: null, nudged: false,
+    KINDS: ['btc', 'evm', 'tron', 'ton'], ALSO: { evm: ['BSC', 'Base'] }, list: [], cur: null, copyTimer: null, nudged: false,
     init() {
         try { localStorage.removeItem('mqr-support'); } catch { /* storage unavailable */ }   // flag stored by 6.5.x
         const all = Array.isArray(self.MQR_DONATE) ? self.MQR_DONATE : [];
-        this.list = all.filter((d) => d && this.KINDS.includes(d.kind) && typeof d.address === 'string' && /^[0-9A-Za-z]{26,90}$/.test(d.address));
+        this.list = all.filter((d) => d && this.KINDS.includes(d.kind) && typeof d.address === 'string' && /^[0-9A-Za-z_-]{26,90}$/.test(d.address));   // TON uses base64url
         const on = this.list.length > 0;
         $('support-link').hidden = !on;
         $('support-about').hidden = !on;
@@ -1718,15 +1718,16 @@ const Support = {
             const b = document.createElement('button');
             b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.id = d.id;
             b.setAttribute('aria-controls', 'support-panel');
-            const a = document.createElement('strong'); a.textContent = t(`support_${d.kind}_asset`);
-            const n = document.createElement('span'); n.textContent = t(`support_${d.kind}_net`);
-            b.append(a, n);
+            const a = document.createElement('strong'); a.textContent = t(`support_${d.kind}_tab`);
+            b.append(a);
             b.addEventListener('click', () => this.select(d.id));
             return b;
         }));
         tabs.hidden = this.list.length < 2;
         this.select((this.cur && this.list.includes(this.cur) ? this.cur : this.list[0]).id);
         openModal('support-sheet');
+        // Focus the selected tab (the sheet reopens on the network shown last), not simply the first one
+        setTimeout(() => { const sel = tabs.querySelector('[aria-selected=true]'); if (sel && !tabs.hidden) sel.focus(); }, 60);
     },
     close() { if (!$('support-sheet').hidden) closeModal('support-sheet'); },
     async select(id) {
@@ -1738,14 +1739,21 @@ const Support = {
             b.setAttribute('aria-selected', String(on));
             b.tabIndex = on ? 0 : -1;
         });
-        const asset = t(`support_${d.kind}_asset`), net = t(`support_${d.kind}_net`);
+        const net = t(`support_${d.kind}_net`);
         $('support-chip').textContent = t(`support_${d.kind}_chip`);
+        // Other networks where the same address works (EVM chains), in a second colour
+        $('support-chips-also').replaceChildren(...(this.ALSO[d.kind] || []).map((name) => {
+            const c = document.createElement('span');
+            c.className = 'chip-also';
+            c.textContent = name;
+            return c;
+        }));
         $('support-note').textContent = t(`support_${d.kind}_note`);
         // First and last four characters highlighted (what people compare after pasting), the rest in groups of four
         const a = d.address;
         const parts = [a.slice(0, 4), ...(a.slice(4, -4).match(/.{1,4}/g) || []), a.slice(-4)];
         const addr = $('support-addr');
-        addr.setAttribute('aria-label', t('support_addr_label', { asset, net, addr: d.address }));
+        addr.setAttribute('aria-label', t('support_addr_label', { net, addr: d.address }));
         addr.replaceChildren(...parts.map((g, i) => {
             const sp = document.createElement('span');
             sp.textContent = g;
@@ -1754,7 +1762,7 @@ const Support = {
         }));
         $('support-copy-t').textContent = t('support_copy');
         const c = $('support-qr');
-        c.setAttribute('aria-label', t('support_qr_alt', { asset, net }));
+        c.setAttribute('aria-label', t('support_qr_alt', { net }));
         try { await QR.renderSharp(c, d.address, 134, 'M'); } catch { c.width = 0; }
     },
     async copy() {

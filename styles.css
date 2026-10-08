@@ -1,4 +1,4 @@
-/* MnemoniQR v6.6.3 · Styles ("Paper" design) */
+/* MnemoniQR v6.7.0 · Styles ("Paper" design) */
 
 /* ---------- Self-hosted fonts (OFL) ---------- */
 @font-face { font-family: 'Atkinson Hyperlegible'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/atkinson-hyperlegible-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
@@ -294,14 +294,16 @@ fieldset { border: 0; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: var(--ground); }
 .seg[hidden] { display: none; }
 .seg button { min-height: 48px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; cursor: pointer; }
-.seg button strong { font-size: .9rem; }
-.seg button span { font-size: .72rem; }
+.seg button strong { font-size: .95rem; }
 .seg button[aria-selected=true] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(31, 42, 51, .18); }
 .support-card { border: 1px solid var(--line); border-radius: 16px; padding: 1rem; display: flex; flex-direction: column; gap: .85rem; }
 .support-top { display: flex; gap: .9rem; align-items: center; }
 .support-qr-box { width: 136px; height: 136px; padding: 0; overflow: hidden; border-radius: 10px; background: #fff; border: 1px solid var(--line-soft); flex: none; box-sizing: border-box; }
 .support-qr { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 .support-info { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: .3rem; align-self: flex-start; }
+.chip-also { font-size: .76rem; font-weight: 700; color: #2E3570; background: #E4E6F2; border-radius: 999px; padding: .2rem .65rem; }
+@media (prefers-color-scheme: dark) { .chip-also { color: #B8C0F5; background: #232842; } }
 .chip-warn { align-self: flex-start; font-size: .76rem; font-weight: 700; color: #6B4A00; background: #F3EAD6; border-radius: 999px; padding: .2rem .65rem; }
 @media (prefers-color-scheme: dark) { .chip-warn { color: #E8C37A; background: #2E2717; } }
 .support-addr { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem .55rem; font-family: var(--mono); font-size: .95rem; letter-spacing: .02em; word-break: break-all; user-select: all; }

@@ -1,4 +1,4 @@
-// MnemoniQR v6.6.3 · UI strings (English).
+// MnemoniQR v6.7.0 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -231,14 +231,16 @@ const en = {
     support_sub: "Free · open source · no ads",
     support_lead: "No accounts and no tracking. Donations pay for security audits and new features, and keep it free for everyone.",
     support_network: "Network",
-    support_tron_asset: "USDT", support_tron_net: "TRON",
-    support_tron_chip: "TRC-20 only", support_tron_note: "Send only USDT on the TRON network. Lowest fees.",
-    support_evm_asset: "USDT · ETH", support_evm_net: "Ethereum",
-    support_evm_chip: "Ethereum mainnet", support_evm_note: "USDT, USDC or ETH on Ethereum. Check the network in your wallet.",
-    support_btc_asset: "BTC", support_btc_net: "Bitcoin",
-    support_btc_chip: "On-chain", support_btc_note: "Bitcoin on-chain. Any amount helps.",
-    support_qr_alt: "QR code of the {asset} address on {net}",
-    support_addr_label: "{asset} address on {net}: {addr}",
+    support_btc_tab: "BTC", support_btc_net: "Bitcoin",
+    support_btc_chip: "On-chain", support_btc_note: "Bitcoin on-chain. Any amount is appreciated.",
+    support_evm_tab: "ETH", support_evm_net: "Ethereum",
+    support_evm_chip: "Ethereum mainnet", support_evm_note: "USDT, USDC or ETH are appreciated. The same address works on Ethereum, BSC and Base.",
+    support_tron_tab: "TRON", support_tron_net: "TRON",
+    support_tron_chip: "TRON network", support_tron_note: "USDT, BTT or TRX are appreciated, on the TRON network only.",
+    support_ton_tab: "GRAM", support_ton_net: "TON",
+    support_ton_chip: "TON network", support_ton_note: "GRAM (formerly Toncoin) is appreciated, on the TON network only. No memo needed.",
+    support_qr_alt: "QR code of the {net} donation address",
+    support_addr_label: "{net} donation address: {addr}",
     support_copy: "Copy address",
     support_copied: "Copied",
     support_copied_toast: "Address copied. After pasting, check the first and last characters.",

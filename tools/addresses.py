@@ -5,7 +5,10 @@ Used by tools/build.py so that a release can never publish a mistyped address:
   - tron: Base58Check, version byte 0x41, 25 bytes
   - evm:  0x + 40 hex digits in the EIP-55 checksummed (mixed-case) form (Keccak-256)
   - btc:  Bech32 (P2WPKH/P2WSH, v0) or Bech32m (Taproot, v1+) with hrp "bc", or Base58Check P2PKH/P2SH
+  - ton:  user-friendly address, base64url of 36 bytes: flags (0x11 bounceable / 0x51 non-bounceable, mainnet
+          only), workchain (0 or -1), 32-byte account id, CRC-16/XMODEM
 """
+import base64
 import hashlib
 
 B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -132,6 +135,24 @@ def segwit_ok(addr):
     return data[0] != 0 or len(prog) in (20, 32)
 
 
+def crc16_xmodem(data):
+    c = 0
+    for b in data:
+        c ^= b << 8
+        for _ in range(8):
+            c = ((c << 1) ^ 0x1021) if c & 0x8000 else c << 1
+            c &= 0xFFFF
+    return c
+
+
+def ton_ok(a):
+    if len(a) != 48 or any(ch not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_' for ch in a):
+        return False
+    raw = base64.urlsafe_b64decode(a)
+    return (len(raw) == 36 and raw[0] in (0x11, 0x51) and raw[1] in (0x00, 0xFF)
+            and crc16_xmodem(raw[:34]) == int.from_bytes(raw[34:], 'big'))
+
+
 def check(kind, address):
     """None when the address is valid for its network, else a short reason."""
     a = address.strip()
@@ -153,6 +174,8 @@ def check(kind, address):
             return None if segwit_ok(a) else 'not a valid Bitcoin Bech32/Bech32m address'
         body = b58decode_check(a)
         return None if body and len(body) == 21 and body[0] in (0x00, 0x05) else 'not a valid Bitcoin address'
+    if kind == 'ton':
+        return None if ton_ok(a) else 'not a valid TON mainnet address (48 characters, base64url, CRC-16)'
     return f'unknown kind "{kind}"'
 
 
@@ -170,4 +193,8 @@ if __name__ == '__main__':
     tron_zero = b58encode_check(b'\x41' + b'\0' * 20)
     assert tron_zero == 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb', tron_zero
     assert check('tron', tron_zero) is None and check('tron', tron_zero[:-1] + 'c') is not None
+    assert check('ton', 'UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ') is None
+    assert check('ton', 'UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKY') is not None   # CRC
+    assert ton_ok('0QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACkT') is False   # testnet flag, valid CRC: refused
+    assert check('ton', 'UQCus4n5xGEVKqOCZuczwdpHeDelWjVhGYyIvAQKWXiFjj_B') is None
     print('address checks OK')

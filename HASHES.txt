@@ -1,15 +1,16 @@
-MnemoniQR v6.6.3 · Release fingerprints
+MnemoniQR v6.7.0 · Release fingerprints
 
-PWA (index.html):                  0225 3F4F 0EB6 DC68
-Single file (mnemoniqr-offline.html): 9170 80BF A70A 590F
-Build id (installed copies update when it changes): 6.6.3+40db562d0b
+PWA (index.html):                  5C06 6C58 B144 4215
+Single file (mnemoniqr-offline.html): D2A6 E78D 0041 4B75
+Build id (installed copies update when it changes): 6.7.0+97161977d6
 
 These must match "Fingerprint of this version" in the app (How it protects you).
 
 Donation addresses (also shown in the app, under the same fingerprint):
-  tron   tron  TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ
-  evm    evm   0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64
   btc    btc   bc1qqg7ttja7th9r02549wvdwz3wspcvlv3gu95kz0
+  evm    evm   0x30A24455EB8a41E104EA42CE8A2bcB9FEf679B64
+  tron   tron  TBJTTime19pbLPAQqMDgQ9jyeAfJrJELQJ
+  ton    ton   UQCus4n5xGEVKqOCZuczwdpHeDelWjVhGYyIvAQKWXiFjj_B
 
 SHA-256 of every file:
 144a557c1d2549058e09d552fefd5cfa0b6adefe3745f1a4c942a7ebe197e03b  MQR_logo.webp
@@ -28,25 +29,25 @@ d64ba838ef5472bba248620ec4fd8b5aa7cf0db2908e0bb230600caf279ba7bc  fonts/atkinson
 140e2bd25a7315c8a062508391426b0d8c3297400c947b8d847be28f73a199f0  fonts/atkinson-hyperlegible-latin-700-normal.woff2
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  fonts/jetbrains-mono-latin-400-normal.woff2
 cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a  fonts/jetbrains-mono-latin-500-normal.woff2
-0546149a87241d0cd752b54857882437c549e2a09630dcdcde6dd9886e6a8ee4  index.html
-76122afcaf1155a2b610e55d5b87d7af6514a3493ce988e32610512e43d7fac7  js/app.js
-e7949d6a1d6a7ff4d952349d32ffa61c2efe414c2e02d52ee63204173290e233  js/core.js
+b16f3ceb0e74458c8ea37ae8a2399592a09ce4a9a0ec4ed27a28f818367a6817  index.html
+74077e209321093c3406617a0bc82f98ed8969de41caf94121786e3ad46d41f5  js/app.js
+e96bb1cefb9b6f778469589adfa09919dba7ecabc6e65849b53cec6afeb4a45d  js/core.js
 2ab9a0df45904bda91d5deaff1a1f2b876153a4a5245be3ea9aa3fa07d771c57  js/dicts.js
-c36537c1cc1cff425ac0b7b4a782316112f1869cda9744b8bf030a86dc74848f  js/donate.js
+a568b28e33cdf8ded693ef7099aca7eb37b5021c59f5bc96e5286f31b537589d  js/donate.js
 b91b23b050cbe8ac8db8ba2421eaeaae4442bc6fd9906f73feab74d154212095  js/eff-words.js
-46e4dbc42186e3e862e10c38ceeb69f19a50b47a013b86478827564dcf4eda97  js/i18n.js
-f92f1dbc1d10b6a2c77d8dcd85ab457a9e24bcd9966559d21bc7cec48db5fd8b  js/kdf-src.js
-1675eaa7bc2dd755df370cebac15eb457d8453b5c765209e9eb0d69871d75f97  js/strength.js
+7c9e2a5fe78db3ca82ef202727a9c3a557bb57357c35bfada195ed4beceb59a2  js/i18n.js
+e2cc7ab4787ff5bc7ad978a4b01543f9c1043145ca0d13edb1e5aab0dd26859c  js/kdf-src.js
+18cb4a99aae2447bcf6211eb12c22c1a20e515c4f4169b66f396f73f774c7670  js/strength.js
 ccafdf6d619282f28ad07419fcab6b2189ab531be160e37266dd69b2344d4358  js/wordlists.js
-6e753528ec630ad43bd6a61727ee30c9880def1711678a723f06dbd28735c214  kdf-worker.js
+f78891204bb27f9bc79f39ddce17774a218381973180da1226b465b2162b7596  kdf-worker.js
 a1e76402ff67c29bfe3bf7b83eb3f539a9ab587714a487c4669e5703342679fb  manifest.json
-7317b633fbbb4220e908d2109926090ce49c99d63c1cdfc5b4acd58a5ae70bca  mnemoniqr-offline.html
-68c65774a270f1ef6055586ab20ffae7b3f58b6184916b5cc2d99fb8e87288b3  recover.py
-240e8dbec6434c53c8327a3e42cc90da319958437ca7b6e9ca9e52421c8ceeb7  styles.css
-09d0d35f8b96384141eae0911ce05742f8ab9a89a50a409ecaa7d1f5212fad53  sw.js
+0ff2a716ca41ed5517e1b2246333a8afd91df9e86ae9fe68321ec9ced03d2757  mnemoniqr-offline.html
+6d98e16a9d1a1ef69efdc9e4b1b8bcbc0721543512f8f2cbdb6df5e066d3d2ad  recover.py
+2f97fde111e82828729473e233029660251bd44ff755bfbfbad24ba6a8d7ce56  styles.css
+11a0ad240ab3bcd611eb06c166beb98a21f82d9cbf8f05528e5b681d2097922c  sw.js
 4b00127ce8ed53ca36e12084adb58685661bac552a9cb9149baf799ef2b7f02b  tests/tests.css
 6e6c9e6c5aa4dc54d64a8084d1efd980536decb0bc57aada56c722e2f9975cde  tests/tests.html
-cc1479d249279c4a8098b3a6afdf88115384a3cc8cb492e37014ebc05b709509  tests/tests.js
+574f443bdbb1a9591110ff24bd92afa05bcc59ae72e2fec0d897d69929dc8b23  tests/tests.js
 ba8c517ab217728d71ab7a432db1ddb4ed56e46e534ab96fb45007b5dba099f1  tests/vectors.js
 dcec617a2e1b700fa132d1583a186cb70611113395e869f2dd6cc82b415d3094  vendor/argon2.min.js
 fc6a9b5b0735aaf4af4748e0433d7351d4b725cfb02b032c502a5b699f3e4b9d  vendor/jsqr.min.js
