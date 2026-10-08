@@ -16,18 +16,18 @@
 <meta name="apple-mobile-web-app-title" content="MnemoniQR">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="styles.css" integrity="sha384-TZSeUGJxiDvFc/ICDMhHexLHIEeHlbHdINt6+afCuc6IMfH7tLmThLd0cobsaX86">
+<link rel="stylesheet" href="styles.css" integrity="sha384-5TexP7yjhYgasZmqoxneNZzy32ZwHlF/h7WDsXq02cV72CcfbB52r4bxLCBT/xJl">
 <script src="vendor/qrcode.min.js" integrity="sha384-j+PCCcBcNXQs6kRs1hRdOEJ/AqyHNjdSCi1wfQ/rBqCwaTUbzWLiRNth/rf32bIS" defer></script>
 <script src="vendor/jsqr.min.js" integrity="sha384-tqHEddO9DjuacgJyfvKkCvEFCkAsa/xW7e945T69PJJyN5K2akBEMf7TWifJwpaE" defer></script>
 <script src="vendor/argon2.min.js" integrity="sha384-tP0Wy54CKmng7i9EoTlPySD0hBx6Octj0VS6MfwlnUu111MPa+JLm0CCbep6XJ1W" defer></script>
 <script src="vendor/noble.min.js" integrity="sha384-8pjPNW+iH9kw1KMMMDfKRzJindppG2jIz0C7pQXYxm2lTVaydsJeCcu4iw+Xpq9P" defer></script>
 <script src="js/wordlists.js" integrity="sha384-PX0VVPp/q6x6y0vhXTrs6pygaHtC0IvYFi95wy/nspEg7GyZDWhmjzuLhpXm79FH" defer></script>
-<script src="js/core.js" integrity="sha384-z8huzFgnDbiNc9ixDONhEyBFzimroSt/G4ru6/xxivCjxi9/Sj7DbbgOl6uucy07" defer></script>
+<script src="js/core.js" integrity="sha384-bXpltNSYQJj1azXNO9Ws/23j0nN1vM70dGcuV8dNOz7Vy5TLrH7/khpokysGzkJC" defer></script>
 <script src="js/dicts.js" integrity="sha384-RbEW1u65Za+hfY6xmJefB6IFRkKnJPCa68usZzRaYBsdPb1FYzs/A25Hu2TWuW03" defer></script>
 <script src="js/eff-words.js" integrity="sha384-fX8jraGRcZLU/dfzK/YdH9MhcQ9hiYcmJiOLY2I5ddK2rulRn380Q3ijaWR8n0sL" defer></script>
-<script src="js/strength.js" integrity="sha384-4q4ag0zAY9Yn5BvVDjIqxxKt7CskGj9/gqDE42xFFNlXUDMNkKHKX1uYj4km6zW5" defer></script>
-<script src="js/i18n.js" integrity="sha384-9jJYhRCaszIYjrdwzA7cpRvW/vLQwxcd53f9CnX2TQMJ015sZaztizLfMy5Ldcsy" defer></script>
-<script src="js/app.js" integrity="sha384-W6eBzzw3xu4ZZyD9U8bqgY+AAQqiLuffeFGHHyRV6FGX8gghPCm/nH136JTj0sWi" defer></script>
+<script src="js/strength.js" integrity="sha384-JU6S7lXTo5vcRmABb/m60fSP61KAAggohhurDvTEGjIFd1/gnPTpd3qXvdJhz7sY" defer></script>
+<script src="js/i18n.js" integrity="sha384-f6sDHrMxZWogLxOyGShcqxtrIuJta0hMMclkDW/zml4TU5Bwrk8Yd7Z7DmFE7v4k" defer></script>
+<script src="js/app.js" integrity="sha384-FLYX93m7Eni0/7l7dxlvdV21QH6rSOKiEd2afPgH6UTfYEeNd/7bGxfFjMJNYVPX" defer></script>
 </head>
 <body>
 <noscript><p class="noscript">MnemoniQR needs JavaScript. Everything runs locally in your browser; nothing is sent anywhere.</p></noscript>
@@ -59,6 +59,7 @@
   <symbol id="i-practice" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
 </svg>
 
+<div id="update-banner" class="update-banner" role="status" hidden data-i18n="update_pending">A new version is installed. It will load when you return to the home screen.</div>
 <div id="practice-banner" class="practice-banner" hidden data-i18n="practice_banner">Practice mode: this seed is not real</div>
 
 <div class="app">
@@ -106,7 +107,7 @@
       <a class="link" href="https://github.com/MPetovick/MnemoniQR/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
       <a class="link" href="https://github.com/MPetovick/MnemoniQR" target="_blank" rel="noopener noreferrer" data-i18n-aria="link_source">GitHub</a>
       <button type="button" id="install-link" class="link" hidden data-i18n="install">Install app</button>
-      <span class="version">v6.3.0</span>
+      <span class="version">v6.4.0</span>
     </footer>
   </main>
 

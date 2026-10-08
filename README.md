@@ -161,7 +161,9 @@ python3 tools/build.py && python3 tests/e2e.py --browser all
 
 **Continuous integration.** `.github/workflows/ci.yml` builds, checks that the build is reproducible, runs the recovery-tool tests and runs the end-to-end tests in all three browsers on every push.
 
-**Deploying.** Publish the contents of `dist/`. Keep the provided headers: `frame-ancestors`, `Permissions-Policy`, HSTS and the cross-origin policies only work as HTTP headers. The site must be served over HTTPS for the service worker, camera and installation to work.
+**Deploying.** Publish the contents of `dist/`. Keep the provided headers: `frame-ancestors`, `Permissions-Policy`, HSTS and the cross-origin policies only work as HTTP headers. The site must be served over HTTPS for the service worker, camera and installation to work. `index.html`, `sw.js` and `manifest.json` must not be cached (the provided headers do this), otherwise installed copies see new versions late.
+
+**Updates.** Installed copies update by themselves the next time they are opened online: the new version is downloaded in the background and the app reloads as soon as it is on the home screen, never in the middle of a backup or a recovery.
 
 ## Project structure
 
@@ -169,7 +171,7 @@ python3 tools/build.py && python3 tests/e2e.py --browser all
 src/
   index.html          markup (CSP placeholder filled at build time)
   styles.css          design system, light and dark themes
-  sw.js               service worker: precaches the app, serves only its own files
+  sw.js               service worker: precaches the app, serves only its own files, installs updates by itself
   kdf-worker.js       Argon2id in a Web Worker (cancellable)
   manifest.json       PWA manifest
   js/core.js          crypto, BIP39, Shamir, fingerprint, formats (no DOM)

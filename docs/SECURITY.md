@@ -18,6 +18,15 @@ This document records the design decisions behind MnemoniQR and the findings of 
 
 **Out of scope:** a compromised operating system or browser, weak or reused passwords, and memory forensics (JavaScript strings cannot be reliably wiped).
 
+## v6.4.0: mandatory updates
+
+| Severity | Finding | Fix |
+|---|---|---|
+| High | An installed app could stay on an old version forever: the new service worker waited for a tap on a toast shown only on the home screen, and the cached shell was served first | The worker activates on install and reloads pages that do not acknowledge it (all versions before 6.4.0); newer pages reload at the first safe moment |
+| Medium | Browsers or CDNs could cache `index.html` and `manifest.json` | `no-cache, must-revalidate` on the files that decide the version; worker registered with `updateViaCache: 'none'` |
+
+Security fixes therefore reach every installed copy the next time it is opened online. The offline single file (`mnemoniqr-offline.html`) never updates itself: check its fingerprint against the release.
+
 ## v6.3.0 audit
 
 | Severity | Finding | Fix |

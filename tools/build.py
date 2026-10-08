@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MnemoniQR v6.3.0 · Reproducible build (Python 3 standard library only).
+MnemoniQR v6.4.0 · Reproducible build (Python 3 standard library only).
 
     python3 tools/build.py [--no-tests]
 
@@ -21,7 +21,8 @@ import re
 import shutil
 import sys
 
-VERSION = '6.3.0'
+VERSION = '6.4.0'
+NO_CACHE = ['/', '/index.html', '/sw.js', '/manifest.json']
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')
 DIST = os.path.join(ROOT, 'dist')
@@ -148,11 +149,14 @@ def headers():
     tests_csp = CSP_TESTS + "; frame-ancestors 'none'"
     lines = ['# Netlify / Cloudflare Pages. frame-ancestors and Permissions-Policy only work as HTTP headers.', '/*']
     lines += [f'  {k}: {v}' for k, v in hdr.items()]
-    lines += ['/sw.js', '  Cache-Control: no-cache', '/tests/*', '  Content-Security-Policy: ' + tests_csp, '']
+    # The files that decide which version runs are always revalidated, so an update is seen at once
+    for path in NO_CACHE:
+        lines += [path, '  Cache-Control: no-cache, max-age=0, must-revalidate']
+    lines += ['/tests/*', '  Content-Security-Policy: ' + tests_csp, '']
     write(os.path.join(DIST, '_headers'), '\n'.join(lines))
     vercel = {'headers': [
         {'source': '/(.*)', 'headers': [{'key': k, 'value': v} for k, v in hdr.items()]},
-        {'source': '/sw.js', 'headers': [{'key': 'Cache-Control', 'value': 'no-cache'}]},
+        *[{'source': path, 'headers': [{'key': 'Cache-Control', 'value': 'no-cache, max-age=0, must-revalidate'}]} for path in NO_CACHE],
         {'source': '/tests/(.*)', 'headers': [{'key': 'Content-Security-Policy', 'value': tests_csp}]},
     ]}
     write(os.path.join(DIST, 'vercel.json'), json.dumps(vercel, indent=2) + '\n')

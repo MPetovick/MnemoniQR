@@ -1,7 +1,7 @@
-// MnemoniQR service worker v6.3.0
+// MnemoniQR service worker v6.4.0
 // Precaches and serves the app's own files only. No push, no background sync, no third parties.
 'use strict';
-const CACHE = 'mnemoniqr-v6.3.0';
+const CACHE = 'mnemoniqr-v6.4.0';
 const FONTS = [
     'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
     'fonts/jetbrains-mono-latin-400-normal.woff2', 'fonts/jetbrains-mono-latin-500-normal.woff2'
@@ -17,21 +17,47 @@ const ASSETS = [
 ];
 const SCOPE = new URL('./', self.location).pathname;
 
+const VERSION = '6.4.0';
+const ACK_WAIT = 2500;
+
 self.addEventListener('install', (e) => {
-    // cache: 'reload' bypasses the HTTP cache so a new version never mixes in stale files
-    e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' })))));
+    // cache: 'reload' bypasses the HTTP cache so a new version never mixes in stale files.
+    // skipWaiting: a new version takes over at once, it never waits for an old page to accept it.
+    e.waitUntil(caches.open(CACHE)
+        .then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' }))))
+        .then(() => self.skipWaiting()));
+});
+
+// Pages from v6.4.0 on answer MQR_UPDATED and reload themselves at a safe moment.
+// Older pages (v5.x - v6.3) never answer: they are reloaded into the new version.
+const acks = new Set();
+self.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if (d.type === 'MQR_ACK' && e.source) acks.add(e.source.id);
+    if (d.type === 'SKIP_WAITING') self.skipWaiting();   // kept for pages older than v6.4.0
+    if (d.type === 'MQR_VERSION' && e.ports && e.ports[0]) e.ports[0].postMessage({ version: VERSION });
 });
 
 self.addEventListener('activate', (e) => {
-    e.waitUntil((async () => {
+    const ready = (async () => {
         const keys = await caches.keys();
         await Promise.all(keys.filter((k) => k.startsWith('mnemoniqr-') && k !== CACHE).map((k) => caches.delete(k)));
         await self.clients.claim();
-    })());
+    })();
+    e.waitUntil(ready);
+    // Runs once activation is over: a page navigated while this worker is still activating would
+    // wait for it forever, so the reload of old pages must not be part of waitUntil
+    ready.then(takeOver).catch(() => {});
 });
 
-// The page asks for this only after the user accepts the update prompt
-self.addEventListener('message', (e) => { if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting(); });
+async function takeOver() {
+    const wins = await self.clients.matchAll({ type: 'window' });
+    if (!wins.length) return;
+    wins.forEach((c) => c.postMessage({ type: 'MQR_UPDATED', version: VERSION }));
+    await new Promise((r) => setTimeout(r, ACK_WAIT));
+    await Promise.all(wins.filter((c) => !acks.has(c.id)).map((c) => c.navigate(c.url).catch(() => {})));
+    acks.clear();
+}
 
 self.addEventListener('fetch', (e) => {
     const req = e.request;

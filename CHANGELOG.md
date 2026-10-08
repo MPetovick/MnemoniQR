@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.4.0 — mandatory updates
+
+- **Updates install by themselves.** A new service worker activates as soon as it has downloaded the new version (`skipWaiting`) and takes over every open window. Before, it waited for a tap on an *Update* toast that only appeared on the home screen, so an installed app could stay on an old version indefinitely.
+- **Old installs are rescued too.** Pages from v5.x to v6.3 never answer the new worker, so they are reloaded into the new version automatically, the next time the app is opened while online.
+- **Never in the middle of a flow.** Pages from v6.4.0 on reload at the first safe moment: on the home screen, with no dialog open and nothing being computed. Mid-flow, a banner says the update will load on the way back home.
+- **Checks for updates** on start, every time the app comes back to the foreground, when the connection returns and every 30 minutes; registration with `updateViaCache: 'none'`.
+- **HTTP headers:** `/`, `/index.html`, `/sw.js` and `/manifest.json` are served with `Cache-Control: no-cache, max-age=0, must-revalidate`, so no HTTP cache can hide a new version.
+- `tests/update_e2e.py`: installs an older build, deploys the current one and checks that it takes over with no user action, that a mid-flow update waits for the home screen, and that a home-screen update applies at once.
+
 ## 6.3.0 — production hardening
 
 Audit of 6.2.0. Details in [docs/SECURITY.md](docs/SECURITY.md).

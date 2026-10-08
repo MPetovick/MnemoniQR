@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.3.0 · User interface
+// MnemoniQR v6.4.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -1348,32 +1348,57 @@ async function buildFingerprint() {
 // ============================================================
 // PWA
 // ============================================================
-// An update reloads the page, so it is only offered on the home screen, never in the middle of a flow
+// Updates are mandatory: a new service worker takes over by itself (sw.js) and tells every page.
+// The page then reloads at the first safe moment: on the home screen, with no dialog open and
+// nothing being computed. If the user is in the middle of a flow, a banner says the update will
+// be applied on the way back home, so no typed phrase is ever thrown away without notice.
 const Update = {
-    worker: null, accepted: false, reloaded: false,
-    offer(w) { this.worker = w; this.maybeShow(); },
-    maybeShow() {
-        if (!this.worker || this.accepted || S.step !== 'home' || modalStack.length) return;
-        const w = this.worker;
-        this.worker = null;
-        toast(t('update_ready'), 'info', { duration: 15000, onClick: () => { this.accepted = true; w.postMessage({ type: 'SKIP_WAITING' }); } });
+    pending: false, reloaded: false, hadController: false, reg: null, lastCheck: 0,
+    safe() { return S.step === 'home' && !modalStack.length && !S.busy; },
+    apply() {
+        if (!this.pending || this.reloaded) return;
+        if (!this.safe()) { $('update-banner').hidden = false; return; }
+        this.reloaded = true;
+        location.reload();
+    },
+    maybeShow() { this.apply(); },
+    check(force) {
+        // Ask the server for a newer sw.js: on start, on every return to the app and every 30 minutes
+        if (!this.reg || !navigator.onLine) return;
+        const now = Date.now();
+        if (!force && now - this.lastCheck < 60e3) return;
+        this.lastCheck = now;
+        this.reg.update().catch(() => {});
     }
 };
 function setupPWA() {
     const single = location.protocol === 'file:' || document.documentElement.hasAttribute('data-single');
     if (!single && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.register(ttPolicy ? ttPolicy.createScriptURL('sw.js') : 'sw.js').then((reg) => {
-            if (reg.waiting && navigator.serviceWorker.controller) Update.offer(reg.waiting);
-            reg.addEventListener('updatefound', () => {
-                const nw = reg.installing;
-                if (nw) nw.addEventListener('statechange', () => {
-                    if (nw.state === 'installed' && navigator.serviceWorker.controller) Update.offer(nw);
-                });
-            });
+        const sw = navigator.serviceWorker;
+        Update.hadController = !!sw.controller;
+        sw.addEventListener('message', (e) => {
+            if (!e.data || e.data.type !== 'MQR_UPDATED') return;
+            if (e.source && e.source.postMessage) e.source.postMessage({ type: 'MQR_ACK' });
+            // First install: this page already is the newest version
+            if (!Update.hadController) { Update.hadController = true; return; }
+            Update.pending = true;
+            Update.apply();
+        });
+        sw.startMessages && sw.startMessages();
+        // updateViaCache 'none': the browser HTTP cache is never used when looking for a new sw.js
+        sw.register(ttPolicy ? ttPolicy.createScriptURL('sw.js') : 'sw.js', { updateViaCache: 'none' }).then((reg) => {
+            Update.reg = reg;
+            // A worker left waiting by an older version is pushed through
+            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            Update.check(true);
         }).catch(() => {});
-        // Reload only when the user accepted an update: the first install also fires controllerchange
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (Update.accepted && !Update.reloaded) { Update.reloaded = true; location.reload(); }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) Update.check(false); });
+        window.addEventListener('online', () => Update.check(true));
+        setInterval(() => Update.check(false), 30 * 60e3);
+        // A controller change after a first install needs no reload; later ones go through Update.apply
+        sw.addEventListener('controllerchange', () => {
+            if (Update.hadController) { Update.pending = true; Update.apply(); }
+            Update.hadController = true;
         });
     }
     Install.init();
