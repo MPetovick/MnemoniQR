@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light dark">
@@ -16,15 +16,18 @@
 <meta name="apple-mobile-web-app-title" content="MnemoniQR">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="styles.css" integrity="sha384-xIFxJ7zLbEunAJCkuO3OxRYfhBe8GAYIkKGphlrFc8cHs0ldf/U/s4OKEekixOAu">
+<link rel="stylesheet" href="styles.css" integrity="sha384-Hkiz/WwBhyEjmyVj8Wi+fMvvis5Iq0aAGPMOZ8lqJOxMCvMDgf5Jc2OE1mHvTGM+">
 <script src="vendor/qrcode.min.js" integrity="sha384-j+PCCcBcNXQs6kRs1hRdOEJ/AqyHNjdSCi1wfQ/rBqCwaTUbzWLiRNth/rf32bIS" defer></script>
 <script src="vendor/jsqr.min.js" integrity="sha384-tqHEddO9DjuacgJyfvKkCvEFCkAsa/xW7e945T69PJJyN5K2akBEMf7TWifJwpaE" defer></script>
 <script src="vendor/argon2.min.js" integrity="sha384-tP0Wy54CKmng7i9EoTlPySD0hBx6Octj0VS6MfwlnUu111MPa+JLm0CCbep6XJ1W" defer></script>
 <script src="vendor/noble.min.js" integrity="sha384-8pjPNW+iH9kw1KMMMDfKRzJindppG2jIz0C7pQXYxm2lTVaydsJeCcu4iw+Xpq9P" defer></script>
-<script src="js/wordlists.js" integrity="sha384-83E04owDlUhvppm7lP+5JCCNmiJX1sGAZhre2w+6qcphzIb9vAtRe8YuwGv2PZqf" defer></script>
-<script src="js/core.js" integrity="sha384-MdnG1OHPCvhuVOZdyAQJeQzdUiSGd6FSikvMm599vqWJ/2hhLQ/Qiyflgwt/51We" defer></script>
-<script src="js/i18n.js" integrity="sha384-WRU2YapsLDO17JM1QIZbp3eu2+CSlAnq4yARcjXWEg9W98+M8uBWPfpzXjSdDxOd" defer></script>
-<script src="js/app.js" integrity="sha384-EIX0H0LmuSQ8Qsd1Bf/CPkSturaDQn/HcPiD+ezmjJ2UyUYOsek6X0szYv3jD883" defer></script>
+<script src="js/wordlists.js" integrity="sha384-PX0VVPp/q6x6y0vhXTrs6pygaHtC0IvYFi95wy/nspEg7GyZDWhmjzuLhpXm79FH" defer></script>
+<script src="js/core.js" integrity="sha384-a2Av+FJr7+mgG/vSDJRykZnQprHBie01d1yU3Un4mpdt32ywZZEQj2vg8SSD1bEa" defer></script>
+<script src="js/dicts.js" integrity="sha384-RbEW1u65Za+hfY6xmJefB6IFRkKnJPCa68usZzRaYBsdPb1FYzs/A25Hu2TWuW03" defer></script>
+<script src="js/eff-words.js" integrity="sha384-fX8jraGRcZLU/dfzK/YdH9MhcQ9hiYcmJiOLY2I5ddK2rulRn380Q3ijaWR8n0sL" defer></script>
+<script src="js/strength.js" integrity="sha384-CrYk5BaSk9GK49hCnL5HQT7fMBTYlRzriIKZq4LvWr2NLrCV4iblm0OXxljsZ2u/" defer></script>
+<script src="js/i18n.js" integrity="sha384-b8JWbCdi2UxiNNRrcT7KNHKnDWuq1H6gPk+O8pIO1RLzvdOepTIPc8HE84tARxq2" defer></script>
+<script src="js/app.js" integrity="sha384-c2bSAGNJ3OGCRs4lticm5bfCGLLEFhIpVntwtRo5Vciz+VzZcQKOMi7sMNs78AiY" defer></script>
 </head>
 <body>
 <noscript><p class="noscript">MnemoniQR needs JavaScript. Everything runs locally in your browser; nothing is sent anywhere.</p></noscript>
@@ -52,6 +55,8 @@
   <symbol id="i-verify" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
   <symbol id="i-del" viewBox="0 0 24 24"><path d="M9 5h11v14H9l-6-7z"/><path d="M12 9l5 6M17 9l-5 6"/></symbol>
   <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="3.5"/><path d="M10 13l9-9M16 7l2 2M14 9l2 2"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
   <symbol id="i-practice" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
 </svg>
 
@@ -66,12 +71,6 @@
         <span class="brand-name">MnemoniQR</span>
         <span class="brand-sub" data-i18n="brand_sub">Encrypted seed backup</span>
       </div>
-      <label class="lang-chip"><span class="sr-only" data-i18n="language">Language</span>
-        <select id="ui-lang">
-          <option value="es">ES · Español</option><option value="ca">CA · Català</option><option value="en">EN · English</option>
-          <option value="fr">FR · Français</option><option value="ru">RU · Русский</option>
-        </select>
-      </label>
     </header>
 
     <section class="ticket" id="drop-zone">
@@ -108,7 +107,7 @@
       <a class="link" href="https://github.com/MPetovick/MnemoniQR/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
       <a class="link" href="https://github.com/MPetovick/MnemoniQR" target="_blank" rel="noopener noreferrer" data-i18n-aria="link_source">GitHub</a>
       <button type="button" id="install-link" class="link" hidden data-i18n="install">Install app</button>
-      <span class="version">v5.1.0</span>
+      <span class="version">v6.2.0</span>
     </footer>
   </main>
 
@@ -127,9 +126,6 @@
         </div>
         <div class="seed-controls">
           <label class="mini-select"><span class="sr-only" data-i18n="word_count">Number of words</span><select id="seed-count"></select></label>
-          <label class="mini-select"><span class="sr-only" data-i18n="seed_language">Phrase language</span>
-            <select id="seed-lang"><option value="en">English</option><option value="es">Español</option></select></label>
-          <span class="hint-inline" data-i18n="bip_lang_hint">Phrase language, not the app’s</span>
         </div>
         <ol id="word-grid" class="word-lines" data-i18n-aria="seed_words"></ol>
         <div class="paper-foot">
@@ -182,6 +178,15 @@
       </section>
 
       <section class="paper opt">
+        <label class="switch-row"><input type="checkbox" id="kf-enable"> <span class="opt-label" data-i18n="kf_label">Also require a keyfile</span></label>
+        <div id="kf-box" class="stack" hidden>
+          <button type="button" id="kf-pick" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg> <span data-i18n="kf_choose">Choose a file</span></button>
+          <p class="fp" id="kf-info" hidden></p>
+          <p class="help warn" data-i18n="kf_help"></p>
+        </div>
+      </section>
+
+      <section class="paper opt">
         <label for="split-select" class="opt-label" data-i18n="split_label">Format</label>
         <select id="split-select">
           <option value="1" data-i18n="split_single">A single QR</option>
@@ -213,19 +218,25 @@
         <legend id="real-legend" class="opt-label" data-i18n="pw_real">Password</legend>
         <div class="field-group">
           <input type="password" id="password-input" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_ph">
-          <button type="button" id="password-generate" class="btn-icon" data-i18n-aria="pw_generate"><svg class="ic" aria-hidden="true"><use href="#i-dice"/></svg></button>
         </div>
         <div class="field-group">
           <input type="password" id="password-confirm" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_repeat" data-i18n-aria="pw_repeat">
         </div>
+        <div class="gen-row">
+          <span class="muted small" data-i18n="gen_label">Generate:</span>
+          <button type="button" id="gen-words" class="link small" data-i18n="gen_words">6 words</button>
+          <button type="button" id="gen-chars" class="link small" data-i18n="gen_chars">20 characters</button>
+        </div>
         <div class="strength">
           <div class="strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
           <div class="strength-row"><span id="strength-label"></span><span id="strength-bits"></span></div>
+          <p class="strength-warn" id="strength-warn" aria-live="polite" hidden></p>
         </div>
         <ul class="requirements">
           <li data-req="length" data-i18n="req_length">12 characters or more</li>
           <li data-req="entropy" data-i18n="req_entropy">Hard to guess (≥ 60 bits)</li>
           <li data-req="match" data-i18n="req_match">Both match</li>
+          <li data-req="phrase" data-i18n="req_phrase">Does not reuse your phrase or passphrase</li>
         </ul>
       </fieldset>
 
@@ -237,6 +248,7 @@
           <li data-req="d-length" data-i18n="req_decoy_length">8 characters or more</li>
           <li data-req="d-match" data-i18n="req_match">Both match</li>
           <li data-req="d-diff" data-i18n="req_decoy_diff">Different from the real password</li>
+          <li data-req="d-phrase" data-i18n="req_phrase">Does not reuse your phrase or passphrase</li>
         </ul>
       </fieldset>
 
@@ -328,9 +340,21 @@
       <div class="row-actions" id="source-actions">
         <button type="button" id="src-scan" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> <span data-i18n="scan">Scan</span></button>
         <button type="button" id="src-upload" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> <span data-i18n="upload">Upload image</span></button>
+        <button type="button" id="src-type" class="btn btn-secondary span-2"><svg class="ic" aria-hidden="true"><use href="#i-type"/></svg> <span data-i18n="type_text">Type the backup text</span></button>
         <input type="file" id="qr-file" accept="image/*" multiple hidden>
       </div>
+      <div id="type-panel" class="stack" hidden>
+        <label for="type-input" class="opt-label" data-i18n="type_label">Backup text</label>
+        <textarea id="type-input" rows="5" autocomplete="off" autocapitalize="characters" spellcheck="false" data-i18n-ph="type_ph"></textarea>
+        <p class="help" data-i18n="type_help"></p>
+        <button type="button" id="type-use" class="btn btn-secondary" data-i18n="type_use">Use this text</button>
+      </div>
       <p id="qr-ready" class="qr-ready" hidden><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="qr_ready">QR ready</span></p>
+      <div id="kf-need" class="stack" hidden>
+        <p class="help warn" data-i18n="kf_needed"></p>
+        <button type="button" id="kf-need-pick" class="btn btn-secondary"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg> <span data-i18n="kf_choose">Choose a file</span></button>
+        <p class="fp" id="kf-need-info" hidden></p>
+      </div>
       <div class="field-group">
         <input type="password" id="decrypt-password" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pw_ph" data-i18n-aria="pw_ph">
       </div>
@@ -436,6 +460,7 @@
     </section>
   </div>
 
+  <input type="file" id="kf-file" hidden>
   <div id="toast-container" role="status" aria-live="polite"></div>
   <div id="spinner-overlay" class="spinner-overlay" hidden role="status" aria-live="assertive">
     <div class="spinner"></div>

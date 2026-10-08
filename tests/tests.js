@@ -1,4 +1,4 @@
-// MnemoniQR v5.1.0 · Automated tests (run in the browser, no tooling needed)
+// MnemoniQR v6.2.0 · Automated tests (run in the browser, no tooling needed)
 'use strict';
 (async () => {
     const M = self.MQR;
@@ -37,7 +37,7 @@
     }
 
     const lists = await BIP39.init();
-    await test('BIP39 word list integrity (en, es)', () => lists.en && lists.es);
+    await test('BIP39 word list integrity', () => lists.en === true && !BIP39.available('es'));
 
     for (const [lang, vectors] of Object.entries(self.BIP39_VECTORS)) {
         await test(`Official vectors ${lang}: entropy ↔ phrase (${vectors.length})`, async () => {
@@ -72,12 +72,11 @@
         const idx = Array(12).fill(BIP39.resolve('en', 'abandon'));
         return (await BIP39.toEntropy(idx)) === null;
     });
-    await test('4-letter prefixes and accents (aban → abandon, abac → ábaco)', () =>
-        BIP39.word('en', BIP39.resolve('en', 'aban')) === 'abandon' && BIP39.word('es', BIP39.resolve('es', 'abac')).normalize('NFC') === 'ábaco');
-    await test('Language detection', () => BIP39.detect(['abeja', 'abrazo', 'cuerda']) === 'es' && BIP39.detect(['zoo', 'wrong']) === 'en');
+    await test('4-letter prefixes and case (aban → abandon, ZOO → zoo)', () =>
+        BIP39.word('en', BIP39.resolve('en', 'aban')) === 'abandon' && BIP39.word('en', BIP39.resolve('en', 'ZOO')) === 'zoo' && BIP39.resolve('en', 'abeja') === -1);
 
     await test('Prefix index (binary search) matches a linear scan', () => {
-        for (const lang of ['en', 'es']) {
+        for (const lang of ['en']) {
             const L = BIP39.lists[lang];
             const prefixes = new Set();
             for (const w of L.stripped) for (let n = 1; n <= Math.min(5, w.length); n++) prefixes.add(w.slice(0, n));
@@ -89,7 +88,7 @@
             }
             assert(BIP39.countMatches(lang, 'zzzz') === 0, 'no match');
         }
-        return 'en + es';
+        return 'en';
     });
     await test('Shamir 3-of-5: every combination rebuilds the secret', () => {
         const secret = util.rand(211);
@@ -125,16 +124,16 @@
     });
     await test('v4: wrong password', () => throwsCode(() => M.decryptAny(blobText, 'otra cosa'), 'wrong_password'));
     await test('v4: tampering is detected', async () => {
-        const b = util.b64urlDecode(blobText.slice(5));
+        const b = M._test.decodeV5(blobText, 'MQR5:');
         const half = (b.length - 27) / 2;
         b[27 + 20] ^= 1; b[27 + half + 20] ^= 1; // one bit in each slot (we do not know which one is real)
         await throwsCode(() => M.decryptAny('MQR4:' + util.b64urlEncode(b), 'correct horse battery 9!'), 'wrong_password');
-        const h = util.b64urlDecode(blobText.slice(5));
+        const h = M._test.decodeV5(blobText, 'MQR5:');
         h[20] ^= 1; // salt (AAD)
         await throwsCode(() => M.decryptAny('MQR4:' + util.b64urlEncode(h), 'correct horse battery 9!'), 'wrong_password');
     });
     await test('v4: abusive KDF parameters are rejected', async () => {
-        const b = util.b64urlDecode(blobText.slice(5));
+        const b = M._test.decodeV5(blobText, 'MQR5:');
         new DataView(b.buffer).setUint32(5, 4000000, false);
         await throwsCode(() => M.decryptAny('MQR4:' + util.b64urlEncode(b), 'x'), 'bad_params');
     });
@@ -153,7 +152,7 @@
     });
 
     await test('Shares 2-of-3 + password, end to end', async () => {
-        const r = await M.encryptV4({ real: { plaintext: await pack('es', 'ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco abierto'), password: 'clave-larga-123' } });
+        const r = await M.encryptV4({ real: { plaintext: await pack('en', 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'), password: 'clave-larga-123' } });
         const sp = M.splitBackup(r.blob, 3, 2);
         const dec = sp.texts.map((x) => M.Shamir.decode(x));
         for (const pair of [[0, 1], [0, 2], [1, 2]]) {
@@ -164,10 +163,24 @@
         const other = M.splitBackup(r.blob, 3, 2).texts.map((x) => M.Shamir.decode(x));
         await throwsCode(async () => M.joinShares([dec[0], other[1]]), 'mixed_sets');
         const d = await M.decryptAny(M.joinShares([dec[2], dec[0]]), 'clave-larga-123');
-        assert(d.lang === 'es' && d.words[0].normalize('NFC') === 'ábaco');
+        assert(d.lang === 'en' && d.words.join(' ') === 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about');
         return `${sp.texts[0].length} characters per share`;
     });
 
+    await test('Backups made with the Spanish word list (4.0–5.1.0) are refused, never shown as English words', async () => {
+        const pt = await pack('en', REAL);
+        pt[1] = 1; // language id 1 = Spanish
+        const r = await M.encryptV4({ real: { plaintext: pt, password: 'spanish-list-1' } });
+        await throwsCode(() => M.decryptAny(r.text, 'spanish-list-1'), 'unsupported_lang');
+    });
+    await test('Long passphrase or note is refused, never truncated', async () => {
+        const ent = await BIP39.toEntropy(REAL.split(' ').map((w) => BIP39.resolve('en', w)));
+        await throwsCode(async () => M.packPlaintext({ lang: 'en', entropy: ent, passphrase: 'é'.repeat(100) }), 'pp_too_long'); // NFKD: 3 bytes each
+        await throwsCode(async () => M.packPlaintext({ lang: 'en', entropy: ent, note: '€'.repeat(100) }), 'note_too_long');
+        const note = '€'.repeat(85); // 255 bytes exactly
+        const r = await M.encryptV4({ real: { plaintext: M.packPlaintext({ lang: 'en', entropy: ent, note }), password: 'limit-test-123' } });
+        return (await M.decryptAny(r.text, 'limit-test-123')).note === note;
+    });
     await test('Practice flag', async () => {
         const r = await M.encryptV4({ real: { plaintext: await pack('en', REAL), password: 'practica-12345' }, practice: true });
         return (await M.decryptAny(r.text, 'practica-12345')).practice === true;
@@ -205,12 +218,131 @@
         return d.words.join(' ') === 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' && d.note === 'v3n';
     });
 
-    await test('Password estimator', () => {
-        const g = M.estimateBits(M.generatePassword());
-        const w = M.estimateBits('Password1234!');
-        const d = M.estimateBits('caballo grapa bateria');
-        return g >= 110 && w < 60 && d < 60 ? `generated ${g}, weak ${w}, words ${d}` : false;
+    // ---------- v6.2: text format, typed input, keyfile ----------
+    const X = M._test;
+    await test('MQR5 text: base32 round trip and QR alphanumeric charset', () => {
+        for (let n = 0; n < 300; n++) {
+            const bytes = util.rand(n);
+            assert(util.ctEqual(X.b32decode(X.b32encode(bytes)), bytes), 'len ' + n);
+        }
+        return /^MQR5:[A-Z2-7]+$/.test(blobText) && blobText.startsWith('MQR5:');
     });
+    await test('MQR5 text: every single-character typo is detected (CRC-32)', () => {
+        const body = blobText.slice(5);
+        const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        let checked = 0;
+        for (let i = 0; i < body.length; i += 3) {
+            const c = A[(A.indexOf(body[i]) + 1 + (i % 31)) % 32];
+            let threw = false;
+            try { M.inspect('MQR5:' + body.slice(0, i) + c + body.slice(i + 1)); } catch (e) { threw = e.code === 'typo' || e.code === 'damaged'; }
+            assert(threw, 'pos ' + i); checked++;
+        }
+        return `${checked} positions`;
+    });
+    await test('Typed text: case, spaces, dashes and 0/1 for O/I are accepted', async () => {
+        const typed = 'mqr5:' + blobText.slice(5).toLowerCase().replace(/(.{4})/g, '$1 ').replace(/o/g, '0').replace(/i/g, '1').replace(/ (.{4}) /g, ' $1-');
+        const d = await M.decryptAny('MQR5:' + typed.slice(5), 'correct horse battery 9!');
+        return d.words.join(' ') === REAL;
+    });
+    await test('MQR4 (base64url) backups and shares still open', async () => {
+        const blob = X.decodeV5(blobText, 'MQR5:');
+        const d = await M.decryptAny('MQR4:' + util.b64urlEncode(blob), 'correct horse battery 9!');
+        const sh = M.Shamir.split(blob, 3, 2).map((s) => 'MQS4:' + util.b64urlEncode(util.concat(Uint8Array.of(4), Uint8Array.of(1, 2, 3, 4), Uint8Array.of(2, 3, s.x), s.y)));
+        const j = M.joinShares([M.Shamir.decode(sh[0]), M.Shamir.decode(sh[2])]);
+        return d.words.join(' ') === REAL && j === blobText;
+    });
+    await test('Keyfile: required, wrong file fails, right file opens', async () => {
+        const kf = util.rand(32);
+        const r = await M.encryptV4({ real: { plaintext: await pack('en', REAL), password: 'keyfile-test-1' }, keyfile: kf });
+        assert(M.inspect(r.text).keyfile === true, 'flag');
+        await throwsCode(() => M.decryptAny(r.text, 'keyfile-test-1'), 'keyfile_required');
+        await throwsCode(() => M.decryptAny(r.text, 'keyfile-test-1', util.rand(32)), 'wrong_password');
+        const d = await M.decryptAny(r.text, 'keyfile-test-1', kf);
+        const plain = await M.encryptV4({ real: { plaintext: await pack('en', REAL), password: 'no-keyfile-1' } });
+        const ok2 = (await M.decryptAny(plain.text, 'no-keyfile-1', kf)).words.join(' ') === REAL; // an unneeded keyfile is ignored
+        return d.words.join(' ') === REAL && d.keyfile === true && ok2;
+    });
+    await test('Unknown header flags are refused as a newer version', async () => {
+        const blob = X.decodeV5(blobText, 'MQR5:');
+        blob[3] |= 0x80;
+        await throwsCode(async () => M.inspect(X.encodeV5('MQR5:', blob)), 'newer_version');
+    });
+
+    // ---------- password meter and generators ----------
+    const ST = self.MQRStrength;
+    await test('Password meter: common patterns score low, random scores high', () => {
+        const low = ['password', 'P@ssw0rd2024', 'qwertyuiop', 'abcdefgh12345678', 'monkeymonkeymonkey', 'John1987!'].map((p) => ST.estimate(p).bits);
+        const high = ST.estimate('Hk3-bV_9qLz2xW8dN5tR').bits;
+        assert(low.every((b) => b < 30), 'low ' + low.join(','));
+        assert(ST.estimate('legal-winner-thank-you', ['legal', 'winner', 'thank']).warning === 'user', 'user words');
+        return high >= 100 ? `weak ≤ ${Math.max(...low)} bits, random ${high} bits` : false;
+    });
+    await test('Diceware: 6 words, uniform, never BIP39 words or excluded words', () => {
+        const bip = new Set(BIP39.lists.en.words);
+        const excl = new Set(self.EFF_WORDS.slice(0, 3000));
+        for (let i = 0; i < 200; i++) {
+            const { password, bits } = ST.generateWords(6, excl);
+            const w = password.split('-');
+            assert(w.length === 6 && new Set(w).size === 6 && bits >= 70, 'shape');
+            assert(w.every((x) => !bip.has(x) && !excl.has(x)), 'excluded word used');
+        }
+        return `${self.EFF_WORDS.length} words, ${ST.generateWords(6).bits} bits`;
+    });
+    await test('Passwords may not reuse the phrase or the passphrase', () =>
+        ST.conflicts('my-legal-pw', ['legal']) === 'pw_seed_word' && ST.conflicts('winnerwinner', ['winner']) === 'pw_seed_word' &&
+        ST.conflicts('Secret pass 25!', [], 'pass 25') === 'pw_is_passphrase' && ST.conflicts('totally-unrelated-77', ['legal'], 'x') === null);
+
+    // ---------- fuzzing: malformed input must only ever raise the app's own errors ----------
+    const own = (e) => e instanceof M.errors.MQRError;
+    const fuzz = async (name, n, gen, fn) => test(name, async () => {
+        for (let i = 0; i < n; i++) {
+            const input = gen(i);
+            try { await fn(input); } catch (e) { if (!own(e)) throw new Error(`${e.name}: ${e.message} on input #${i}`); }
+        }
+        return `${n} inputs`;
+    });
+    const rnd = (n) => Math.floor(Math.random() * n);
+    const junk = (len) => Array.from({ length: len }, () => String.fromCharCode(32 + rnd(95))).join('');
+    const prefixes = ['MQR5:', 'MQS5:', 'MQR4:', 'MQS4:', 'MQR3:', 'MQRv2:', 'mqr5:', ''];
+    await fuzz('Fuzz: random text into the parsers', 3000, (i) => prefixes[i % prefixes.length] + junk(rnd(400)), (x) => {
+        M.kindOf(x);
+        if (M.kindOf(x) === 'share') M.Shamir.decode(x); else if (M.kindOf(x) === 'backup') M.inspect(x);
+        X.decodeV5(x, 'MQR5:');
+    });
+    await fuzz('Fuzz: valid-looking base32 with correct CRC', 2000, () => X.encodeV5(rnd(2) ? 'MQR5:' : 'MQS5:', util.rand(rnd(500))), (x) => {
+        if (M.kindOf(x) === 'share') M.Shamir.decode(x); else M.inspect(x);
+    });
+    await fuzz('Fuzz: random shares combined', 500, () => Array.from({ length: 2 + rnd(3) }, () => {
+        const len = 211 + 92 * rnd(3);
+        return { setId: 'ab', k: 2, n: 3, x: 1 + rnd(3), y: util.rand(len) };
+    }), (shares) => M.joinShares(shares));
+    await fuzz('Fuzz: random plaintext bytes after decryption', 3000, (i) => {
+        const b = util.rand(rnd(300));
+        // half of the inputs look structurally right, so the deeper fields get exercised too
+        if (i % 2 && b.length > 4) { b[0] = 1 + rnd(2); b[1] = rnd(2); b[2] = [16, 20, 24, 28, 32, rnd(256)][rnd(6)]; }
+        return b;
+    }, (b) => X.unpackPlaintext(b));
+
+    // Mutations of a real backup, decrypted for real. A fast stand-in KDF keeps this quick;
+    // the parsing and AES-GCM paths are the real ones.
+    const realArgon = async (password, salt, m, t, p) => self.hashwasm.argon2id({ password, salt, memorySize: m, iterations: t, parallelism: p, hashLength: 32, outputType: 'binary' });
+    M.setArgonImpl(async (password, salt) => util.sha256(util.concat(password, salt)));
+    try {
+        const fast = await M.encryptV4({ real: { plaintext: await pack('en', REAL, { note: 'fuzz' }), password: 'fuzz-password-1' } });
+        const body = fast.text.slice(5);
+        await fuzz('Fuzz: 400 mutated backups decrypted end to end', 400, (i) => {
+            const pos = rnd(body.length), A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            switch (i % 4) {
+                case 0: return 'MQR5:' + body.slice(0, pos) + A[rnd(32)] + body.slice(pos + 1);
+                case 1: return 'MQR5:' + body.slice(0, pos);
+                case 2: return 'MQR5:' + body.slice(0, pos) + A[rnd(32)] + body.slice(pos);
+                default: { const b = X.decodeV5(fast.text, 'MQR5:'); b[rnd(b.length)] ^= 1 << rnd(8); return X.encodeV5('MQR5:', b); }
+            }
+        }, async (x) => {
+            const d = await M.decryptAny(x, 'fuzz-password-1');
+            assert(d.words.join(' ') === REAL, 'a mutation decrypted to different content');
+        });
+    } finally { M.setArgonImpl(realArgon); }
 
     const failed = results.filter((r) => !r.ok).length;
     const sum = document.getElementById('summary');

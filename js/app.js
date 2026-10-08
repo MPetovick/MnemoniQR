@@ -1,11 +1,12 @@
 // ============================================================
-// MnemoniQR v5.1.0 · User interface
+// MnemoniQR v6.2.0 · User interface
 // ============================================================
 'use strict';
 (() => {
 const M = self.MQR;
 const { C, BIP39, util } = M;
 const { MQRError, WrongPassword } = M.errors;
+const Strength = self.MQRStrength;
 const t = (k, v) => self.I18N.t(k, v);
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -13,7 +14,7 @@ const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeou
 
 const CFG = Object.freeze({
     AUTO_HIDE: 60, CLIPBOARD_CLEAR: 30, BACKGROUND_WIPE: 120,
-    MAX_IMAGE: 10 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
+    MAX_IMAGE: 10 * 1024 * 1024, MAX_PIXELS: 40e6, MAX_KEYFILE: 100 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
     KEY_ROWS: ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']
 });
 
@@ -35,11 +36,12 @@ const newSeed = () => ({ count: 12, lang: 'en', words: Array(24).fill(''), cur: 
 const S = {
     step: 'home', practice: false, target: 'real',
     seeds: { real: newSeed(), decoy: newSeed() },
-    opts: { note: '', ppOn: false, pp: '', decoy: false, n: 1, k: 1 },
+    opts: { note: '', ppOn: false, pp: '', decoy: false, n: 1, k: 1, kfOn: false, keyfile: null },
+    lastGen: null,             // { password, bits } of the last generated password
     rawAllowed: { real: false, decoy: false },
     result: null,             // { texts, index, kind, setId, k, n, blobText, hashes, fp, verified, practice, kdf }
     modalMode: 'decrypt',
-    collect: { backup: null, shares: new Map(), setId: null, k: 0, n: 0 },
+    collect: { backup: null, info: null, keyfile: null, shares: new Map(), setId: null, k: 0, n: 0 },
     attempts: 0, lockUntil: 0,
     timer: null, timerLeft: 0, clipTimer: null,
     scanner: { active: false, stream: null, raf: null, frame: 0, detector: null, canvas: null, cooldown: 0 },
@@ -178,7 +180,7 @@ async function calibrate() {
 function renderCalib() {
     document.querySelectorAll('[data-level-time]').forEach((el) => {
         const ms = S.calib && S.calib[el.dataset.levelTime];
-        el.textContent = ms ? t('approx_seconds', { s: (ms / 1000).toLocaleString(self.I18N.lang, { maximumFractionDigits: 1 }) }) : '';
+        el.textContent = ms ? t('approx_seconds', { s: (ms / 1000).toLocaleString('en', { maximumFractionDigits: 1 }) }) : '';
     });
     const lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
     const maxInput = document.querySelector('input[name=level][value=max]');
@@ -198,7 +200,10 @@ function updateNetPill() {
 }
 function clearEntry() {
     S.seeds.real = newSeed(); S.seeds.decoy = newSeed();
-    S.opts = { note: '', ppOn: false, pp: '', decoy: false, n: 1, k: 1 };
+    if (S.opts.keyfile) util.wipe(S.opts.keyfile.hash);
+    S.opts = { note: '', ppOn: false, pp: '', decoy: false, n: 1, k: 1, kfOn: false, keyfile: null };
+    S.lastGen = null;
+    $('kf-enable').checked = false; $('kf-box').hidden = true; $('kf-info').hidden = true;
     S.rawAllowed = { real: false, decoy: false };
     ['message-input', 'pp-input', 'password-input', 'password-confirm', 'decoy-input', 'decoy-confirm', 'decrypt-password'].forEach((id) => { $(id).value = ''; });
     $('pp-enable').checked = false; $('pp-box').hidden = true;
@@ -277,7 +282,6 @@ function renderSeedStep() {
     const s = seed();
     $('h-seed').textContent = S.target === 'decoy' ? t('seed_title_decoy') : t('seed_title');
     renderStepper(S.target === 'decoy' ? 'decoy' : 'seed');
-    $('seed-lang').value = s.lang;
     const eye = $('seed-eye');
     eye.setAttribute('aria-pressed', String(s.reveal));
     eye.querySelector('use').setAttribute('href', s.reveal ? '#i-eye-off' : '#i-eye');
@@ -475,7 +479,7 @@ function fillFromText(text) {
     const words = text.normalize('NFKD').toLowerCase().trim().split(/\s+/).filter(Boolean);
     if (!words.length) return false;
     const s = seed();
-    const lang = BIP39.detect(words) || s.lang;
+    const lang = 'en';
     s.lang = lang;
     s.count = C.VALID_WORD_COUNTS.find((n) => n >= words.length) || 24;
     s.words = Array(24).fill('');
@@ -513,6 +517,7 @@ function readOptions() {
     S.opts.ppOn = $('pp-enable').checked;
     S.opts.pp = S.opts.ppOn ? $('pp-input').value : '';
     S.opts.decoy = $('decoy-enable').checked;
+    S.opts.kfOn = $('kf-enable').checked;
     const v = $('split-select').value;
     if (v === '1') { S.opts.n = 1; S.opts.k = 1; }
     else if (v === 'custom') {
@@ -524,6 +529,10 @@ function readOptions() {
 async function optionsContinue() {
     readOptions();
     if (S.opts.ppOn && !S.opts.pp) { toast(t('pp_empty'), 'error'); return; }
+    if (S.opts.kfOn && !S.opts.keyfile) { toast(t('kf_missing'), 'error'); return; }
+    const bytes = (x) => new TextEncoder().encode(x).length;
+    if (bytes(S.opts.pp.normalize('NFKD')) > 255) { toast(t('err_pp_too_long'), 'error'); return; }
+    if (bytes(S.opts.note) > 255) { toast(t('err_note_too_long'), 'error'); return; }
     if (S.opts.decoy) {
         if (S.practice && !S.seeds.decoy.words.some(Boolean)) await prefillRandom(S.seeds.decoy, 12);
         openSeedStep('decoy');
@@ -538,15 +547,35 @@ function openPasswordStep() {
     $('password-input').focus();
     calibrate().then(renderCalib);
 }
+// Words of the phrase(s) being encrypted: a password must never reuse them
+function phraseWords() {
+    const out = [];
+    for (const w of (S.opts.decoy ? ['real', 'decoy'] : ['real'])) {
+        const sd = S.seeds[w];
+        for (let i = 0; i < sd.count; i++) { const r = BIP39.resolve('en', sd.words[i] || ''); if (r >= 0) out.push(BIP39.word('en', r)); }
+    }
+    return out;
+}
+function strengthOf(pw, words) {
+    if (!pw) return { bits: 0, warning: null };
+    const inputs = [...words, S.opts.pp, ...S.opts.note.split(/\s+/), 'mnemoniqr', 'bitcoin', 'wallet', 'seed', 'backup', 'crypto'];
+    const est = Strength.estimate(pw, inputs);
+    // A generated password is scored by how it was generated, not by how it looks
+    if (S.lastGen && pw === S.lastGen.password) return { bits: S.lastGen.bits, warning: null };
+    return est;
+}
 function updatePasswordUI() {
     const p = $('password-input').value, c = $('password-confirm').value;
-    const bits = M.estimateBits(p);
-    const ok = { length: Array.from(p).length >= CFG.MIN_PW, entropy: bits >= CFG.MIN_BITS, match: !!p && p === c };
+    const words = phraseWords();
+    const conflict = p ? Strength.conflicts(p, words, S.opts.pp) : null;
+    const { bits, warning } = strengthOf(p, words);
+    const ok = { length: Array.from(p).length >= CFG.MIN_PW, entropy: bits >= CFG.MIN_BITS, match: !!p && p === c, phrase: !!p && !conflict };
     const d = $('decoy-input').value, dc = $('decoy-confirm').value;
     if (S.opts.decoy) {
         ok['d-length'] = Array.from(d).length >= CFG.MIN_DECOY_PW;
         ok['d-match'] = !!d && d === dc;
         ok['d-diff'] = !!d && d.normalize('NFKC') !== p.normalize('NFKC');
+        ok['d-phrase'] = !!d && !Strength.conflicts(d, words, S.opts.pp);
     }
     document.querySelectorAll('.requirements li').forEach((li) => li.classList.toggle('met', !!ok[li.dataset.req]));
     const level = bits >= 90 ? ['pw_very_strong', 'great'] : bits >= 70 ? ['pw_strong', 'good'] : bits >= 50 ? ['pw_fair', 'fair'] : ['pw_weak', 'weak'];
@@ -554,8 +583,44 @@ function updatePasswordUI() {
     $('strength-fill').dataset.level = level[1];
     $('strength-label').textContent = p ? t(level[0]) : t('pw_type');
     $('strength-bits').textContent = p ? t('approx_bits', { n: bits }) : '';
-    const all = Object.values(ok).every(Boolean);
-    $('password-next').disabled = !all;
+    const warn = $('strength-warn');
+    const msg = conflict ? t(conflict) : (warning && bits < 80 ? t('pw_w_' + warning) : '');
+    warn.textContent = msg; warn.hidden = !msg;
+    $('password-next').disabled = !Object.values(ok).every(Boolean);
+}
+function useGenerated(pw, bits) {
+    S.lastGen = { password: pw, bits };
+    $('password-input').value = pw; $('password-confirm').value = pw;
+    $('show-password').checked = true;
+    ['password-input', 'password-confirm', 'decoy-input', 'decoy-confirm'].forEach((id) => { $(id).type = 'text'; });
+    updatePasswordUI();
+    toast(t('pw_generated'), 'warning', { duration: 8000 });
+}
+
+// A keyfile is reduced to SHA-256 of its bytes; the file itself is never kept
+async function readKeyfile(file) {
+    if (!file) return null;
+    if (!file.size) throw new MQRError('keyfile_empty');
+    if (file.size > CFG.MAX_KEYFILE) throw new MQRError('keyfile_big');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const hash = await util.sha256(bytes);
+    util.wipe(bytes);
+    return { name: file.name, hash, short: util.hex(hash.slice(0, 4)).toUpperCase() };
+}
+function pickKeyfile() { $('kf-file').value = ''; $('kf-file').click(); }
+async function onKeyfileChosen(file) {
+    // The open dialog decides where the file belongs: recovery/verification, or the options step
+    const keyfileTarget = $('password-modal').hidden ? 'options' : 'decrypt';
+    try {
+        const kf = await readKeyfile(file);
+        if (!kf) return;
+        const info = $(keyfileTarget === 'options' ? 'kf-info' : 'kf-need-info');
+        info.textContent = t('kf_selected', { name: kf.name, fp: kf.short });
+        info.hidden = false;
+        if (keyfileTarget === 'options') { if (S.opts.keyfile) util.wipe(S.opts.keyfile.hash); S.opts.keyfile = kf; }
+        else { if (S.collect.keyfile) util.wipe(S.collect.keyfile.hash); S.collect.keyfile = kf; }
+    } catch (e) { toast(errText(e), 'error'); }
+    finally { $('kf-file').value = ''; }
 }
 
 async function prefillRandom(target, count) {
@@ -591,6 +656,10 @@ async function startEncryption() {
         spinner(true, t('preparing'));
         await nextPaint();
         real = await packSeed('real', true);
+        if (S.opts.decoy) {
+            const key = (w) => Array.from({ length: S.seeds[w].count }, (_, i) => BIP39.resolve('en', S.seeds[w].words[i] || '')).join(',');
+            if (key('decoy') === key('real')) throw new MQRError('decoy_same_seed');
+        }
         decoy = S.opts.decoy ? await packSeed('decoy', false) : null;
         const total = decoy ? 2 : 1;
         spinner(true, t('kdf_running', { i: 1, n: total }), true);
@@ -598,7 +667,7 @@ async function startEncryption() {
         const r = await M.encryptV4({
             real: { plaintext: real.pt, password: $('password-input').value },
             decoy: decoy ? { plaintext: decoy.pt, password: $('decoy-input').value } : null,
-            level, practice: S.practice,
+            level, practice: S.practice, keyfile: S.opts.kfOn && S.opts.keyfile ? S.opts.keyfile.hash : null,
             onKdf: (i) => { if (i < total) spinner(true, t('kdf_running', { i: i + 1, n: total }), true); }
         });
         spinner(true, t('generating_qr'));
@@ -607,7 +676,8 @@ async function startEncryption() {
         util.wipe(r.blob);
         S.result = {
             texts, index: 0, kind: texts.length > 1 ? 'shares' : 'single', setId, k: S.opts.k, n: S.opts.n,
-            blobText: r.text, hashes: r.hashes, fp: real.fp, verified: false, practice: S.practice, kdf: r.kdf, hasDecoy: !!decoy
+            blobText: r.text, hashes: r.hashes, fp: real.fp, verified: false, practice: S.practice, kdf: r.kdf, hasDecoy: !!decoy,
+            keyfile: S.opts.kfOn && S.opts.keyfile ? S.opts.keyfile.short : null
         };
         if (r.kdf !== M.KDF.ARGON2ID) toast(t('pbkdf2_fallback'), 'warning', { duration: 8000 });
         clearEntry();
@@ -615,7 +685,7 @@ async function startEncryption() {
         await renderResult();
         toast(t('encrypted_ok'), 'success');
     } catch (e) {
-        if (e.code !== 'cancelled') { console.error(e); toast(errText(e), 'error'); }
+        if (e.code !== 'cancelled') { if (!(e instanceof MQRError)) console.error(e); toast(errText(e), 'error'); }
     } finally {
         if (real) util.wipe(real.pt);
         if (decoy) util.wipe(decoy.pt);
@@ -627,9 +697,9 @@ async function startEncryption() {
 // ============================================================
 // RESULT
 // ============================================================
-function shareCaption(i, tr = t) {
+function shareCaption(i) {
     const R = S.result;
-    return R.kind === 'shares' ? tr('share_caption', { i: i + 1, n: R.n, k: R.k, set: R.setId.slice(0, 4).toUpperCase() }) : tr('single_caption');
+    return R.kind === 'shares' ? t('share_caption', { i: i + 1, n: R.n, k: R.k, set: R.setId.slice(0, 4).toUpperCase() }) : t('single_caption');
 }
 async function renderResult() {
     const R = S.result;
@@ -643,7 +713,7 @@ async function renderResult() {
     cap.textContent = (R.verified ? t('verified') + ' · ' : t('unverified') + ' · ') + shareCaption(R.index);
     cap.classList.toggle('ok', R.verified);
     $('result-fp').textContent = R.fp ? t('fp_result', { fp: R.fp }) : '';
-    $('result-help').textContent = R.kind === 'shares' ? t('result_help_shares') : t('result_help');
+    $('result-help').textContent = (R.kind === 'shares' ? t('result_help_shares') : t('result_help')) + (R.keyfile ? ' ' + t('result_help_kf', { fp: R.keyfile }) : '');
 }
 
 async function verifyBackup() {
@@ -666,6 +736,8 @@ async function verifyBackup() {
     S.modalMode = 'verify';
     resetDecryptModal(true);
     S.collect.backup = R.blobText;
+    S.collect.info = M.inspect(R.blobText);
+    updateKeyfileNeed();
     $('decrypt-sub').textContent = R.hasDecoy ? t('verify_sub_decoy') : t('verify_sub');
     $('decrypt-confirm').textContent = t('verify_btn');
     $('qr-ready').hidden = false;
@@ -765,8 +837,6 @@ const QR = {
 // ============================================================
 // Dependency-free vector PDF
 // ============================================================
-// The standard PDF fonts have no Cyrillic: with the Russian UI the PDF is generated in English
-const tp = (k, v) => self.I18N.tFor(self.I18N.lang === 'ru' ? 'en' : self.I18N.lang, k, v);
 // Unicode code points that WinAnsiEncoding places in the 0x80-0x9F range
 const WINANSI = { 0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89,
     0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95,
@@ -800,6 +870,16 @@ const PDF = {
         return c + 'f Q\n';
     },
     dashed(x, y, w, h) { return `q 0.6 G 0.5 w [4 3] 0 d ${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re S Q\n`; },
+    // v5 text in groups of four, so it can be read aloud and typed back without losing the place
+    printable(text) {
+        if (!/^MQ[RS]5:/.test(text)) return this.wrap(text, 70);
+        const groups = [text.slice(0, 5), ...text.slice(5).match(/.{1,4}/g)];
+        const lines = [];
+        let line = '';
+        for (const g of groups) { if ((line + ' ' + g).length > 70) { lines.push(line); line = g; } else line = line ? line + ' ' + g : g; }
+        if (line) lines.push(line);
+        return lines;
+    },
     wrap(s, n) { const o = []; for (let i = 0; i < s.length; i += n) o.push(s.slice(i, i + n)); return o; },
 
     sheets(items, ecc) {
@@ -808,21 +888,24 @@ const PDF = {
             let c = '';
             const qs = 290, x0 = (this.W - qs) / 2, y0 = this.H - 150 - qs;
             c += this.txt('F3', 22, 56, this.H - 72, 'MnemoniQR');
-            c += this.txt('F1', 11, 56, this.H - 92, R.kind === 'shares' ? tp('pdf_sub_share', { i: i + 1, n: R.n }) : tp('pdf_sub'), 0.35);
-            if (R.practice) c += this.txt('F3', 12, 56, this.H - 112, tp('pdf_practice'), 0.2);
+            c += this.txt('F1', 11, 56, this.H - 92, R.kind === 'shares' ? t('pdf_sub_share', { i: i + 1, n: R.n }) : t('pdf_sub'), 0.35);
+            if (R.practice) c += this.txt('F3', 12, 56, this.H - 112, t('pdf_practice'), 0.2);
             c += this.qr(text, ecc, x0, y0, qs);
-            c += this.txt('F1', 9, x0, y0 - 18, shareCaption(i, tp) + ' · ' + tp('pdf_algo'), 0.35);
+            c += this.txt('F1', 9, x0, y0 - 18, shareCaption(i) + ' · ' + t('pdf_algo'), 0.35);
             let y = y0 - 56;
             const lines = R.kind === 'shares'
-                ? [tp('pdf_l_share1', { k: R.k, n: R.n }), tp('pdf_l_share2'), tp('pdf_l3')]
-                : [tp('pdf_l1'), tp('pdf_l2'), tp('pdf_l3')];
+                ? [t('pdf_l_share1', { k: R.k, n: R.n }), t('pdf_l_share2'), t('pdf_l3')]
+                : [t('pdf_l1'), t('pdf_l2'), t('pdf_l3')];
             for (const l of lines) { c += this.txt('F1', 10, 56, y, l, 0.15); y -= 16; }
             y -= 14;
-            c += this.txt('F1', 10, 56, y, tp('pdf_label') + ' ______________________________________', 0.15);
+            c += this.txt('F1', 10, 56, y, t('pdf_label') + ' ______________________________________', 0.15);
             y -= 32;
-            c += this.txt('F1', 9, 56, y, tp('pdf_backup_text'), 0.35);
+            c += this.txt('F1', 9, 56, y, t('pdf_backup_text'), 0.35);
             y -= 14;
-            for (const l of this.wrap(text, 70)) { c += this.txt('F2', 8, 56, y, l, 0.1); y -= 11; }
+            for (const l of this.printable(text)) { c += this.txt('F2', 8.5, 56, y, l, 0.1); y -= 12; }
+            y -= 4;
+            c += this.txt('F1', 8, 56, y, t('pdf_type_hint'), 0.35);
+            if (R.keyfile) { y -= 16; c += this.txt('F3', 9, 56, y, t('pdf_kf', { fp: R.keyfile }), 0.15); }
             return c;
         });
         return this.build(pages);
@@ -847,14 +930,15 @@ const PDF = {
                 let ty = y + ch - 26;
                 c += this.txt('F3', 11, tx, ty, 'MnemoniQR'); ty -= 16;
                 if (R.kind === 'shares') {
-                    c += this.txt('F1', 8.5, tx, ty, tp('card_share', { i: i + 1, n: R.n }), 0.15); ty -= 12;
-                    c += this.txt('F1', 8.5, tx, ty, tp('card_need', { k: R.k }), 0.15); ty -= 12;
-                    c += this.txt('F1', 8.5, tx, ty, tp('card_set', { set: R.setId.slice(0, 4).toUpperCase() }), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, t('card_share', { i: i + 1, n: R.n }), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, t('card_need', { k: R.k }), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, t('card_set', { set: R.setId.slice(0, 4).toUpperCase() }), 0.15); ty -= 12;
                 } else {
-                    c += this.txt('F1', 8.5, tx, ty, tp('card_backup'), 0.15); ty -= 12;
+                    c += this.txt('F1', 8.5, tx, ty, t('card_backup'), 0.15); ty -= 12;
                 }
-                if (R.practice) { c += this.txt('F3', 8.5, tx, ty, tp('card_practice'), 0.15); ty -= 12; }
-                c += this.txt('F1', 7.5, tx, y + 26, tp('pdf_label'), 0.4);
+                if (R.practice) { c += this.txt('F3', 8.5, tx, ty, t('card_practice'), 0.15); ty -= 12; }
+                if (R.keyfile) { c += this.txt('F3', 8.5, tx, ty, t('card_kf'), 0.15); ty -= 12; }
+                c += this.txt('F1', 7.5, tx, y + 26, t('pdf_label'), 0.4);
                 c += this.txt('F1', 7.5, tx, y + 14, '________________', 0.4);
             });
             pages.push(c);
@@ -953,13 +1037,16 @@ function acceptCode(text) {
     if (!kind) { status.textContent = t('not_mqr_qr'); return 'invalid'; }
     if (S.modalMode === 'verify') return 'invalid';
     if (kind === 'backup') {
-        S.collect.backup = text; S.collect.shares.clear();
+        let info;
+        try { info = M.inspect(text); } catch (e) { status.textContent = errText(e); setDecryptStatus(errText(e)); return 'invalid'; }
+        S.collect.backup = text; S.collect.info = info; S.collect.shares.clear();
+        updateKeyfileNeed();
         $('share-progress').hidden = true;
         $('qr-ready').hidden = false;
         return 'backup';
     }
     let d;
-    try { d = M.Shamir.decode(text); } catch { status.textContent = t('err_damaged'); return 'invalid'; }
+    try { d = M.Shamir.decode(text); } catch (e) { status.textContent = errText(e); setDecryptStatus(errText(e)); return 'invalid'; }
     const col = S.collect;
     if (col.setId && col.setId !== d.setId) { status.textContent = t('share_other_set'); toast(t('share_other_set'), 'warning'); return 'mixed'; }
     if (col.shares.has(d.x)) { status.textContent = t('share_dup', { i: d.x }); return 'dup'; }
@@ -969,6 +1056,8 @@ function acceptCode(text) {
     if (col.shares.size >= col.k) {
         try {
             col.backup = M.joinShares([...col.shares.values()]);
+            col.info = M.inspect(col.backup);
+            updateKeyfileNeed();
             $('qr-ready').hidden = false;
             return 'complete';
         } catch (e) { toast(errText(e), 'error'); return 'invalid'; }
@@ -978,6 +1067,32 @@ function acceptCode(text) {
 }
 function updateSourceActions() {
     $('source-actions').hidden = S.modalMode === 'verify' || !!S.collect.backup || S.scanner.active;
+    if (S.collect.backup) $('type-panel').hidden = true;
+}
+function updateKeyfileNeed() {
+    $('kf-need').hidden = !(S.collect.info && S.collect.info.keyfile);
+}
+// Typed backup text: any number of codes, whitespace anywhere, prefixes in any case
+function parseTyped(raw) {
+    const compact = String(raw || '').replace(/\s+/g, '');
+    const starts = [...compact.matchAll(/MQ[RS][45]:|MQR3:|MQRv2:/gi)].map((m) => m.index);
+    return starts.map((start, k) => {
+        const chunk = compact.slice(start, starts[k + 1] === undefined ? compact.length : starts[k + 1]);
+        const cut = chunk.indexOf(':') + 1;
+        const prefix = /^mqrv2:$/i.test(chunk.slice(0, cut)) ? 'MQRv2:' : chunk.slice(0, cut).toUpperCase();
+        return prefix + chunk.slice(cut);
+    });
+}
+function useTypedText() {
+    const codes = parseTyped($('type-input').value);
+    if (!codes.length) { setDecryptStatus(t('type_none')); return; }
+    $('decrypt-status').hidden = true;
+    for (const code of codes) {
+        const r = acceptCode(code);
+        if (r === 'invalid' || r === 'mixed') return;
+    }
+    if (S.collect.backup) { $('type-input').value = ''; $('type-panel').hidden = true; updateSourceActions(); $('decrypt-password').focus(); }
+    else if (S.collect.shares.size) { $('type-input').value = ''; setDecryptStatus(t('share_need_more', { k: S.collect.k })); }
 }
 function renderShareProgress() {
     const col = S.collect;
@@ -1009,6 +1124,7 @@ async function processFiles(files) {
             if (!/^image\//.test(f.type)) { toast(t('err_not_image'), 'error'); continue; }
             if (f.size > CFG.MAX_IMAGE) { toast(t('err_image_big'), 'error'); continue; }
             const bmp = await createImageBitmap(f);
+            if (bmp.width * bmp.height > CFG.MAX_PIXELS) { if (bmp.close) bmp.close(); toast(t('err_image_pixels'), 'error'); continue; }
             const data = await QR.decodeSource(bmp, bmp.width, bmp.height);
             if (bmp.close) bmp.close();
             if (!data) { toast(t('err_no_qr', { name: f.name }), 'error'); continue; }
@@ -1033,6 +1149,7 @@ function openDecrypt(withCamera) {
     $('decrypt-sub').textContent = t('decrypt_sub');
     $('decrypt-confirm').textContent = t('decrypt_btn');
     openModal('password-modal');
+    if (Date.now() < S.lockUntil) lockCountdown();
     if (withCamera) startScanner();
 }
 function resetDecryptModal(keepMode) {
@@ -1044,7 +1161,10 @@ function resetDecryptModal(keepMode) {
     $('qr-ready').hidden = true;
     $('share-progress').hidden = true;
     updateSourceActions();
-    S.collect = { backup: null, shares: new Map(), setId: null, k: 0, n: 0 };
+    if (S.collect.keyfile) util.wipe(S.collect.keyfile.hash);
+    S.collect = { backup: null, info: null, keyfile: null, shares: new Map(), setId: null, k: 0, n: 0 };
+    $('type-panel').hidden = true; $('type-input').value = '';
+    $('kf-need').hidden = true; $('kf-need-info').hidden = true;
     if (!keepMode) S.modalMode = 'decrypt';
     updateSourceActions();
 }
@@ -1067,12 +1187,14 @@ async function decryptQR() {
     const pwd = $('decrypt-password').value;
     if (!S.collect.backup) { setDecryptStatus(S.collect.shares.size ? t('share_need_more', { k: S.collect.k }) : t('scan_first')); return; }
     if (!pwd) { setDecryptStatus(t('type_password')); return; }
+    const needsKf = !!(S.collect.info && S.collect.info.keyfile);
+    if (needsKf && !S.collect.keyfile) { setDecryptStatus(t('err_keyfile_required')); return; }
     S.busy = true;
     stopScanner();
     spinner(true, t('decrypting'), true);
     await nextPaint();
     try {
-        const res = await M.decryptAny(S.collect.backup, pwd);
+        const res = await M.decryptAny(S.collect.backup, pwd, needsKf ? S.collect.keyfile.hash : null);
         S.attempts = 0;
         if (S.modalMode === 'verify') {
             res.words.fill('');
@@ -1093,10 +1215,10 @@ async function decryptQR() {
     } catch (e) {
         if (e instanceof WrongPassword) {
             S.attempts++;
-            setDecryptStatus(t('wrong_password_n', { n: S.attempts }));
+            setDecryptStatus(t(needsKf ? 'wrong_password_kf_n' : 'wrong_password_n', { n: S.attempts }));
             if (S.attempts >= 3) { S.lockUntil = Date.now() + Math.min(30, 2 ** (S.attempts - 2)) * 1000; lockCountdown(); }
             $('decrypt-password').select();
-        } else if (e.code !== 'cancelled') { console.error(e); setDecryptStatus(errText(e)); }
+        } else if (e.code !== 'cancelled') { if (!(e instanceof MQRError)) console.error(e); setDecryptStatus(errText(e)); }
     } finally { spinner(false); S.busy = false; }
 }
 
@@ -1118,8 +1240,7 @@ async function showDecrypted(res) {
     const meta = $('decrypted-meta');
     const add = (s) => { const p = document.createElement('p'); p.textContent = s; meta.appendChild(p); };
     if (res.note) add(t('meta_note', { note: res.note }));
-    if (res.created) add(t('meta_created', { date: res.created.toLocaleDateString(self.I18N.lang, { year: 'numeric', month: 'long', day: 'numeric' }) }));
-    add(t('meta_lang', { lang: res.lang === 'es' ? 'Español' : 'English' }));
+    if (res.created) add(t('meta_created', { date: res.created.toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' }) }));
     if (S.decrypted.pp) { $('decrypted-pp').textContent = t('meta_pp', { pp: S.decrypted.pp }); $('decrypted-pp').hidden = false; }
     $('decrypted-fp').textContent = '';
     if (res.indices) {
@@ -1311,20 +1432,17 @@ function refreshTexts() {
 function anyModalOpen() { return modalStack.length > 0; }
 
 async function init() {
-    self.I18N.init();
-    $('ui-lang').value = self.I18N.lang;
     refreshTexts();
     setupPWA();
     const lists = await BIP39.init();
     window.addEventListener('online', updateNetPill);
     window.addEventListener('offline', updateNetPill);
-    if (!lists.en || !lists.es) {
+    if (!lists.en) {
         ['encrypt-btn-main', 'recover-btn', 'practice-btn'].forEach((id) => { $(id).disabled = true; });
         toast(t('wordlist_bad'), 'error', { duration: 30000 });
     }
     buildFingerprint().then((f) => { $('build-fp').textContent = f; });
 
-    $('ui-lang').addEventListener('change', (e) => { self.I18N.set(e.target.value); refreshTexts(); });
     $('net-card').addEventListener('click', () => toast(navigator.onLine ? t('net_online_help') : t('net_offline_help'), 'info', { duration: 9000 }));
 
     // --- encrypt ---
@@ -1343,7 +1461,6 @@ async function init() {
         if (S.seeds.real.words.some(Boolean) && !S.practice && !confirm(t('confirm_leave'))) return;
         clearEntry(); goTo('home');
     });
-    $('seed-lang').addEventListener('change', (e) => { seed().lang = e.target.value; refreshSeed(); });
     $('seed-eye').addEventListener('click', () => { seed().reveal = !seed().reveal; renderSeedStep(); });
     $('seed-paste').addEventListener('click', pasteSeed);
     $('seed-next').addEventListener('click', seedContinue);
@@ -1395,14 +1512,17 @@ async function init() {
         const ty = $('show-password').checked ? 'text' : 'password';
         ['password-input', 'password-confirm', 'decoy-input', 'decoy-confirm'].forEach((id) => { $(id).type = ty; });
     });
-    $('password-generate').addEventListener('click', () => {
-        const p = M.generatePassword();
-        $('password-input').value = p; $('password-confirm').value = p;
-        $('show-password').checked = true;
-        ['password-input', 'password-confirm', 'decoy-input', 'decoy-confirm'].forEach((id) => { $(id).type = 'text'; });
-        updatePasswordUI();
-        toast(t('pw_generated'), 'warning', { duration: 8000 });
+    $('gen-words').addEventListener('click', () => {
+        const { password, bits } = Strength.generateWords(6, new Set(phraseWords()));
+        useGenerated(password, bits);
     });
+    $('gen-chars').addEventListener('click', () => useGenerated(M.generatePassword(), 120));
+    $('kf-enable').addEventListener('change', () => { $('kf-box').hidden = !$('kf-enable').checked; });
+    $('kf-pick').addEventListener('click', () => pickKeyfile());
+    $('kf-need-pick').addEventListener('click', () => pickKeyfile());
+    $('kf-file').addEventListener('change', (e) => onKeyfileChosen(e.target.files[0]));
+    $('src-type').addEventListener('click', () => { stopScanner(); $('type-panel').hidden = false; $('type-input').focus(); });
+    $('type-use').addEventListener('click', useTypedText);
     $('password-next').addEventListener('click', startEncryption);
     $('spinner-cancel').addEventListener('click', () => { if (S.cancelKdf) S.cancelKdf(); toast(t('cancelled'), 'info'); });
 
@@ -1452,6 +1572,8 @@ async function init() {
 
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', () => { wipeDecrypted(); wipeResult(); clearEntry(); stopScanner(); });
+    // Restored from the back/forward cache: everything was wiped on pagehide, so start from home
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { modalStack.slice().forEach((m) => { m.el.hidden = true; }); modalStack = []; goTo('home'); } });
 
     const action = new URLSearchParams(location.search).get('action');
     if (action) history.replaceState(null, '', location.pathname);

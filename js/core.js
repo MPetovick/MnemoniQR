@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v5.1.0 · Core (no DOM). Used by the app and by tests/tests.html.
+// MnemoniQR v6.2.0 · Core (no DOM). Used by the app and by tests/tests.html.
 // ============================================================
 'use strict';
 (function (G) {
@@ -7,6 +7,8 @@
     const dec = new TextDecoder('utf-8', { fatal: true });
 
     const C = Object.freeze({
+        MAGIC_V5: 'MQR5:',
+        MAGIC_SHARE5: 'MQS5:',
         MAGIC_V4: 'MQR4:',
         MAGIC_SHARE: 'MQS4:',
         MAGIC_V3: 'MQR3:',
@@ -28,13 +30,15 @@
         LEGACY_V3_PBKDF2_MIN: 100000,
         LEGACY_V2_ITER: 310000,
         WORDLIST_SHA256: Object.freeze({
-            en: 'f18b9a84c83e38e98eceb0102b275e26438af83ab08f080cdb780a2caa9f3a6d',
-            es: '27e99ad4328299108663c19eb611310bd3b77260af852169108713019831d07d'
+            en: 'f18b9a84c83e38e98eceb0102b275e26438af83ab08f080cdb780a2caa9f3a6d'
         }),
-        LANG_IDS: Object.freeze({ en: 0, es: 1 }),
-        FLAG_PRACTICE: 1
+        // Only the English list is supported. Id 1 (Spanish) was written by 4.0–5.1.0 and is now rejected.
+        LANG_IDS: Object.freeze({ en: 0 }),
+        FLAG_PRACTICE: 1,
+        FLAG_KEYFILE: 2,
+        KNOWN_FLAGS: 3
     });
-    const LANG_BY_ID = ['en', 'es'];
+    const LANG_BY_ID = ['en'];
     const KDF = Object.freeze({ ARGON2ID: 1, PBKDF2: 2 });
 
     // ---------- helpers ----------
@@ -57,9 +61,60 @@
     function b64urlDecode(str) {
         if (!/^[A-Za-z0-9_-]*$/.test(str)) throw new FormatError('bad_encoding');
         const s = str.replace(/-/g, '+').replace(/_/g, '/');
-        const bin = atob(s + '==='.slice((s.length + 3) % 4));
+        let bin;
+        try { bin = atob(s + '==='.slice((s.length + 3) % 4)); } catch { throw new FormatError('damaged'); }
         return Uint8Array.from(bin, (c) => c.charCodeAt(0));
     }
+    // ---------- v5 text encoding: base32 (QR alphanumeric mode, easy to type) + CRC-32 ----------
+    const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    function b32encode(bytes) {
+        let out = '', val = 0, bits = 0;
+        for (const b of bytes) {
+            val = ((val << 8) | b) & 0xffff; bits += 8;
+            while (bits >= 5) { out += B32[(val >>> (bits - 5)) & 31]; bits -= 5; }
+        }
+        if (bits > 0) out += B32[(val << (5 - bits)) & 31];
+        return out;
+    }
+    function b32decode(str) {
+        const out = [];
+        let val = 0, bits = 0;
+        for (const ch of str) {
+            const i = B32.indexOf(ch);
+            if (i < 0) throw new FormatError('typo');
+            val = ((val << 5) | i) & 0xffff; bits += 5;
+            if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+        }
+        // Leftover bits are padding and must be zero; anything else is a typo
+        if (bits >= 5 || (val & ((1 << bits) - 1))) throw new FormatError('typo');
+        return Uint8Array.from(out);
+    }
+    const CRC_TABLE = (() => {
+        const t = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+        return t;
+    })();
+    function crc32(bytes) {
+        let c = 0xffffffff;
+        for (const b of bytes) c = CRC_TABLE[(c ^ b) & 255] ^ (c >>> 8);
+        return (c ^ 0xffffffff) >>> 0;
+    }
+    function encodeV5(prefix, bytes) {
+        const c = crc32(bytes);
+        return prefix + b32encode(concat(bytes, Uint8Array.of(c >>> 24, (c >>> 16) & 255, (c >>> 8) & 255, c & 255)));
+    }
+    // Typed text is forgiving: any case, spaces and dashes ignored, 0/1 read as O/I (base32 has no 0 or 1)
+    function decodeV5(text, prefix) {
+        if (text.slice(0, prefix.length).toUpperCase() !== prefix) throw new FormatError('not_mqr');
+        const body = text.slice(prefix.length).toUpperCase().replace(/[\s-]/g, '').replace(/0/g, 'O').replace(/1/g, 'I');
+        const all = b32decode(body);
+        if (all.length < 5) throw new FormatError('typo');
+        const data = all.slice(0, -4), t = all.slice(-4);
+        if ((((t[0] << 24) | (t[1] << 16) | (t[2] << 8) | t[3]) >>> 0) !== crc32(data)) throw new FormatError('typo');
+        return data;
+    }
+    const isV5 = (text, prefix) => typeof text === 'string' && text.slice(0, prefix.length).toUpperCase() === prefix;
+
     async function sha256(bytes) { return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)); }
     async function sha256Hex(bytes) { return hex(await sha256(bytes)); }
     function ctEqual(a, b) {
@@ -143,14 +198,6 @@
             const out = new Set();
             for (let k = lo; k < hi; k++) { const w = L.stripped[L.order[k]]; if (w.length > t.length) out.add(w[t.length]); }
             return out;
-        },
-
-        // Language in which every word is valid (or null)
-        detect(typedWords) {
-            for (const lang of Object.keys(this.lists)) {
-                if (typedWords.every((w) => this.resolve(lang, w) >= 0)) return lang;
-            }
-            return null;
         },
 
         word(lang, i) { return this.lists[lang].words[i].normalize('NFC'); },
@@ -273,13 +320,15 @@
             }
             return out;
         },
-        // Share text: MQS4: + [version][set id 4][k][n][x][data]
+        // Share text: MQS5: + base32([version][set id 4][k][n][x][data] + CRC-32). MQS4: (base64url) is still read.
         encode(setId, k, n, share) {
-            return C.MAGIC_SHARE + b64urlEncode(concat(Uint8Array.of(4), setId, Uint8Array.of(k, n, share.x), share.y));
+            return encodeV5(C.MAGIC_SHARE5, concat(Uint8Array.of(4), setId, Uint8Array.of(k, n, share.x), share.y));
         },
         decode(text) {
-            if (!text.startsWith(C.MAGIC_SHARE)) throw new FormatError('not_mqr');
-            const b = b64urlDecode(text.slice(C.MAGIC_SHARE.length));
+            let b;
+            if (isV5(text, C.MAGIC_SHARE5)) b = decodeV5(text, C.MAGIC_SHARE5);
+            else if (typeof text === 'string' && text.startsWith(C.MAGIC_SHARE)) b = b64urlDecode(text.slice(C.MAGIC_SHARE.length));
+            else throw new FormatError('not_mqr');
             if (b.length < 9 + 40 || b[0] !== 4) throw new FormatError('damaged');
             const k = b[5], n = b[6], x = b[7];
             if (!(k >= 2 && n >= k && n <= 16 && x >= 1 && x <= n)) throw new FormatError('damaged');
@@ -308,6 +357,8 @@
         return key;
     }
     const pwBytes = (s) => enc.encode(s.normalize('NFKC'));
+    // With a keyfile, the KDF input is SHA-256(keyfile) (32 bytes, fixed length) followed by the password
+    const kdfInput = (password, keyfile) => (keyfile ? concat(keyfile, pwBytes(password)) : pwBytes(password));
 
     // ============================================================
     // v4 plaintext
@@ -315,13 +366,18 @@
     // type 1 = BIP39 entropy, type 2 = free text (invalid checksum)
     // ============================================================
     function packPlaintext({ lang, entropy, rawText, passphrase = '', note = '' }) {
-        const pp = enc.encode(passphrase.normalize('NFKD')).slice(0, 255);
-        const nt = enc.encode(note).slice(0, 255);
+        // Never truncate: a shortened passphrase is a different wallet, and cutting UTF-8 mid-character
+        // would make the backup impossible to decode
+        const pp = enc.encode(passphrase.normalize('NFKD'));
+        const nt = enc.encode(note);
+        if (pp.length > 255) throw new MQRError('pp_too_long');
+        if (nt.length > 255) throw new MQRError('note_too_long');
         const created = Math.floor(Date.now() / 1000);
         let body;
         if (entropy) body = concat(Uint8Array.of(1, C.LANG_IDS[lang] || 0, entropy.length), entropy);
         else {
             const t = enc.encode(rawText);
+            if (t.length > 65535) throw new MQRError('seed_incomplete');
             body = concat(Uint8Array.of(2, C.LANG_IDS[lang] || 0, t.length >> 8, t.length & 255), t);
         }
         const ts = new Uint8Array(4);
@@ -337,10 +393,17 @@
     }
     const bucket = (n) => Math.max(C.PAD_BLOCK, Math.ceil(n / C.PAD_BLOCK) * C.PAD_BLOCK);
 
+    // Any malformed plaintext ends as FormatError('bad_content'), never as a TypeError or RangeError
     async function unpackPlaintext(pt) {
+        try { return await unpackPlaintextRaw(pt); }
+        catch (e) { if (e instanceof MQRError) throw e; throw new FormatError('bad_content'); }
+    }
+    async function unpackPlaintextRaw(pt) {
         let o = 0;
         const type = pt[o++];
-        const lang = LANG_BY_ID[pt[o++]] || 'en';
+        const lang = LANG_BY_ID[pt[o++]];
+        // Never show the entropy as English words when it was written in another list: it would be a different wallet
+        if (!lang) throw new MQRError('unsupported_lang');
         let indices = null, rawText = null;
         if (type === 1) {
             const n = pt[o++];
@@ -382,11 +445,12 @@
         if (kdf !== KDF.ARGON2ID && kdf !== KDF.PBKDF2) throw new FormatError('bad_kdf');
     }
 
-    async function encryptV4({ real, decoy = null, level = 'standard', practice = false, onKdf }) {
+    async function encryptV4({ real, decoy = null, level = 'standard', practice = false, keyfile = null, onKdf }) {
+        if (keyfile && keyfile.length !== 32) throw new MQRError('keyfile_invalid');
         const salt = rand(C.SALT_LEN);
         const lv = C.LEVELS[level] || C.LEVELS.standard;
         let kdf = KDF.ARGON2ID, p1 = lv.m, p2 = lv.t, p3 = lv.p;
-        const pw1 = pwBytes(real.password);
+        const pw1 = kdfInput(real.password, keyfile);
         let key1;
         try { key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3); }
         catch (e) {
@@ -396,7 +460,7 @@
             key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3);
         }
         if (onKdf) onKdf(1);
-        const header = buildHeader(practice ? C.FLAG_PRACTICE : 0, kdf, p1, p2, p3, salt);
+        const header = buildHeader((practice ? C.FLAG_PRACTICE : 0) | (keyfile ? C.FLAG_KEYFILE : 0), kdf, p1, p2, p3, salt);
         const L = bucket(Math.max(real.plaintext.length, decoy ? decoy.plaintext.length : 0));
         const hashes = {};
         const seal = async (key, pt, name) => {
@@ -410,7 +474,7 @@
         const slotReal = await seal(key1, real.plaintext, 'real');
         let slotOther;
         if (decoy) {
-            const pw2 = pwBytes(decoy.password);
+            const pw2 = kdfInput(decoy.password, keyfile);
             if (ctEqual(pw1, pw2)) throw new MQRError('same_password');
             const key2 = await deriveKey(pw2, salt, kdf, p1, p2, p3);
             wipe(pw2);
@@ -422,26 +486,30 @@
         wipe(pw1);
         const first = rand(1)[0] & 1; // random slot order
         const blob = concat(header, first ? slotOther : slotReal, first ? slotReal : slotOther);
-        return { blob, text: C.MAGIC_V4 + b64urlEncode(blob), kdf, hashes };
+        return { blob, text: encodeV5(C.MAGIC_V5, blob), kdf, hashes };
     }
 
+    // MQR5 (base32 + CRC) and MQR4 (base64url) carry the same binary block
     function parseV4(text) {
-        if (!text.startsWith(C.MAGIC_V4)) throw new FormatError('not_mqr');
-        const blob = b64urlDecode(text.slice(C.MAGIC_V4.length));
-        return parseV4Blob(blob);
+        if (isV5(text, C.MAGIC_V5)) return parseV4Blob(decodeV5(text, C.MAGIC_V5));
+        if (typeof text === 'string' && text.startsWith(C.MAGIC_V4)) return parseV4Blob(b64urlDecode(text.slice(C.MAGIC_V4.length)));
+        throw new FormatError('not_mqr');
     }
     function parseV4Blob(blob) {
         if (blob.length < C.HEADER_LEN + 2 * (C.IV_LEN + C.PAD_BLOCK + C.TAG_LEN) || blob[0] !== 0x4d || blob[1] !== 0x51 || blob[2] !== 4) throw new FormatError('damaged');
         const slotLen = (blob.length - C.HEADER_LEN) / 2;
         if (!Number.isInteger(slotLen)) throw new FormatError('damaged');
         const header = blob.slice(0, C.HEADER_LEN);
+        if (header[3] & ~C.KNOWN_FLAGS) throw new FormatError('newer_version');
         return { header, ...parseHeader(header), slots: [blob.slice(C.HEADER_LEN, C.HEADER_LEN + slotLen), blob.slice(C.HEADER_LEN + slotLen)] };
     }
 
-    async function decryptV4(text, password) {
+    async function decryptV4(text, password, keyfile) {
         const P = parseV4(text);
         checkParams(P.kdf, P.p1, P.p2, P.p3);
-        const pw = pwBytes(password);
+        const needsKeyfile = !!(P.flags & C.FLAG_KEYFILE);
+        if (needsKeyfile && !keyfile) throw new MQRError('keyfile_required');
+        const pw = kdfInput(password, needsKeyfile ? keyfile : null);
         const key = await deriveKey(pw, P.salt, P.kdf, P.p1, P.p2, P.p3);
         wipe(pw);
         // Always try both slots, so timing does not reveal which one opened
@@ -454,7 +522,7 @@
         const hash = await sha256Hex(pt);
         const res = await unpackPlaintext(pt);
         wipe(pt);
-        return { ...res, hash, format: 4, kdf: P.kdf, practice: !!(P.flags & C.FLAG_PRACTICE) };
+        return { ...res, hash, format: 4, kdf: P.kdf, practice: !!(P.flags & C.FLAG_PRACTICE), keyfile: needsKeyfile };
     }
 
     // ---------- v3 compatibility ----------
@@ -504,8 +572,8 @@
         return { lang: 'en', words, indices: idx.every((i) => i >= 0) ? idx : null, passphrase: '', note: String(p.userMessage || ''), created: ts ? new Date(ts * 1000) : null, hash, format: 2, kdf: KDF.PBKDF2, practice: false };
     }
 
-    async function decryptAny(text, password) {
-        if (text.startsWith(C.MAGIC_V4)) return decryptV4(text, password);
+    async function decryptAny(text, password, keyfile = null) {
+        if (isV5(text, C.MAGIC_V5) || text.startsWith(C.MAGIC_V4)) return decryptV4(text, password, keyfile);
         if (text.startsWith(C.MAGIC_V3)) return decryptV3(text, password);
         if (text.startsWith(C.MAGIC_V2)) return decryptV2(text, password);
         throw new FormatError('not_mqr');
@@ -513,9 +581,18 @@
 
     function kindOf(text) {
         if (typeof text !== 'string') return null;
-        if (text.startsWith(C.MAGIC_SHARE)) return 'share';
-        if (text.startsWith(C.MAGIC_V4) || text.startsWith(C.MAGIC_V3) || text.startsWith(C.MAGIC_V2)) return 'backup';
+        if (isV5(text, C.MAGIC_SHARE5) || text.startsWith(C.MAGIC_SHARE)) return 'share';
+        if (isV5(text, C.MAGIC_V5) || text.startsWith(C.MAGIC_V4) || text.startsWith(C.MAGIC_V3) || text.startsWith(C.MAGIC_V2)) return 'backup';
         return null;
+    }
+    // What the recovery screen needs to know before asking for secrets (no key derivation)
+    function inspect(text) {
+        if (isV5(text, C.MAGIC_V5) || (typeof text === 'string' && text.startsWith(C.MAGIC_V4))) {
+            const P = parseV4(text);
+            return { format: 4, keyfile: !!(P.flags & C.FLAG_KEYFILE), practice: !!(P.flags & C.FLAG_PRACTICE) };
+        }
+        if (kindOf(text) === 'backup') return { format: text.startsWith(C.MAGIC_V3) ? 3 : 2, keyfile: false, practice: false };
+        throw new FormatError('not_mqr');
     }
 
     // Split a v4 backup into shares
@@ -536,33 +613,9 @@
         if (uniq.size < first.k) throw new MQRError('need_more');
         const blob = Shamir.combine([...uniq.values()].slice(0, first.k));
         parseV4Blob(blob); // validates the structure
-        return C.MAGIC_V4 + b64urlEncode(blob);
+        return encodeV5(C.MAGIC_V5, blob);
     }
 
-    // Password: heuristic entropy estimate
-    function estimateBits(pwd) {
-        if (!pwd) return 0;
-        let pool = 0;
-        if (/[a-z]/.test(pwd)) pool += 26;
-        if (/[A-Z]/.test(pwd)) pool += 26;
-        if (/[0-9]/.test(pwd)) pool += 10;
-        if (/[^\w\s]|_/.test(pwd)) pool += 33;
-        if (/\s/.test(pwd)) pool += 1;
-        if (/[^\x00-\x7f]/.test(pwd)) pool += 64;
-        const chars = Array.from(pwd);
-        let bits = chars.length * Math.log2(Math.max(pool, 2));
-        const unique = new Set(chars).size;
-        if (unique < chars.length / 2) bits *= unique / (chars.length / 2);
-        if (/(.)\1{2,}/.test(pwd)) bits -= 10;
-        const lower = strip(pwd);
-        for (const c of ['password', 'contrasena', 'contrasenya', 'qwerty', 'asdf', '123456', 'abcdef', 'bitcoin', 'wallet', 'cartera', 'mnemoniqr', 'seed', 'semilla', 'admin', 'letmein', 'iloveyou', 'hola', 'hello', 'azerty', 'motdepasse', 'пароль', 'parol']) if (lower.includes(c)) bits -= 20;
-        if (/(?:0123|1234|2345|3456|4567|5678|6789|abcd|bcde|cdef)/.test(lower)) bits -= 10;
-        if (/(19|20)\d{2}/.test(pwd)) bits -= 6;
-        // Space-separated dictionary words: count per word, not per letter
-        const parts = pwd.trim().split(/\s+/);
-        if (parts.length >= 2 && parts.every((w) => /^[\p{L}]+$/u.test(w))) bits = Math.min(bits, parts.length * 11);
-        return Math.max(0, Math.round(bits));
-    }
     function generatePassword(len = 20) {
         const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
         const r = rand(len);
@@ -574,9 +627,11 @@
 
     G.MQR = Object.freeze({
         C, KDF, BIP39, Shamir, fingerprint, masterKey, setArgonImpl,
-        packPlaintext, encryptV4, bucket, decryptAny, splitBackup, joinShares, kindOf, parseV4,
-        estimateBits, generatePassword,
+        packPlaintext, encryptV4, bucket, decryptAny, splitBackup, joinShares, kindOf, inspect, parseV4,
+        generatePassword,
         util: { wipe, rand, hex, fromHex, concat, b64urlEncode, b64urlDecode, sha256, sha256Hex, strip, ctEqual },
-        errors: { MQRError, FormatError, WrongPassword }
+        errors: { MQRError, FormatError, WrongPassword },
+        // Internal functions exposed for tests/tests.html (fuzzing and encoding checks)
+        _test: { b32encode, b32decode, crc32, encodeV5, decodeV5, unpackPlaintext, parseV4Blob }
     });
 })(self);
