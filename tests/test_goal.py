@@ -44,7 +44,7 @@ def recorded_answer(addresses, broken=None):
 const {{ collect }} = require({json.dumps(os.path.join(ROOT, 'web', 'api', 'goal.js'))});
 const {{ fakeFetch }} = require({json.dumps(os.path.join(ROOT, 'tests', 'goal_fixtures.js'))});
 const over = {json.dumps(broken)} ? {{ [{json.dumps(broken)}]: (u, o, r) => r({{}}, 503) }} : {{}};
-collect({json.dumps({'target_usd': 21000, 'start': '2026-10-08', 'addresses': addresses})}, fakeFetch(over))
+collect({json.dumps({'target_usd': 210000, 'start': '2026-10-08', 'addresses': addresses})}, fakeFetch(over))
   .then((r) => process.stdout.write(JSON.stringify(r)));
 """
     return json.loads(subprocess.run(['node', '-e', js], capture_output=True, text=True, check=True).stdout)
@@ -60,7 +60,7 @@ def main():
     print('Snapshot format and checks (tools/build.py)')
     check('src/js/goal.js is valid and matches the donation networks', build.check_goal(src_goal, kinds) >= 0)
     check('the file is written exactly as the tool writes it', build.with_goal(src_text, src_goal) == src_text)
-    check('target is 21,000 USD', src_goal['target_usd'] == 21000)
+    check('target is 210,000 USD', src_goal['target_usd'] == 210000)
     check('the test balances add up to $10,319.52', build.check_goal(build.GOAL_TEST, kinds) == 10319.52)
 
     def broken(mutate):
@@ -101,7 +101,7 @@ def main():
         text = build.read(out)
         g = build.parse_goal(text)
         check('…adds up to the recorded balances ($10,319.52)', build.check_goal(g, kinds) == 10319.52)
-        check('…keeps the target, the start and the comments', g['target_usd'] == 21000 and g['start'] == src_goal['start']
+        check('…keeps the target, the start and the comments', g['target_usd'] == src_goal['target_usd'] and g['start'] == src_goal['start']
               and text.split('/* GOAL */')[0] == src_text.split('/* GOAL */')[0])
         check('…dated with the day of the reading', g['as_of'] == answer['as_of'][:10])
         check('…networks in the order of donate.js', list(g['wallets']) == kinds)
@@ -111,6 +111,7 @@ def main():
         r = goal_py('--target', '25000', '--path', out)
         g2 = build.parse_goal(build.read(out))
         check('--target alone changes only the target', r.returncode == 0 and g2['target_usd'] == 25000 and g2['wallets'] == build.parse_goal(before)['wallets'])
+        check('--target refuses nan', goal_py('--target', 'nan', '--path', out).returncode != 0)
     os.makedirs(os.path.join(tmp, 'x'), exist_ok=True)
     for name, data in (('an incomplete reading', recorded_answer(addresses, broken='toncenter.com')),
                        ('a reading for other addresses', recorded_answer({**addresses, 'btc': build.TEST_ADDRESSES['btc']})),
@@ -148,7 +149,7 @@ def main():
     sw_src = build.read(os.path.join(ROOT, 'src', 'sw.js'))
     check('the service worker only reloads app windows when it updates (never /goal)', '.filter(isApp)' in sw_src)
     hashes = build.read(os.path.join(dist, 'HASHES.txt'))
-    check('HASHES.txt states the snapshot', re.search(r'Community goal: \$[\d,.]+ of \$21,000 \(\S+%\), balances as of \d{4}-\d{2}-\d{2}', hashes) is not None)
+    check('HASHES.txt states the snapshot', re.search(r'Community goal: \$[\d,.]+ of \$210,000 \(\S+%\), balances as of \d{4}-\d{2}-\d{2}', hashes) is not None)
     sw = build.read(os.path.join(dist, 'sw.js'))
     check('the service worker precaches goal.js and never touches /goal or /api', "'js/goal.js'" in sw and '/api' not in sw and "'goal" not in sw)
     html = build.read(os.path.join(dist, 'index.html'))

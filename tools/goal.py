@@ -6,7 +6,7 @@ MnemoniQR · Refreshes the community goal snapshot in src/js/goal.js. Run tools/
                                               as the campaign page (web/api/goal.js); needs Node 18 or later
     python3 tools/goal.py --from-url [URL]    take them from a deployed /api/goal (default https://mnemoniqr.app/api/goal)
     python3 tools/goal.py --file F.json       take them from a saved /api/goal answer
-    python3 tools/goal.py --target 21000      change the goal, in USD (alone: the balances are kept)
+    python3 tools/goal.py --target 210000     change the goal, in USD (alone: the balances are kept)
     python3 tools/goal.py --start 2026-10-08  change the start date (alone: the balances are kept)
     python3 tools/goal.py --show              print the current snapshot and stop
     --path F                                  update F instead of src/js/goal.js (tests)
@@ -76,7 +76,7 @@ def describe(g):
              f"({total / g['target_usd'] * 100:.1f}%), balances as of {g['as_of']}"]
     for kind, w in g['wallets'].items():
         held = [f"{a['amount']} {a['sym']} ({a['chain']})" for a in w['assets'] if float(a['amount'])]
-        lines.append(f"  {kind:5} {build.usd(w['usd']):>12}  {', '.join(held) or 'empty'}")
+        lines.append(f"  {kind:5} {build.usd(w['usd']):>14}  {', '.join(held) or 'empty'}")
     return '\n'.join(lines)
 
 

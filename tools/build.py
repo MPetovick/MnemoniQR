@@ -108,7 +108,7 @@ def donate_test_source():
 # ---------- community goal (js/goal.js) ----------
 GOAL_RE = re.compile(r'/\* GOAL \*/ (\{.*\}) /\* END \*/', re.S)
 GOAL_KEYS = {'target_usd', 'start', 'as_of', 'wallets'}
-# Made-up balances for `--goal-test` builds (UI tests only): about 49% of the goal
+# Made-up balances for `--goal-test` builds (UI tests only): $10,319.52, about 49% of a $21,000 goal
 GOAL_TEST = {
     'target_usd': 21000, 'start': '2026-09-01', 'as_of': '2026-10-01',
     'wallets': {

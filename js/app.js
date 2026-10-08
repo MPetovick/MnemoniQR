@@ -1690,26 +1690,28 @@ const Goal = {
         ton: [['Tonviewer', 'https://tonviewer.com/']]
     },
     on: false, target: 0, raised: 0, asOf: '', wallets: {},
-    // The same rules as tools/build.py: a snapshot that does not add up is not shown at all
+    // The same rules as tools/build.py: a snapshot that fails any of them is not shown at all
     load(kinds) {
         const g = self.MQR_GOAL;
         const num = (x) => typeof x === 'number' && Number.isFinite(x) && x >= 0;
+        const date = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
+        const keys = (o, k) => o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).sort().join() === k;
+        this.on = false;
         try {
-            const date = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
-            if (!g || typeof g !== 'object' || Object.keys(g).sort().join() !== 'as_of,start,target_usd,wallets') throw new Error('keys');
-            if (!num(g.target_usd) || !(g.target_usd > 0)) throw new Error('target');
+            if (!keys(g, 'as_of,start,target_usd,wallets')) throw new Error('keys');
+            if (!num(g.target_usd) || !(g.target_usd > 0) || g.target_usd > 1e9) throw new Error('target');
             if (!date(g.as_of) || !date(g.start) || g.as_of < g.start) throw new Error('date');
             const w = g.wallets;
-            const keys = w && typeof w === 'object' ? Object.keys(w) : [];
-            if (!kinds.length || keys.length !== kinds.length || !kinds.every((k) => keys.includes(k))) throw new Error('networks');
+            const names = w && typeof w === 'object' ? Object.keys(w) : [];
+            if (!kinds.length || names.length !== kinds.length || !kinds.every((k) => names.includes(k))) throw new Error('networks');
             const wallets = {};
             let raised = 0;
             for (const k of kinds) {
                 const x = w[k];
-                if (!x || !num(x.usd) || !Array.isArray(x.assets) || !x.assets.length || x.assets.length > 20) throw new Error(k);
+                if (!keys(x, 'assets,usd') || !num(x.usd) || !Array.isArray(x.assets) || !x.assets.length || x.assets.length > 20) throw new Error(k);
                 let sum = 0;
                 const assets = x.assets.map((a) => {
-                    if (!a || typeof a.sym !== 'string' || !/^[A-Z]{2,6}$/.test(a.sym) || typeof a.chain !== 'string' || !/^[a-z]{2,12}$/.test(a.chain)
+                    if (!keys(a, 'amount,chain,sym,usd') || !/^[A-Z]{2,6}$/.test(a.sym) || typeof a.chain !== 'string' || !/^[a-z]{2,12}$/.test(a.chain)
                         || typeof a.amount !== 'string' || !/^\d{1,30}(\.\d{1,36})?$/.test(a.amount) || !num(a.usd)
                         || (Number(a.amount) === 0 && a.usd !== 0)) throw new Error(k);
                     sum += a.usd;

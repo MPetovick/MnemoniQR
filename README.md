@@ -257,7 +257,7 @@ To test the support screens without real addresses: `python3 tools/build.py --ou
 
 ### Community goal: multi-seed backups for everyone
 
-The goal is **21,000 USD**. When it is reached, multi-seed backups (up to 3 recovery phrases in one encrypted QR) ship in an update, free for everyone. Recovering a backup is always free.
+The goal is **210,000 USD**. When it is reached, multi-seed backups (up to 3 recovery phrases in one encrypted QR) ship in an update, free for everyone. Recovering a backup is always free.
 
 **How it is counted.** The current balance of each donation address, listed coins and tokens only (BTC; ETH, USDT and USDC on Ethereum; BNB, USDT and USDC on BSC; ETH, USDC and USDT on Base; TRX, USDT and BTT on TRON; GRAM on TON), valued in USD. The wallets are not moved until the goal is reached, so anyone can open each address on a block explorer (mempool.space, Etherscan, BscScan, Basescan, Tronscan, Tonviewer) and add the balances up.
 
@@ -268,7 +268,7 @@ The goal is **21,000 USD**. When it is reached, multi-seed backups (up to 3 reco
 ```bash
 python3 tools/goal.py               # reads the explorers now (Node.js 18+), refuses an incomplete reading
 python3 tools/goal.py --from-url    # or takes https://mnemoniqr.app/api/goal once deployed
-python3 tools/goal.py --target 21000
+python3 tools/goal.py --target 210000
 python3 tools/build.py
 ```
 

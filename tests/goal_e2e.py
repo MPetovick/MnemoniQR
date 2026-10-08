@@ -2,8 +2,9 @@
 """
 MnemoniQR · Community goal in the app (Chromium, Playwright).
 
-  1. test build (`--donate-test --goal-test`, made-up balances, 49%): footer line, thin bar and its accessible
-     name; ring, total and date in the Support sheet; the balance of each network with links to its explorers;
+  1. test build (`--donate-test --goal-test`, made-up balances, 49% of a $21,000 goal): footer line, thin bar and
+     its accessible name; ring, total and date in the Support sheet; the balance of each network with links to its
+     explorers;
   2. the shipped build: the snapshot of src/js/goal.js, 0% draws no arc;
   3. no donation address: no goal anywhere;
   4. a snapshot that does not add up (or misses a network) is not shown, the support link stays;
@@ -72,12 +73,12 @@ def main():
         ctx, page = open_page(base + '/index.html')
         check('footer: the goal line replaces the plain one', page.is_visible('#goal-foot') and page.is_hidden('#support-plain'))
         check('footer: "Unlock multi-seed for everyone · Support it" and 49%',
-              'Unlock multi-seed for everyone' in page.inner_text('#goal-foot') and page.inner_text('#goal-foot-pct') == '49%')
+              page.inner_text('#goal-foot') == 'Unlock multi-seed for everyone · Support it' and page.inner_text('#goal-foot-pct') == '49%')
         fill = page.evaluate("() => document.getElementById('goal-foot-fill').getBoundingClientRect().width / document.getElementById('goal-foot-bar').getBoundingClientRect().width")
         check('footer: the bar is filled to 49%', abs(fill - 0.4914) < 0.01, f'{fill:.3f}')
         label = page.get_attribute('#support-link', 'aria-label') or ''
         check('footer: accessible name starts with the visible text, gives the figures',
-              label.startswith('Unlock multi-seed for everyone · Support it') and '49%' in label and '$21,000' in label and 'Oct 1, 2026' in label, label)
+              label == 'Unlock multi-seed for everyone · Support it. Community goal: 49% of $21,000, as of Oct 1, 2026.', label)
         check('footer: the bar is hidden from screen readers', page.get_attribute('#goal-foot-bar', 'aria-hidden') == 'true')
         page.click('#support-link')
         page.wait_for_selector('#support-sheet:not([hidden])')
@@ -147,7 +148,8 @@ def main():
                                ('misses a network', '(g) => { delete g.wallets.ton; }'),
                                ('has an amount in exponent form', "(g) => { g.wallets.btc.assets[0].amount = '1e3'; }"),
                                ('has a negative value', '(g) => { g.wallets.ton.usd = -5; g.wallets.ton.assets[0].usd = -5; }'),
-                               ('has no target', '(g) => { delete g.target_usd; }')):
+                               ('has no target', '(g) => { delete g.target_usd; }'),
+                               ('has an extra key', "(g) => { g.note = 'x'; }")):
             c, p = with_snapshot(mutation)
             ok = p.is_visible('#support-link') and p.is_visible('#support-plain') and p.is_hidden('#goal-foot') and p.get_attribute('#support-link', 'aria-label') is None
             p.click('#support-link')

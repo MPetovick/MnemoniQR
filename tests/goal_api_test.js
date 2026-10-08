@@ -155,6 +155,7 @@ test('campaign page: no script, CSP style hash matches, links leave safely', asy
     assert.match(html, /\$10,320/);
     assert.match(html, /of \$21,000/);
     assert.match(html, /49%/);
+    assert.match(html, /<h1 id="h-goal">Unlock multi-seed backups for everyone<\/h1>/);
     assert.ok(html.includes(`https://etherscan.io/address/${CONFIG.addresses.evm}`));
     assert.ok(html.includes(`https://bscscan.com/address/${CONFIG.addresses.evm}`));
     assert.ok(html.includes(`https://basescan.org/address/${CONFIG.addresses.evm}`));

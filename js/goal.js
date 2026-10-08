@@ -15,7 +15,7 @@
 // tools/build.py refuses a snapshot whose numbers do not add up or whose networks do not match donate.js.
 'use strict';
 self.MQR_GOAL = /* GOAL */ {
-  "target_usd": 21000,
+  "target_usd": 210000,
   "start": "2026-10-08",
   "as_of": "2026-10-08",
   "wallets": {

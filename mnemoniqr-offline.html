@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Qa4NHaex4Gx2SPehJF1+7XQAmJAwLhxEcH3LUW0tnrU=' 'sha256-/GqbWwc1qvSvR0jgQz1zUdS3Jc+wKwMsUCpbaZ8+S50=' 'sha256-3Oxhei4bcA+hMtFYOhhstwYRETOV6Gny3WzIK0FdMJQ=' 'sha256-y+ipmPKF5axe/+dSlDCnUS/6l38+yyFOxCgzRULnbeM=' 'sha256-zK/fbWGSgvKK0HQZ/KtrIYmrUxvhYONyZt1psjRNQ1g=' 'sha256-UotrjZ33Zm+qAJdqL2NmfhwcUDLtxpn1eZxbmfuU6Bk=' 'sha256-Krmg30WQS9qR1d6v8aHyuHYVOkpSRb4+qao/oH13HFc=' 'sha256-uRsjsFDL6KyNuLokIerqrkRCvG/ZkG9z/qt00VQhIJU=' 'sha256-UM+TPD9pf6YRC1lmxORr7gvnskXJcYQU06N64D5s6LE=' 'sha256-T4sSaVcbc/TVsHUp8NOGgGipoCTwSqQ03Y/VnhDi7KI=' 'sha256-j0iMgmGI7r+vOl09suYaG/DT9HsFDUDHeR6VI79NaNE=' 'sha256-goo9ZqnWSA3RYVgQ5EU0rZwqDg14TSGgpEGc3Fo16vA=' 'sha256-aZb5eYmOhRa6ri5l5hF1YohJYObZhECjSFzEs7J5kOM=' 'sha256-Ydqs7XlI49Per+4bvHf88cjKFlEctEezQ/KWf5IidgM=' 'wasm-unsafe-eval'; style-src 'sha256-ltKiAR2ux1yG0cBtRebMb4w5ZxJSAx3+kx2s005Q4OM='; font-src data:; img-src data:; connect-src 'none'; worker-src blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Qa4NHaex4Gx2SPehJF1+7XQAmJAwLhxEcH3LUW0tnrU=' 'sha256-/GqbWwc1qvSvR0jgQz1zUdS3Jc+wKwMsUCpbaZ8+S50=' 'sha256-3Oxhei4bcA+hMtFYOhhstwYRETOV6Gny3WzIK0FdMJQ=' 'sha256-y+ipmPKF5axe/+dSlDCnUS/6l38+yyFOxCgzRULnbeM=' 'sha256-zK/fbWGSgvKK0HQZ/KtrIYmrUxvhYONyZt1psjRNQ1g=' 'sha256-UotrjZ33Zm+qAJdqL2NmfhwcUDLtxpn1eZxbmfuU6Bk=' 'sha256-Krmg30WQS9qR1d6v8aHyuHYVOkpSRb4+qao/oH13HFc=' 'sha256-uRsjsFDL6KyNuLokIerqrkRCvG/ZkG9z/qt00VQhIJU=' 'sha256-UM+TPD9pf6YRC1lmxORr7gvnskXJcYQU06N64D5s6LE=' 'sha256-T4sSaVcbc/TVsHUp8NOGgGipoCTwSqQ03Y/VnhDi7KI=' 'sha256-j0iMgmGI7r+vOl09suYaG/DT9HsFDUDHeR6VI79NaNE=' 'sha256-4oZqwnQev/7Ko9BMh8HTcT3n/3IcySey8NxwZ/5cIRA=' 'sha256-aZb5eYmOhRa6ri5l5hF1YohJYObZhECjSFzEs7J5kOM=' 'sha256-TbWjwRk07DOgcGXCzvAGQbDDdsep9qQTQlHvdgUdtYo=' 'wasm-unsafe-eval'; style-src 'sha256-ltKiAR2ux1yG0cBtRebMb4w5ZxJSAx3+kx2s005Q4OM='; font-src data:; img-src data:; connect-src 'none'; worker-src blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light dark">
@@ -1813,7 +1813,7 @@ self.MQR_DONATE = Object.freeze([
 // tools/build.py refuses a snapshot whose numbers do not add up or whose networks do not match donate.js.
 'use strict';
 self.MQR_GOAL = /* GOAL */ {
-  "target_usd": 21000,
+  "target_usd": 210000,
   "start": "2026-10-08",
   "as_of": "2026-10-08",
   "wallets": {
@@ -3549,26 +3549,28 @@ const Goal = {
         ton: [['Tonviewer', 'https://tonviewer.com/']]
     },
     on: false, target: 0, raised: 0, asOf: '', wallets: {},
-    // The same rules as tools/build.py: a snapshot that does not add up is not shown at all
+    // The same rules as tools/build.py: a snapshot that fails any of them is not shown at all
     load(kinds) {
         const g = self.MQR_GOAL;
         const num = (x) => typeof x === 'number' && Number.isFinite(x) && x >= 0;
+        const date = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
+        const keys = (o, k) => o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).sort().join() === k;
+        this.on = false;
         try {
-            const date = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
-            if (!g || typeof g !== 'object' || Object.keys(g).sort().join() !== 'as_of,start,target_usd,wallets') throw new Error('keys');
-            if (!num(g.target_usd) || !(g.target_usd > 0)) throw new Error('target');
+            if (!keys(g, 'as_of,start,target_usd,wallets')) throw new Error('keys');
+            if (!num(g.target_usd) || !(g.target_usd > 0) || g.target_usd > 1e9) throw new Error('target');
             if (!date(g.as_of) || !date(g.start) || g.as_of < g.start) throw new Error('date');
             const w = g.wallets;
-            const keys = w && typeof w === 'object' ? Object.keys(w) : [];
-            if (!kinds.length || keys.length !== kinds.length || !kinds.every((k) => keys.includes(k))) throw new Error('networks');
+            const names = w && typeof w === 'object' ? Object.keys(w) : [];
+            if (!kinds.length || names.length !== kinds.length || !kinds.every((k) => names.includes(k))) throw new Error('networks');
             const wallets = {};
             let raised = 0;
             for (const k of kinds) {
                 const x = w[k];
-                if (!x || !num(x.usd) || !Array.isArray(x.assets) || !x.assets.length || x.assets.length > 20) throw new Error(k);
+                if (!keys(x, 'assets,usd') || !num(x.usd) || !Array.isArray(x.assets) || !x.assets.length || x.assets.length > 20) throw new Error(k);
                 let sum = 0;
                 const assets = x.assets.map((a) => {
-                    if (!a || typeof a.sym !== 'string' || !/^[A-Z]{2,6}$/.test(a.sym) || typeof a.chain !== 'string' || !/^[a-z]{2,12}$/.test(a.chain)
+                    if (!keys(a, 'amount,chain,sym,usd') || !/^[A-Z]{2,6}$/.test(a.sym) || typeof a.chain !== 'string' || !/^[a-z]{2,12}$/.test(a.chain)
                         || typeof a.amount !== 'string' || !/^\d{1,30}(\.\d{1,36})?$/.test(a.amount) || !num(a.usd)
                         || (Number(a.amount) === 0 && a.usd !== 0)) throw new Error(k);
                     sum += a.usd;
