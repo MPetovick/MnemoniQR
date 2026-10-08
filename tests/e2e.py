@@ -95,6 +95,8 @@ def run(pw, name, base):
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
+    accepting = {'on': False}   # confirm() dialogs are accepted from the large-backup check on
+    page.on('dialog', lambda d: d.accept() if accepting['on'] else d.dismiss())
 
     # 1. unit suite
     page.goto(base + '/tests/tests.html')
@@ -227,9 +229,9 @@ def run(pw, name, base):
     page.wait_for_timeout(300)
     # practice phrases are shown in clear, so the cells hold the full words
     big_words = page.evaluate("() => [...document.querySelectorAll('#word-grid .cell-w')].map(e => e.textContent).join(' ')")
+    accepting['on'] = True
     page.click('#seed-next')
     if page.is_visible('#seed-next'):
-        page.on('dialog', lambda d: d.accept())
         page.click('#seed-next')
     page.fill('#message-input', big_note)
     page.check('#pp-enable')
@@ -260,7 +262,6 @@ def run(pw, name, base):
     except Exception:
         ok = False
     c('large backup: PDF paginates the text and recover.py reads it', ok and pdf_pages(big_pdf) == 2, f'{pdf_pages(big_pdf)} pages {proc.stderr.strip()} {len(big_codes[0]) if big_codes else 0} characters')
-    page.on('dialog', lambda d: d.accept())
     page.click('#qr-done')
 
     if name == 'chromium':
@@ -269,6 +270,87 @@ def run(pw, name, base):
         page.wait_for_timeout(1500)
         c('camera works under the CSP', page.evaluate("() => document.getElementById('scanner-video').videoWidth > 0"))
         page.click('#decrypt-cancel')
+
+    # 6. v6.4.1 regressions
+    page.goto(base + '/index.html')
+    page.wait_for_timeout(600)
+    if page.is_visible('#install-sheet'):
+        page.click('#install-later')
+    c('Argon2 worker ships with the page under SRI',
+      page.evaluate("() => typeof self.MQR_KDF_SRC === 'string' && !!document.querySelector('script[src=\"js/kdf-src.js\"][integrity]')"))
+    page.click('#encrypt-btn-main')
+    page.focus('.key[data-key=l]')
+    page.keyboard.press('Enter')
+    kb = page.evaluate("() => [document.querySelector('.key[data-key=q]').getAttribute('aria-disabled'), document.activeElement.dataset.key]")
+    c('on-screen key: Enter types it, focus stays on the key', kb == ['true', 'l'], str(kb))
+    page.keyboard.press('Backspace')
+    page.evaluate('() => document.activeElement.blur()')
+    type_phrase(page, REAL)
+    page.wait_for_timeout(300)
+    page.click('#seed-next')
+    page.check('#decoy-enable')
+    page.check('#kf-enable')
+    page.set_input_files('#kf-file', KEYFILE)
+    page.wait_for_timeout(300)
+    page.select_option('#split-select', '2-3')
+    page.click('#options-next')
+    type_phrase(page, DECOY)
+    page.wait_for_timeout(300)
+    page.click('#seed-next')
+    page.click('#gen-words')
+    page.fill('#decoy-input', 'decoy-pass')
+    page.fill('#decoy-confirm', 'decoy-pass')
+    page.wait_for_timeout(200)
+    page.click('#password-next')
+    # the app "comes back" after 5 minutes in the background while the key derivation runs
+    page.evaluate('''() => {
+        const real = Date.now;
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+        document.dispatchEvent(new Event('visibilitychange'));
+        Date.now = () => real() + 300000;
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+        document.dispatchEvent(new Event('visibilitychange'));
+        Date.now = real; delete document.hidden;
+    }''')
+    page.wait_for_selector('#step-result:not([hidden])', timeout=120000)
+    c('background wipe waits for the encryption: shares kept', page.is_visible('#share-nav'))
+    page.click('#qr-print')
+    with page.expect_download() as d:
+        page.click('#print-go')
+    pdf2 = os.path.join(tempfile.mkdtemp(), 'busy.pdf')
+    d.value.save_as(pdf2)
+    codes2 = pdf_codes(pdf2)
+    proc = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'recover.py'), '--password-stdin', '--json', '--keyfile', KEYFILE],
+                          input='decoy-pass\n' + '\n'.join(codes2[:2]), capture_output=True, text=True)
+    try:
+        ok = ' '.join(json.loads(proc.stdout)['words']) == DECOY
+    except Exception:
+        ok = False
+    c('background wipe waits for the encryption: decoy still opens', ok and len(codes2) == 3, proc.stderr.strip())
+    page.click('#qr-done')
+
+    if name == 'chromium':
+        # the camera is released when the dialog closes during the permission prompt, and a double tap opens one stream
+        page.evaluate('''() => {
+            const orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+            window.__streams = [];
+            navigator.mediaDevices.getUserMedia = async (cons) => {
+                await new Promise((r) => setTimeout(r, 400));
+                const s = await orig(cons); window.__streams.push(s); return s;
+            };
+        }''')
+        page.click('#recover-btn')
+        page.evaluate("() => { document.getElementById('src-scan').click(); document.getElementById('src-scan').click(); }")
+        page.click('#decrypt-cancel')
+        page.wait_for_timeout(1200)
+        page.click('#recover-btn')
+        page.evaluate("() => { document.getElementById('src-scan').click(); document.getElementById('src-scan').click(); }")
+        page.wait_for_timeout(1500)
+        live = page.evaluate("() => [window.__streams.length, window.__streams.filter((s) => s.getTracks().some((t) => t.readyState === 'live')).length]")
+        page.click('#decrypt-cancel')
+        page.wait_for_timeout(300)
+        ended = page.evaluate("() => window.__streams.every((s) => s.getTracks().every((t) => t.readyState === 'ended'))")
+        c('camera: no stream left behind, one stream per scan', live == [2, 1] and ended, str(live))
 
     # 5. single offline file
     single = ctx.new_page()

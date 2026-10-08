@@ -1,4 +1,4 @@
-// MnemoniQR v6.4.0 · Password strength and generation (no DOM).
+// MnemoniQR v6.4.1 · Password strength and generation (no DOM).
 // A compact estimator in the spirit of zxcvbn: it finds the patterns an attacker would try first
 // (common passwords, dictionary words, names, keyboard runs, sequences, repeats, dates, the user's own
 // words) and returns the cheapest way to guess the whole password, in bits.
@@ -101,13 +101,31 @@
             }
         }
         // repeats: one character (aaaa) or a repeated block (abcabc)
+        // Only primitive units are tried (abab is ab twice, already found with a higher count) and each unit
+        // is scored once: this keeps long repetitive input fast (it was cubic, with nested re-scoring).
+        const same = (x, y, len) => { for (let k = 0; k < len; k++) if (chars[x + k] !== chars[y + k]) return false; return true; };
+        const primitive = (i, unit) => {
+            for (let p = 1; p < unit; p++) {
+                if (unit % p) continue;
+                let periodic = true;
+                for (let k = p; k < unit && periodic; k++) periodic = chars[i + k] === chars[i + k - p];
+                if (periodic) return false;
+            }
+            return true;
+        };
+        const unitCache = new Map();
         for (let i = 0; i < n; i++) {
             for (let unit = 1; unit <= Math.floor((n - i) / 2); unit++) {
-                const u = chars.slice(i, i + unit).join('');
-                let count = 1;
-                while (chars.slice(i + count * unit, i + (count + 1) * unit).join('') === u) count++;
-                if (count >= 2 && (unit > 1 || count >= 3)) {
-                    const unitBits = unit === 1 ? log2(charsetSize([u])) : estimateChars([...u], userDict).bits;
+                if (!same(i, i + unit, unit) || !primitive(i, unit)) continue;
+                let count = 2;
+                while (i + (count + 1) * unit <= n && same(i, i + count * unit, unit)) count++;
+                if (unit > 1 || count >= 3) {
+                    const u = chars.slice(i, i + unit).join('');
+                    let unitBits = unitCache.get(u);
+                    if (unitBits === undefined) {
+                        unitBits = unit === 1 ? log2(charsetSize([u])) : estimateChars([...u], userDict).bits;
+                        unitCache.set(u, unitBits);
+                    }
                     out.push({ i, j: i + count * unit, bits: unitBits + log2(count), kind: 'repeat' });
                 }
             }

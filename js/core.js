@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.4.0 · Core (no DOM). Used by the app and by tests/tests.html.
+// MnemoniQR v6.4.1 · Core (no DOM). Used by the app and by tests/tests.html.
 // ============================================================
 'use strict';
 (function (G) {
@@ -467,42 +467,44 @@
         const lv = C.LEVELS[level] || C.LEVELS.standard;
         let kdf = KDF.ARGON2ID, p1 = lv.m, p2 = lv.t, p3 = lv.p;
         const pw1 = kdfInput(real.password, keyfile);
-        let key1;
-        try { key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3); }
-        catch (e) {
-            // Fall back to PBKDF2 only when WebAssembly is unavailable; out-of-memory and cancellation are reported
-            if (e.code !== 'no_argon') { wipe(pw1); throw e; }
-            kdf = KDF.PBKDF2; p1 = C.PBKDF2_FALLBACK_ITER; p2 = 0; p3 = 0;
-            key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3);
-        }
-        if (onKdf) onKdf(1);
-        const header = buildHeader((practice ? C.FLAG_PRACTICE : 0) | (keyfile ? C.FLAG_KEYFILE : 0), kdf, p1, p2, p3, salt);
-        const L = bucket(Math.max(real.plaintext.length, decoy ? decoy.plaintext.length : 0));
-        const hashes = {};
-        const seal = async (key, pt, name) => {
-            const iv = rand(C.IV_LEN);
-            const padded = padTo(pt, L);
-            hashes[name] = await sha256Hex(padded);
-            const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: header, tagLength: 128 }, key, padded));
-            wipe(padded);
-            return concat(iv, ct);
-        };
-        const slotReal = await seal(key1, real.plaintext, 'real');
-        let slotOther;
-        if (decoy) {
-            const pw2 = kdfInput(decoy.password, keyfile);
-            if (ctEqual(pw1, pw2)) throw new MQRError('same_password');
-            const key2 = await deriveKey(pw2, salt, kdf, p1, p2, p3);
-            wipe(pw2);
-            if (onKdf) onKdf(2);
-            slotOther = await seal(key2, decoy.plaintext, 'decoy');
-        } else {
-            slotOther = rand(C.IV_LEN + L + C.TAG_LEN); // indistinguishable from an encrypted slot
-        }
-        wipe(pw1);
-        const first = rand(1)[0] & 1; // random slot order
-        const blob = concat(header, first ? slotOther : slotReal, first ? slotReal : slotOther);
-        return { blob, text: encodeV5(C.MAGIC_V5, blob), kdf, hashes };
+        let pw2 = null;
+        // Every exit (success, cancellation, out of memory, same password) wipes both KDF inputs
+        try {
+            let key1;
+            try { key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3); }
+            catch (e) {
+                // Fall back to PBKDF2 only when WebAssembly is unavailable; out-of-memory and cancellation are reported
+                if (e.code !== 'no_argon') throw e;
+                kdf = KDF.PBKDF2; p1 = C.PBKDF2_FALLBACK_ITER; p2 = 0; p3 = 0;
+                key1 = await deriveKey(pw1, salt, kdf, p1, p2, p3);
+            }
+            if (onKdf) onKdf(1);
+            const header = buildHeader((practice ? C.FLAG_PRACTICE : 0) | (keyfile ? C.FLAG_KEYFILE : 0), kdf, p1, p2, p3, salt);
+            const L = bucket(Math.max(real.plaintext.length, decoy ? decoy.plaintext.length : 0));
+            const hashes = {};
+            const seal = async (key, pt, name) => {
+                const iv = rand(C.IV_LEN);
+                const padded = padTo(pt, L);
+                hashes[name] = await sha256Hex(padded);
+                const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: header, tagLength: 128 }, key, padded));
+                wipe(padded);
+                return concat(iv, ct);
+            };
+            const slotReal = await seal(key1, real.plaintext, 'real');
+            let slotOther;
+            if (decoy) {
+                pw2 = kdfInput(decoy.password, keyfile);
+                if (ctEqual(pw1, pw2)) throw new MQRError('same_password');
+                const key2 = await deriveKey(pw2, salt, kdf, p1, p2, p3);
+                if (onKdf) onKdf(2);
+                slotOther = await seal(key2, decoy.plaintext, 'decoy');
+            } else {
+                slotOther = rand(C.IV_LEN + L + C.TAG_LEN); // indistinguishable from an encrypted slot
+            }
+            const first = rand(1)[0] & 1; // random slot order
+            const blob = concat(header, first ? slotOther : slotReal, first ? slotReal : slotOther);
+            return { blob, text: encodeV5(C.MAGIC_V5, blob), kdf, hashes };
+        } finally { wipe(pw1); if (pw2) wipe(pw2); }
     }
 
     // MQR5 (base32 + CRC) and MQR4 (base64url) carry the same binary block
@@ -526,8 +528,8 @@
         const needsKeyfile = !!(P.flags & C.FLAG_KEYFILE);
         if (needsKeyfile && !keyfile) throw new MQRError('keyfile_required');
         const pw = kdfInput(password, needsKeyfile ? keyfile : null);
-        const key = await deriveKey(pw, P.salt, P.kdf, P.p1, P.p2, P.p3);
-        wipe(pw);
+        let key;
+        try { key = await deriveKey(pw, P.salt, P.kdf, P.p1, P.p2, P.p3); } finally { wipe(pw); }
         // Always try both slots, so timing does not reveal which one opened
         const tries = await Promise.all(P.slots.map((s) => crypto.subtle.decrypt(
             { name: 'AES-GCM', iv: s.slice(0, C.IV_LEN), additionalData: P.header, tagLength: 128 }, key, s.slice(C.IV_LEN))
@@ -535,9 +537,8 @@
         const pt = tries.find(Boolean);
         tries.forEach((t) => { if (t && t !== pt) wipe(t); });
         if (!pt) throw new WrongPassword();
-        const hash = await sha256Hex(pt);
-        const res = await unpackPlaintext(pt);
-        wipe(pt);
+        let hash, res;
+        try { hash = await sha256Hex(pt); res = await unpackPlaintext(pt); } finally { wipe(pt); }
         return { ...res, hash, format: 4, kdf: P.kdf, practice: !!(P.flags & C.FLAG_PRACTICE), keyfile: needsKeyfile };
     }
 
@@ -551,14 +552,14 @@
         const kdf = header[3], p1 = dv.getUint32(4, false), p2 = header[8], p3 = header[9];
         checkParams(kdf, p1, p2, p3);
         const pw = pwBytes(password);
-        const key = await deriveKey(pw, header.slice(10, 26), kdf, p1, p2, p3);
-        wipe(pw);
+        let key;
+        try { key = await deriveKey(pw, header.slice(10, 26), kdf, p1, p2, p3); } finally { wipe(pw); }
         let pt;
         try { pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: header.slice(26, hl), additionalData: header, tagLength: 128 }, key, blob.slice(hl))); }
         catch { throw new WrongPassword(); }
-        const hash = await sha256Hex(pt);
-        let words, type, note, ts;
+        let hash, words, type, note, ts;
         try {
+            hash = await sha256Hex(pt);
             const r = reader(pt);
             type = r.u8();
             if (type === 1) { const e = r.bytes(r.u8()); words = (await BIP39.fromEntropy(e)).map((i) => BIP39.word('en', i)); wipe(e); }
@@ -577,13 +578,14 @@
         try { data = Uint8Array.from(atob(text.slice(C.MAGIC_V2.length)), (c) => c.charCodeAt(0)); } catch { throw new FormatError('damaged'); }
         if (data.length < 192) throw new FormatError('damaged');
         const meta = data.slice(0, 128);
-        const key = await deriveKey(enc.encode(password), data.slice(128, 160), KDF.PBKDF2, C.LEGACY_V2_ITER);
+        const pw = enc.encode(password);
+        let key;
+        try { key = await deriveKey(pw, data.slice(128, 160), KDF.PBKDF2, C.LEGACY_V2_ITER); } finally { wipe(pw); }
         let pt;
         try { pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: data.slice(160, 176), additionalData: meta, tagLength: 128 }, key, data.slice(176))); }
         catch { throw new WrongPassword(); }
-        const hash = await sha256Hex(pt);
-        let p;
-        try { p = JSON.parse(dec.decode(pt)); } catch { throw new FormatError('bad_content'); } finally { wipe(pt); }
+        let hash, p;
+        try { hash = await sha256Hex(pt); p = JSON.parse(dec.decode(pt)); } catch { throw new FormatError('bad_content'); } finally { wipe(pt); }
         if (!p || typeof p !== 'object') throw new FormatError('bad_content');
         const ts = new DataView(meta.buffer).getUint32(2, false);
         const words = String(p.seed || '').trim().split(/\s+/);

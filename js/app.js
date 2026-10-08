@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.4.0 · User interface
+// MnemoniQR v6.4.1 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,6 +12,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
+const APP_VERSION = '6.4.1';
 const CFG = Object.freeze({
     AUTO_HIDE: 60, CLIPBOARD_CLEAR: 30, BACKGROUND_WIPE: 120,
     MAX_IMAGE: 10 * 1024 * 1024, MAX_PIXELS: 40e6, MAX_KEYFILE: 100 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
@@ -44,8 +45,8 @@ const S = {
     collect: { backup: null, info: null, keyfile: null, shares: new Map(), setId: null, k: 0, n: 0 },
     attempts: 0, lockUntil: 0,
     timer: null, timerLeft: 0, clipTimer: null,
-    scanner: { active: false, stream: null, raf: null, frame: 0, detector: null, canvas: null, cooldown: 0 },
-    hiddenAt: 0, wasDecrypted: false, busy: false,
+    scanner: { active: false, starting: null, stream: null, raf: null, frame: 0, detector: null, canvas: null, cooldown: 0 },
+    hiddenAt: 0, wasDecrypted: false, busy: false, wipeAfterBusy: false, clipDirty: false,
     decrypted: { words: [], pp: '' },
     cancelKdf: null, calib: null, fpToken: 0, statusToken: 0
 };
@@ -119,11 +120,12 @@ function trapFocus(e) {
 // ============================================================
 // ARGON2: cancellable worker, with a main-thread fallback
 // ============================================================
+// The worker code arrives with the page (js/kdf-src.js, under SRI and the build fingerprint), so it is
+// verified and always matches this page. kdf-worker.js by URL is only used when running from src/.
 function makeWorker() {
-    const inline = $('kdf-worker-src');
     let url = 'kdf-worker.js';
-    if (inline) {
-        url = URL.createObjectURL(new Blob([inline.textContent], { type: 'text/javascript' }));
+    if (typeof self.MQR_KDF_SRC === 'string') {
+        url = URL.createObjectURL(new Blob([self.MQR_KDF_SRC], { type: 'text/javascript' }));
         blobUrls.add(url);
     }
     return { w: new Worker(ttPolicy ? ttPolicy.createScriptURL(url) : url), url };
@@ -237,10 +239,13 @@ function onVisibility() {
         stopScanner();
         if (S.step === 'decrypted') { wipeDecrypted(); goTo('home'); }
     } else {
+        if (S.clipDirty) clearClipboard(true);
         shield.classList.remove('on');
         const away = (Date.now() - S.hiddenAt) / 1000;
         if (S.hiddenAt && away > CFG.BACKGROUND_WIPE && ['seed', 'options', 'password'].includes(S.step)) {
-            clearEntry(); goTo('home'); toast(t('wiped_inactive'), 'warning');
+            // An encryption in progress is never pulled from under its feet: the wipe waits for it to end
+            if (S.busy) S.wipeAfterBusy = true;
+            else { clearEntry(); goTo('home'); toast(t('wiped_inactive'), 'warning'); }
         } else if (S.wasDecrypted && S.step === 'home') {
             toast(t('wiped_leave'), 'info');
         }
@@ -350,7 +355,8 @@ function renderKeyboard() {
             for (const ch of row) {
                 const k = document.createElement('button');
                 k.type = 'button'; k.className = 'key'; k.dataset.key = ch; k.textContent = ch;
-                k.addEventListener('click', () => typeLetter(ch));
+                // aria-disabled instead of disabled: the key keeps focus, so screen readers and keyboards don't lose their place
+                k.addEventListener('click', () => { if (k.getAttribute('aria-disabled') !== 'true') typeLetter(ch); });
                 r.appendChild(k);
             }
             if (ri === 2) {
@@ -383,7 +389,7 @@ function renderKeyboard() {
     const allowed = resolvedAt(s.cur) >= 0 ? null : BIP39.nextLetters(s.lang, typed);
     kbd.querySelectorAll('.key[data-key]').forEach((k) => {
         const key = k.dataset.key;
-        if (key.length === 1) k.disabled = allowed !== null && !allowed.has(key);
+        if (key.length === 1) k.setAttribute('aria-disabled', String(allowed !== null && !allowed.has(key)));
     });
     kbd.querySelector('[data-key=next]').textContent = s.cur === s.count - 1 ? t('kbd_ok') : t('kbd_next');
     kbd.querySelector('[data-key=del]').setAttribute('aria-label', t('kbd_delete'));
@@ -664,30 +670,34 @@ async function startEncryption() {
     if (S.busy) return;
     S.busy = true;
     const level = document.querySelector('input[name=level]:checked').value;
+    // Snapshot of everything the encryption reads: nothing changes under it, whatever happens to S.opts
+    const o = { decoy: S.opts.decoy, n: S.opts.n, k: S.opts.k,
+        kfHash: S.opts.kfOn && S.opts.keyfile ? S.opts.keyfile.hash.slice() : null,
+        kfShort: S.opts.kfOn && S.opts.keyfile ? S.opts.keyfile.short : null };
     let real, decoy;
     try {
         spinner(true, t('preparing'));
         await nextPaint();
         real = await packSeed('real', true);
-        if (S.opts.decoy && phraseKey('decoy') === phraseKey('real')) throw new MQRError('decoy_same_seed');
-        decoy = S.opts.decoy ? await packSeed('decoy', false) : null;
+        if (o.decoy && phraseKey('decoy') === phraseKey('real')) throw new MQRError('decoy_same_seed');
+        decoy = o.decoy ? await packSeed('decoy', false) : null;
         const total = decoy ? 2 : 1;
         spinner(true, t('kdf_running', { i: 1, n: total }), true);
         await nextPaint();
         const r = await M.encryptV4({
             real: { plaintext: real.pt, password: $('password-input').value },
             decoy: decoy ? { plaintext: decoy.pt, password: $('decoy-input').value } : null,
-            level, practice: S.practice, keyfile: S.opts.kfOn && S.opts.keyfile ? S.opts.keyfile.hash : null,
+            level, practice: S.practice, keyfile: o.kfHash,
             onKdf: (i) => { if (i < total) spinner(true, t('kdf_running', { i: i + 1, n: total }), true); }
         });
         spinner(true, t('generating_qr'));
         let texts = [r.text], setId = null;
-        if (S.opts.n > 1) { const sp = M.splitBackup(r.blob, S.opts.n, S.opts.k); texts = sp.texts; setId = sp.setId; }
+        if (o.n > 1) { const sp = M.splitBackup(r.blob, o.n, o.k); texts = sp.texts; setId = sp.setId; }
         util.wipe(r.blob);
         S.result = {
-            texts, index: 0, kind: texts.length > 1 ? 'shares' : 'single', setId, k: S.opts.k, n: S.opts.n,
+            texts, index: 0, kind: texts.length > 1 ? 'shares' : 'single', setId, k: o.k, n: o.n,
             blobText: r.text, hashes: r.hashes, fp: real.fp, verified: false, practice: S.practice, kdf: r.kdf, hasDecoy: !!decoy,
-            keyfile: S.opts.kfOn && S.opts.keyfile ? S.opts.keyfile.short : null
+            keyfile: o.kfShort
         };
         if (r.kdf !== M.KDF.ARGON2ID) toast(t('pbkdf2_fallback'), 'warning', { duration: 8000 });
         clearEntry();
@@ -699,8 +709,14 @@ async function startEncryption() {
     } finally {
         if (real) util.wipe(real.pt);
         if (decoy) util.wipe(decoy.pt);
+        if (o.kfHash) util.wipe(o.kfHash);
         spinner(false);
         S.busy = false;
+        // The app was left in the background for too long during a failed or cancelled encryption
+        if (S.wipeAfterBusy) {
+            S.wipeAfterBusy = false;
+            if (['seed', 'options', 'password'].includes(S.step)) { clearEntry(); goTo('home'); toast(t('wiped_inactive'), 'warning'); }
+        }
     }
 }
 
@@ -1013,10 +1029,19 @@ const PDF = {
 async function startScanner() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast(t('no_camera'), 'error'); return; }
     const sc = S.scanner;
-    if (sc.active) return;
+    if (sc.active || sc.starting) return;
+    // A token: if the dialog is closed (stopScanner) while the permission prompt is open, the late stream is stopped
+    const token = sc.starting = {};
+    let stream;
     try {
-        sc.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-    } catch (e) { toast(e.name === 'NotAllowedError' ? t('camera_denied') : t('camera_failed'), 'error'); return; }
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    } catch (e) {
+        if (sc.starting === token) { sc.starting = null; toast(e.name === 'NotAllowedError' ? t('camera_denied') : t('camera_failed'), 'error'); }
+        return;
+    }
+    if (sc.starting !== token || !$('password-modal') || $('password-modal').hidden) { stream.getTracks().forEach((x) => x.stop()); return; }
+    sc.starting = null;
+    sc.stream = stream;
     $('scanner').hidden = false;
     sc.active = true;
     updateSourceActions();
@@ -1057,7 +1082,7 @@ async function scanLoop() {
 }
 function stopScanner() {
     const sc = S.scanner;
-    sc.active = false;
+    sc.active = false; sc.starting = null;
     if (sc.raf) cancelAnimationFrame(sc.raf);
     if (sc.stream) sc.stream.getTracks().forEach((x) => x.stop());
     sc.stream = null; sc.raf = null;
@@ -1295,6 +1320,8 @@ async function showDecrypted(res) {
         } catch { /* fingerprint unavailable */ }
         res.indices.fill(0);
     }
+    // The app may have gone to the background during the fingerprint: then the phrase is never shown
+    if (document.hidden) { wipeDecrypted(); toast(t('wiped_leave'), 'info'); return; }
     setReveal(false);
     S.wasDecrypted = true;
     goTo('decrypted');
@@ -1326,8 +1353,27 @@ async function copySeed() {
         await navigator.clipboard.writeText(S.decrypted.words.join(' '));
         toast(t('copied', { s: CFG.CLIPBOARD_CLEAR }), 'warning');
         clearTimeout(S.clipTimer);
-        S.clipTimer = setTimeout(async () => { try { await navigator.clipboard.writeText(''); } catch { /* page not focused */ } }, CFG.CLIPBOARD_CLEAR * 1000);
+        S.clipTimer = setTimeout(() => clearClipboard(false), CFG.CLIPBOARD_CLEAR * 1000);
     } catch { toast(t('copy_failed'), 'error'); }
+}
+// Browsers only allow writing to the clipboard from a focused page. Users usually paste the phrase in
+// another app, so the first try often fails: it is retried every time the app is visible or focused again.
+async function clearClipboard(retry) {
+    S.clipDirty = true;
+    if (retry) {
+        if (S.clipRetrying) return;
+        S.clipRetrying = true;
+        if (!document.hasFocus()) await new Promise((r) => window.addEventListener('focus', r, { once: true }));
+        S.clipRetrying = false;
+        if (!S.clipDirty) return;
+    }
+    try {
+        await navigator.clipboard.writeText('');
+        if (retry) toast(t('clipboard_cleared'), 'info');
+        S.clipDirty = false;
+    } catch {
+        if (retry) toast(t('clipboard_not_cleared'), 'warning', { duration: 10000 });
+    }
 }
 
 // ============================================================
@@ -1353,7 +1399,7 @@ async function buildFingerprint() {
 // nothing being computed. If the user is in the middle of a flow, a banner says the update will
 // be applied on the way back home, so no typed phrase is ever thrown away without notice.
 const Update = {
-    pending: false, reloaded: false, hadController: false, reg: null, lastCheck: 0,
+    pending: false, reloaded: false, reg: null, lastCheck: 0,
     safe() { return S.step === 'home' && !modalStack.length && !S.busy; },
     apply() {
         if (!this.pending || this.reloaded) return;
@@ -1375,16 +1421,19 @@ function setupPWA() {
     const single = location.protocol === 'file:' || document.documentElement.hasAttribute('data-single');
     if (!single && 'serviceWorker' in navigator) {
         const sw = navigator.serviceWorker;
-        Update.hadController = !!sw.controller;
+        // Tell the controlling worker that this page updates itself, so it is never force-reloaded
+        const hello = () => { if (sw.controller) sw.controller.postMessage({ type: 'MQR_HELLO', version: APP_VERSION }); };
         sw.addEventListener('message', (e) => {
             if (!e.data || e.data.type !== 'MQR_UPDATED') return;
             if (e.source && e.source.postMessage) e.source.postMessage({ type: 'MQR_ACK' });
-            // First install: this page already is the newest version
-            if (!Update.hadController) { Update.hadController = true; return; }
+            // A first install, or a worker of this very version: nothing to reload
+            if (e.data.version === APP_VERSION) return;
             Update.pending = true;
             Update.apply();
         });
-        sw.startMessages && sw.startMessages();
+        sw.addEventListener('controllerchange', hello);
+        if (sw.startMessages) sw.startMessages();
+        hello();
         // updateViaCache 'none': the browser HTTP cache is never used when looking for a new sw.js
         sw.register(ttPolicy ? ttPolicy.createScriptURL('sw.js') : 'sw.js', { updateViaCache: 'none' }).then((reg) => {
             Update.reg = reg;
@@ -1395,11 +1444,6 @@ function setupPWA() {
         document.addEventListener('visibilitychange', () => { if (!document.hidden) Update.check(false); });
         window.addEventListener('online', () => Update.check(true));
         setInterval(() => Update.check(false), 30 * 60e3);
-        // A controller change after a first install needs no reload; later ones go through Update.apply
-        sw.addEventListener('controllerchange', () => {
-            if (Update.hadController) { Update.pending = true; Update.apply(); }
-            Update.hadController = true;
-        });
     }
     Install.init();
 }
@@ -1559,8 +1603,10 @@ async function init() {
         if (e.key.length === 1 && /\p{L}/u.test(e.key)) { e.preventDefault(); typeLetter(e.key.toLowerCase()); }
         else if (e.key === 'Backspace') { e.preventDefault(); backspace(); }
         else if (e.key === ' ' || e.key === 'Enter') {
-            if (tag === 'BUTTON' && e.target.id !== 'seed-next' && !e.target.classList.contains('cell') && !e.target.classList.contains('key')) return;
-            if (e.target.id === 'seed-next') return;
+            // Enter on a focused button (an on-screen key included) presses it; Space always ends the word,
+            // except on other buttons, where it keeps its usual meaning
+            const isKey = e.target.classList && e.target.classList.contains('key');
+            if (tag === 'BUTTON' && !e.target.classList.contains('cell') && !(isKey && e.key === ' ')) return;
             e.preventDefault(); acceptWord();
         }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); moveCell(-1); }

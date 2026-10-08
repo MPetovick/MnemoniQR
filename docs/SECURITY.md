@@ -14,9 +14,27 @@ This document records the design decisions behind MnemoniQR and the findings of 
 | Script injection | No `innerHTML` with dynamic data; Trusted Types enforced with a single allow-listed policy |
 | System keyboard logging or sync | Built-in keyboard for the recovery phrase |
 | Screen exposure | Masked entry, blurred results, wipe after 60 s or when the app is backgrounded, privacy screen for the app switcher |
-| Swapped or modified build | SRI on every script and stylesheet, published fingerprints, deterministic build |
+| Swapped or modified build | SRI on every script (the Argon2 worker included) and stylesheet, published fingerprints, deterministic build |
 
 **Out of scope:** a compromised operating system or browser, weak or reused passwords, and memory forensics (JavaScript strings cannot be reliably wiped).
+
+## v6.4.1 review
+
+| Severity | Finding | Fix |
+|---|---|---|
+| High | Background wipe (over 2 minutes away) during encryption zeroed the keyfile hash in place and reset the options: the decoy could be sealed with an all-zero keyfile, a split could become a single QR | Encryption works on a snapshot; the wipe waits for it to end (end-to-end test) |
+| High | Clipboard clearing after *Copy* failed while the app was in the background, which is when it runs | Retried on return and focus, with feedback |
+| High | The Argon2 worker, which receives the password, was loaded by URL without integrity and was not covered by the build fingerprint | Bundled into `js/kdf-src.js` under SRI / CSP hashes, started from a `blob:` URL |
+| Medium | First visit showed a false update banner and reloaded | Version comparison |
+| Medium | A page frozen in the background could not acknowledge an update and was force-reloaded, losing its state | Modern pages register with the service worker and are never navigated |
+| Medium | Camera left on after closing the dialog during the permission prompt, or after a double tap | Start token; late streams are stopped |
+| Medium | On-screen keyboard lost focus after each key (disabled buttons); Enter on a key accepted the word | `aria-disabled`; Enter presses the focused key |
+| Low | KDF inputs and decrypted plaintext not wiped on some error paths | `finally` blocks |
+| Low | Phrase shown if the app went to the background during the fingerprint step | Checked again just before display |
+| Low | A deferred-update page could start the newer version's worker | Worker source is part of the page |
+| Low | Password meter took seconds on long repetitive input | Primitive repeat units only, scored once |
+
+Known and unchanged: old `MQRv2` backups show a wallet fingerprint even when the BIP39 checksum fails (`recover.py` warns instead).
 
 ## v6.4.0: mandatory updates
 

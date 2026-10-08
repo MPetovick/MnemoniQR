@@ -1,4 +1,4 @@
-// MnemoniQR v6.4.0 · Argon2id worker: key derivation never blocks the UI and can be cancelled.
+// MnemoniQR v6.4.1 · Argon2id worker: key derivation never blocks the UI and can be cancelled.
 'use strict';
 if (typeof self.hashwasm === 'undefined') {
     const tt = self.trustedTypes

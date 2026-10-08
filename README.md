@@ -121,7 +121,7 @@ Get the text by scanning the QR with any offline QR reader, or type the text pri
 
 ## Verifying your copy
 
-Every release has a **build fingerprint**, shown in *How it protects you* inside the app and published in `HASHES.txt`. It is derived from the Subresource Integrity hashes of every script and the stylesheet (or the CSP hashes in the single-file version), so any change to the code changes the fingerprint.
+Every release has a **build fingerprint**, shown in *How it protects you* inside the app and published in `HASHES.txt`. It is derived from the Subresource Integrity hashes of every script and the stylesheet (or the CSP hashes in the single-file version), including the Argon2 worker that receives the password, so any change to the code changes the fingerprint.
 
 To check a release:
 
@@ -148,7 +148,7 @@ The build checks that the BIP39 word lists match the hashes pinned in `src/js/co
 | `dist/recover.py` | Standalone recovery tool |
 | `dist/tests/tests.html` | In-browser test suite |
 
-**Unit tests.** Serve `dist/` (for example `cd dist && python3 -m http.server`) and open `/tests/tests.html`. It runs 38 tests in the browser: the official BIP39 vectors, the known fingerprint `73c5da0a`, the prefix index, Shamir, encryption, tampering, decoys, shares, keyfiles, the MQR5 text format (every single-character typo is caught), typed input, MQR4/v3/v2 compatibility, the password meter and generators, fuzzing of every parser with thousands of malformed inputs and hundreds of mutated backups, a check that decrypted fields are never silently shortened, and a check that the largest allowed backup fits a QR at maximum error correction.
+**Unit tests.** Serve `dist/` (for example `cd dist && python3 -m http.server`) and open `/tests/tests.html`. It runs 39 tests in the browser: the official BIP39 vectors, the known fingerprint `73c5da0a`, the prefix index, Shamir, encryption, tampering, decoys, shares, keyfiles, the MQR5 text format (every single-character typo is caught), typed input, MQR4/v3/v2 compatibility, the password meter and generators, fuzzing of every parser with thousands of malformed inputs and hundreds of mutated backups, a check that decrypted fields are never silently shortened, a check that the largest allowed backup fits a QR at maximum error correction, and a speed check of the password meter on long repetitive input.
 
 **Recovery-tool tests.** `python3 tests/test_recover.py` fuzzes every parser in `tools/recover.py`: it must only ever fail with a readable error, never a traceback.
 
@@ -172,7 +172,8 @@ src/
   index.html          markup (CSP placeholder filled at build time)
   styles.css          design system, light and dark themes
   sw.js               service worker: precaches the app, serves only its own files, installs updates by itself
-  kdf-worker.js       Argon2id in a Web Worker (cancellable)
+  kdf-worker.js       Argon2id in a Web Worker (cancellable); the build bundles it with hash-wasm into
+                      js/kdf-src.js, loaded with the page under SRI and started from a blob: URL
   manifest.json       PWA manifest
   js/core.js          crypto, BIP39, Shamir, fingerprint, formats (no DOM)
   js/strength.js      password meter, diceware generator, phrase-reuse rules

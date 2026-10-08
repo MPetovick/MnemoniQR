@@ -1,4 +1,4 @@
-// MnemoniQR v6.4.0 · Automated tests (run in the browser, no tooling needed)
+// MnemoniQR v6.4.1 · Automated tests (run in the browser, no tooling needed)
 'use strict';
 (async () => {
     const M = self.MQR;
@@ -324,6 +324,14 @@
         // Words that contain a phrase word ("thankful" ⊃ "thank") are never drawn
         const sample = ST.generateWords(6, REAL.split(' '));
         return `${checked} phrases, ${self.EFF_WORDS.length} words, ${sample.bits} bits`;
+    });
+    await test('Password meter stays fast on long repetitive input', () => {
+        const t0 = performance.now();
+        const bits = ['a'.repeat(300), 'ab'.repeat(150), 'abc'.repeat(100), 'password'.repeat(30)].map((p) => ST.estimate(p).bits);
+        const ms = performance.now() - t0;
+        assert(ms < 1500, Math.round(ms) + ' ms');
+        assert(ST.estimate('abcabcabcabc').bits < 30 && ST.estimate('aaaaaaaaaaaa').bits < 15, 'repeats still score low');
+        return `4 inputs of 240-300 characters in ${Math.round(ms)} ms (${bits.map(Math.round).join(', ')} bits)`;
     });
     await test('Passwords may not reuse the phrase or the passphrase', () =>
         ST.conflicts('my-legal-pw', ['legal']) === 'pw_seed_word' && ST.conflicts('winnerwinner', ['winner']) === 'pw_seed_word' &&

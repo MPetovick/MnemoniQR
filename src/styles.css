@@ -1,4 +1,4 @@
-/* MnemoniQR v6.4.0 · Styles ("Paper" design) */
+/* MnemoniQR v6.4.1 · Styles ("Paper" design) */
 
 /* ---------- Self-hosted fonts (OFL) ---------- */
 @font-face { font-family: 'Atkinson Hyperlegible'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/atkinson-hyperlegible-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
@@ -170,7 +170,7 @@ body {
     display: grid; place-items: center; touch-action: manipulation; padding: 0;
 }
 .key:active:not(:disabled) { background: var(--ink); color: var(--paper); }
-.key:disabled { background: var(--key-off); color: var(--faint); border-color: transparent; opacity: .6; cursor: default; }
+.key:disabled, .key[aria-disabled=true] { background: var(--key-off); color: var(--faint); border-color: transparent; opacity: .6; cursor: default; }
 .key-wide { max-width: 60px; flex-grow: 1.4; }
 .key-space { max-width: none; flex-grow: 5; font: 700 .92rem var(--font); background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .kbd-extra { display: flex; align-items: center; gap: .5rem; justify-content: space-between; padding: 0 .4rem; }

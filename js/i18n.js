@@ -1,4 +1,4 @@
-// MnemoniQR v6.4.0 · UI strings (English).
+// MnemoniQR v6.4.1 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -213,6 +213,8 @@ const en = {
     build_dev: "development build",
     got_it: "Got it",
     install: "Install app",
+    clipboard_cleared: "Clipboard cleared.",
+    clipboard_not_cleared: "The clipboard could not be cleared. Copy something else to overwrite the phrase.",
     update_pending: "A new version is installed. It will load when you return to the home screen.",
     wordlist_bad: "The BIP39 word lists failed the integrity check. Do not use this copy of the app.",
     err_generic: "Error: {msg}",

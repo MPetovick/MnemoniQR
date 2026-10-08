@@ -1,5 +1,21 @@
 # Changelog
 
+## 6.4.1 — review fixes
+
+Fixes for a full review of 6.4.0. Details in [docs/SECURITY.md](docs/SECURITY.md).
+
+- **First visit:** no more false "new version installed" banner and reload. The page compares the version announced by the service worker with its own.
+- **Frozen tabs are never force-reloaded.** Pages from 6.4.1 on say hello to the service worker, which keeps their ids; only older pages that do not answer are reloaded.
+- **Background wipe during encryption:** coming back after more than 2 minutes while the key derivation was running wiped the form under it. The decoy could be sealed with an all-zero keyfile (never openable) and a 2-of-3 split could silently become one QR. The encryption now works on a snapshot, and the wipe waits until it ends.
+- **Clipboard:** clearing after *Copy* failed whenever the app was in the background (the usual case). It is retried when the app is visible and focused again, with a message saying whether it worked.
+- **Verified Argon2 worker:** the worker that receives the password now comes with the page (`js/kdf-src.js`, under SRI and the build fingerprint) and starts from a `blob:` URL. Before, it was loaded by URL without an integrity check, and a page waiting to update could start the worker of the newer version.
+- **Camera:** closing the dialog during the permission prompt, or tapping *Scan* twice, could leave the camera on.
+- **On-screen keyboard:** keys that cannot follow are marked `aria-disabled` instead of `disabled`, so focus stays on the key for screen readers and keyboards; Enter on a focused key types it.
+- **Secrets wiped on every error path** of encryption and decryption (cancel, out of memory, same password, malformed content).
+- **Decryption:** a phrase decrypted while the app went to the background during the wallet-fingerprint step is no longer shown.
+- **Password meter:** up to 190 times faster on long repetitive input (300 repeated characters took 10 s, now about 50 ms), with the same scores.
+- Tests: new end-to-end checks for each fix; the update test covers the first visit and a frozen tab, starting from 6.3.0 and 6.4.0.
+
 ## 6.4.0 — mandatory updates
 
 - **Updates install by themselves.** A new service worker activates as soon as it has downloaded the new version (`skipWaiting`) and takes over every open window. Before, it waited for a tap on an *Update* toast that only appeared on the home screen, so an installed app could stay on an old version indefinitely.

@@ -85,7 +85,21 @@ def main():
         page.on('dialog', lambda d: d.accept())
         page.set_default_timeout(20000)
 
+        # 0. first visit of the current version in a fresh profile: no update banner, no reload
+        state['dir'] = NEW
+        fresh_ctx = browser.new_context(viewport={'width': 390, 'height': 844})
+        fresh = fresh_ctx.new_page()
+        fresh.goto(base)
+        fresh.evaluate('() => { window.__mark = 1; }')
+        fresh.click('#encrypt-btn-main')
+        wait(fresh, lambda: fresh.evaluate('() => !!navigator.serviceWorker.controller'))
+        fresh.wait_for_timeout(4000)
+        check('first visit: no update banner, no reload',
+              fresh.evaluate('() => window.__mark === 1') and not fresh.is_visible('#update-banner'))
+        fresh_ctx.close()
+
         # 1. old version installed
+        state['dir'] = old
         page.goto(base)
         wait(page, lambda: page.evaluate('() => !!navigator.serviceWorker.controller'))
         page.reload()
@@ -98,15 +112,21 @@ def main():
         page.reload(wait_until='commit')
         ok = wait(page, lambda: version(page) == new_ver)
         check('new version takes over with no user action', ok, f'{old_ver} -> {version(page)}')
-        check('only the new cache is left', page.evaluate("() => caches.keys()") == ['mnemoniqr-' + new_ver])
+        keys = page.evaluate("() => caches.keys()")
+        check('only the new app cache is left', [k for k in keys if k.startswith('mnemoniqr-')] == ['mnemoniqr-' + new_ver], str(keys))
 
         # 3. next update while the user is typing a phrase: no reload, banner, reload once home
         nxt = tempfile.mkdtemp()
         shutil.copytree(NEW, nxt, dirs_exist_ok=True)
         sw = os.path.join(nxt, 'sw.js')
         src = open(sw).read()
-        with open(sw, 'w') as f:
-            f.write(src.replace(f"'mnemoniqr-{new_ver}'", f"'mnemoniqr-{new_ver}-next'"))
+        bare = new_ver[1:]
+
+        def next_sw(path, tag):
+            with open(path, 'w') as f:
+                f.write(src.replace(f"'mnemoniqr-{new_ver}'", f"'mnemoniqr-{new_ver}-{tag}'")
+                        .replace(f"const VERSION = '{bare}'", f"const VERSION = '{bare}-{tag}'"))
+        next_sw(sw, 'next')
         page.evaluate('() => { window.__mark = 1; }')
         page.click('#encrypt-btn-main')
         page.wait_for_selector('#step-seed:not([hidden])')
@@ -124,13 +144,32 @@ def main():
         nxt2 = tempfile.mkdtemp()
         shutil.copytree(NEW, nxt2, dirs_exist_ok=True)
         sw2 = os.path.join(nxt2, 'sw.js')
-        with open(sw2, 'w') as f:
-            f.write(src.replace(f"'mnemoniqr-{new_ver}'", f"'mnemoniqr-{new_ver}-next2'"))
+        next_sw(sw2, 'next2')
         page.evaluate('() => { window.__mark = 2; }')
         state['dir'] = nxt2
         page.evaluate('() => navigator.serviceWorker.getRegistration().then((r) => r.update())')
         ok = wait(page, lambda: page.evaluate('() => window.__mark === undefined && !!document.querySelector(".version")'))
         check('on home: reloads by itself, no banner', ok and not page.is_visible('#update-banner'))
+
+        # 5. a page frozen in the background (it cannot answer) is not force-reloaded; it updates once awake
+        page.click('#encrypt-btn-main')
+        page.wait_for_selector('#step-seed:not([hidden])')
+        page.evaluate('() => { window.__mark = 5; }')
+        cdp = ctx.new_cdp_session(page)
+        page.wait_for_timeout(500)   # let the hello reach the worker
+        nxt3 = tempfile.mkdtemp()
+        shutil.copytree(NEW, nxt3, dirs_exist_ok=True)
+        next_sw(os.path.join(nxt3, 'sw.js'), 'next3')
+        state['dir'] = nxt3
+        other = ctx.new_page()   # another window triggers the update while the first one is frozen
+        cdp.send('Page.setWebLifecycleState', {'state': 'frozen'})
+        other.goto(base)
+        other.evaluate('() => navigator.serviceWorker.getRegistration().then((r) => r.update())')
+        other.wait_for_timeout(6000)
+        cdp.send('Page.setWebLifecycleState', {'state': 'active'})
+        banner = wait(page, lambda: page.is_visible('#update-banner'), 10000)
+        check('frozen page: not reloaded, banner once awake', banner and page.evaluate('() => window.__mark === 5'))
+        other.close()
         check('no page errors', not errors, '; '.join(errors[:3]))
         browser.close()
     httpd.shutdown()
