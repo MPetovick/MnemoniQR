@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MnemoniQR v6.4.1 · Reproducible build (Python 3 standard library only).
+MnemoniQR v6.5.0 · Reproducible build (Python 3 standard library only).
 
     python3 tools/build.py [--no-tests]
 
@@ -21,7 +21,10 @@ import re
 import shutil
 import sys
 
-VERSION = '6.4.1'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import addresses  # noqa: E402  (tools/addresses.py)
+
+VERSION = '6.5.0'
 NO_CACHE = ['/', '/index.html', '/sw.js', '/manifest.json']
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')
@@ -59,6 +62,34 @@ def fingerprint(tokens):
 
 
 GENERATED = {'js/kdf-src.js'}
+OVERRIDES = {}   # path -> content replacing the source file in this build (donation test build)
+
+# Public example addresses from the specifications (EIP-55, BIP-173) and the TRON zero address.
+# Used only by `--donate-test` builds for the tests: never deploy such a build.
+TEST_ADDRESSES = {
+    'tron': 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
+    'evm': '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed',
+    'btc': 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+}
+DONATE_RE = re.compile(r"\{ id: '([a-z0-9-]+)', kind: '([a-z]+)', address: '([^']*)' \}")
+
+
+def donations(text):
+    """[(id, kind, address)] from js/donate.js; refuses a malformed address."""
+    rows = DONATE_RE.findall(text)
+    if not rows:
+        sys.exit('js/donate.js: no entries found (keep the { id, kind, address } shape)')
+    for did, kind, addr in rows:
+        if addr:
+            reason = addresses.check(kind, addr)
+            if reason:
+                sys.exit(f'js/donate.js: "{did}" address {addr!r}: {reason}')
+    return rows
+
+
+def donate_test_source():
+    text = read(os.path.join(SRC, 'js', 'donate.js'))
+    return DONATE_RE.sub(lambda m: f"{{ id: '{m.group(1)}', kind: '{m.group(2)}', address: '{TEST_ADDRESSES[m.group(2)]}' }}", text)
 
 
 def kdf_bundle():
@@ -71,6 +102,8 @@ def kdf_bundle():
 
 
 def source(path):
+    if path in OVERRIDES:
+        return OVERRIDES[path]
     return kdf_bundle() if path in GENERATED else read(os.path.join(SRC, path))
 
 
@@ -103,7 +136,8 @@ def build_multi(with_tests):
     tokens = []
 
     def add_sri(tag, attr, path):
-        sri = 'sha384-' + b64hash(source(path).encode() if path in GENERATED else read(os.path.join(SRC, path), 'rb'), 'sha384')
+        data = source(path).encode() if (path in GENERATED or path in OVERRIDES) else read(os.path.join(SRC, path), 'rb')
+        sri = 'sha384-' + b64hash(data, 'sha384')
         tokens.append(sri)
         return f'{attr}="{path}" integrity="{sri}"'
 
@@ -182,15 +216,22 @@ def headers():
 
 
 def main():
+    global DIST
     with_tests = '--no-tests' not in sys.argv
+    if '--out' in sys.argv:
+        DIST = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])
+    test_donations = '--donate-test' in sys.argv
+    if test_donations:
+        OVERRIDES['js/donate.js'] = donate_test_source()
     check_sources()
+    donate = donations(source('js/donate.js'))
     if os.path.exists(DIST):
         shutil.rmtree(DIST)
     ignore = ['index.html', 'tests.html'] + ([] if with_tests else ['tests'])
     shutil.copytree(SRC, DIST, ignore=shutil.ignore_patterns(*ignore))
     # The standalone recovery script ships with every release
     shutil.copy2(os.path.join(ROOT, 'tools', 'recover.py'), os.path.join(DIST, 'recover.py'))
-    for path in GENERATED:
+    for path in GENERATED | set(OVERRIDES):
         write(os.path.join(DIST, path), source(path))
     fp_multi = build_multi(with_tests)
     fp_single = build_single()
@@ -205,10 +246,17 @@ def main():
            f'PWA (index.html):                  {fp_multi}',
            f'Single file (mnemoniqr-offline.html): {fp_single}',
            '', 'These must match "Fingerprint of this version" in the app (How it protects you).', '',
-           'SHA-256 of every file:']
+           ]
+    published = [(did, kind, addr) for did, kind, addr in donate if addr]
+    if test_donations:
+        out += ['TEST BUILD: donation addresses are public example addresses. Do not deploy.', '']
+    out += ['Donation addresses (also shown in the app, under the same fingerprint):']
+    out += [f'  {did:6} {kind:5} {addr}' for did, kind, addr in published] or ['  none: the app shows no support link']
+    out += ['', 'SHA-256 of every file:']
     out += [f'{digest}  {rel}' for rel, digest in files]
     write(os.path.join(DIST, 'HASHES.txt'), '\n'.join(out) + '\n')
-    print(f'dist/ ready (v{VERSION})')
+    print(f'{os.path.relpath(DIST, ROOT) if DIST.startswith(ROOT) else DIST}/ ready (v{VERSION})' + (' · TEST donation addresses, do not deploy' if test_donations else ''))
+    print('Donation addresses:     ', ', '.join(f'{d} {a}' for d, _, a in published) or 'none (support UI hidden)')
     print('PWA fingerprint:        ', fp_multi)
     print('Single-file fingerprint:', fp_single)
 

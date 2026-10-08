@@ -26,6 +26,7 @@ MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print
 - [Privacy](#privacy)
 - [Compatibility with older backups](#compatibility-with-older-backups)
 - [Contributing and reporting vulnerabilities](#contributing-and-reporting-vulnerabilities)
+- [Support the project](#support-the-project)
 - [Third-party components](#third-party-components)
 
 ## Features
@@ -152,7 +153,7 @@ The build checks that the BIP39 word lists match the hashes pinned in `src/js/co
 
 **Recovery-tool tests.** `python3 tests/test_recover.py` fuzzes every parser in `tools/recover.py`: it must only ever fail with a readable error, never a traceback.
 
-**End-to-end tests.** `tests/e2e.py` drives the real app in Chromium, Firefox and WebKit: a full backup with keyboard entry, passphrase (including a mistyped confirmation), decoy, keyfile, shares and a diceware password; cancelling during decryption; the largest allowed backup printed on two pages and read back by `tools/recover.py`; verification; the PDF; recovery by typing the printed text; recovery of the same text with `tools/recover.py`; the install sheet; and the offline single file.
+**End-to-end tests.** `tests/e2e.py` drives the real app in Chromium, Firefox and WebKit: a full backup with keyboard entry, passphrase (including a mistyped confirmation), decoy, keyfile, shares and a diceware password; cancelling during decryption; the largest allowed backup printed on two pages and read back by `tools/recover.py`; verification; the PDF; recovery by typing the printed text; recovery of the same text with `tools/recover.py`; the install sheet; and the offline single file. `tests/update_e2e.py OLD_DIST` checks that an installed older version updates by itself, never in the middle of a flow; `tests/donate_e2e.py` checks the support screens (QR decodes to the exact address, copy, once-only line) and that a mistyped address never builds.
 
 ```bash
 pip install playwright argon2-cffi cryptography && python -m playwright install
@@ -181,6 +182,7 @@ src/
   js/eff-words.js     EFF diceware list without BIP39 words
   js/app.js           user interface
   js/i18n.js          all UI strings (English)
+  js/donate.js        donation addresses (the only place they are defined)
   js/wordlists.js     canonical BIP39 English word list
   vendor/             qrcode, jsQR, hash-wasm (Argon2), noble-secp256k1 + RIPEMD-160
   fonts/              Atkinson Hyperlegible and JetBrains Mono (OFL)
@@ -216,6 +218,20 @@ MnemoniQR reads every earlier format: `MQR4:` and `MQS4:` (4.0–6.1), `MQR3:` (
 Issues and pull requests are welcome. Please keep the project's constraints: no third-party requests, no new runtime dependencies without a strong reason, and every change covered by `tests/tests.html` or the end-to-end flow.
 
 Please report security vulnerabilities privately (GitHub → *Security* → *Report a vulnerability*) rather than in a public issue.
+
+## Support the project
+
+MnemoniQR is free, open source and has no ads, accounts or tracking. Donations pay for security audits and new features.
+
+The donation addresses live in one file, [`src/js/donate.js`](src/js/donate.js), and nowhere else:
+
+- `tools/build.py` refuses to build if an address is malformed (TRON Base58Check, Ethereum EIP-55 checksum, Bitcoin Bech32/Bech32m or Base58Check).
+- The file is loaded under Subresource Integrity, so the addresses are covered by the build fingerprint, and every release lists them in `HASHES.txt`. An address cannot be swapped without changing the fingerprint.
+- Always copy an address from the app or from the release's `HASHES.txt`, and check its first and last four characters after pasting.
+
+In the app, support never interrupts: a line in the footer, one quiet line on the home screen after your first verified backup (shown once per device, never during a flow or in practice mode), and a mention in *How it protects you*. The app cannot know whether anyone donated. With no address configured, none of this is shown.
+
+To test the support screens without real addresses: `python3 tools/build.py --out /tmp/mqr-test --donate-test` (public example addresses; never deploy such a build).
 
 ## Third-party components
 

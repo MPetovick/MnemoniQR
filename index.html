@@ -16,19 +16,20 @@
 <meta name="apple-mobile-web-app-title" content="MnemoniQR">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="styles.css" integrity="sha384-ugd7c7Ek35rFpyIaqXT+dTcWb0Piv882GcOtMwlAyIlqvDRMFW0sdIGDwgGPE69S">
+<link rel="stylesheet" href="styles.css" integrity="sha384-rQxl53Uujy9WmOPeP4UrMG3U6ql7T0TGI55apqlJEvVl2scZzrL6idH5BzUNkqkH">
 <script src="vendor/qrcode.min.js" integrity="sha384-j+PCCcBcNXQs6kRs1hRdOEJ/AqyHNjdSCi1wfQ/rBqCwaTUbzWLiRNth/rf32bIS" defer></script>
 <script src="vendor/jsqr.min.js" integrity="sha384-tqHEddO9DjuacgJyfvKkCvEFCkAsa/xW7e945T69PJJyN5K2akBEMf7TWifJwpaE" defer></script>
 <script src="vendor/argon2.min.js" integrity="sha384-tP0Wy54CKmng7i9EoTlPySD0hBx6Octj0VS6MfwlnUu111MPa+JLm0CCbep6XJ1W" defer></script>
 <script src="vendor/noble.min.js" integrity="sha384-8pjPNW+iH9kw1KMMMDfKRzJindppG2jIz0C7pQXYxm2lTVaydsJeCcu4iw+Xpq9P" defer></script>
 <script src="js/wordlists.js" integrity="sha384-PX0VVPp/q6x6y0vhXTrs6pygaHtC0IvYFi95wy/nspEg7GyZDWhmjzuLhpXm79FH" defer></script>
-<script src="js/core.js" integrity="sha384-QXwpYNSjM/3WfcsBfxB/3uqa5VMx7epE2naiXzYGikNHorQ3tt8CV8hAyamprXb9" defer></script>
+<script src="js/core.js" integrity="sha384-J6rq67s647PP9PI+4sH1z4LubAj374Oemgi2l6lWV7uEp3DAaInp0OfDhqASOmX3" defer></script>
 <script src="js/dicts.js" integrity="sha384-RbEW1u65Za+hfY6xmJefB6IFRkKnJPCa68usZzRaYBsdPb1FYzs/A25Hu2TWuW03" defer></script>
 <script src="js/eff-words.js" integrity="sha384-fX8jraGRcZLU/dfzK/YdH9MhcQ9hiYcmJiOLY2I5ddK2rulRn380Q3ijaWR8n0sL" defer></script>
-<script src="js/strength.js" integrity="sha384-4aQfXMCyAk33w/zVcQf2d/XZThC/f9et6llhkIxTe2NkbxjjCltuRa2sjtxGsyDy" defer></script>
-<script src="js/i18n.js" integrity="sha384-GaFNp1p13N3hJfrfCMtG+se+CkQr7sjAFeQneeIBahDQvljhD/tOOA10YiaRgRO+" defer></script>
-<script src="js/kdf-src.js" integrity="sha384-R6ufblcuPvkXWLXNAWgV07v/YbUCOu4WqBSHRO8jNhMA+KH3G6CWDoH/3FsoOvHr" defer></script>
-<script src="js/app.js" integrity="sha384-fHO1hA2Uxa86RBI5F6y+9f1QT4OMTPfGUQwxTOWe8XK50YxIwRXiWXNo2H8EtoAN" defer></script>
+<script src="js/strength.js" integrity="sha384-m6Vb5kWwsWibxjv5IJXf/1A1LpnWpP9et7wSkDvjryvp2unotJu4aR0KLOEePjZA" defer></script>
+<script src="js/i18n.js" integrity="sha384-JoqSesyvEeReVdu0bQJQATGSXTo0Aa17XOGlFWSDkIwH4kUnRRgVco4rQajhjkzT" defer></script>
+<script src="js/donate.js" integrity="sha384-xA/9RLkdXmUNYhpclw+OHInxGoRvZvdeis3453f7s5esjzPkoM/cnNB+PuRy+diU" defer></script>
+<script src="js/kdf-src.js" integrity="sha384-nmWZcBbFUf0kJk91iq3aOFgLP44wvvtF0PpNZ8xux4f6eqr3auunprFHUdOf8gOA" defer></script>
+<script src="js/app.js" integrity="sha384-H8PzZLccLh+BM1wYrBpuskaA3H7vLDYoNLSB2YMQwl9jZ4DAv0hRZwX3M0UiiUdD" defer></script>
 </head>
 <body>
 <noscript><p class="noscript">MnemoniQR needs JavaScript. Everything runs locally in your browser; nothing is sent anywhere.</p></noscript>
@@ -57,6 +58,7 @@
   <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="3.5"/><path d="M10 13l9-9M16 7l2 2M14 9l2 2"/></symbol>
   <symbol id="i-type" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
   <symbol id="i-practice" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
 </svg>
 
@@ -103,12 +105,27 @@
       <span class="notice-text"><strong id="net-title"></strong><span id="net-body"></span></span>
     </button>
 
+    <!-- Shown once, after the first verified backup, and only when donation addresses are configured -->
+    <div class="support-nudge" id="support-nudge" hidden>
+      <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+      <p><span data-i18n="support_nudge">Backup done. MnemoniQR is free and has no ads.</span> <button type="button" class="link inline" id="support-nudge-go" data-i18n="support_it">Support it</button></p>
+      <button type="button" class="btn-icon nudge-x" id="support-nudge-x" data-i18n-aria="support_dismiss"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+
     <footer class="footer">
-      <button type="button" id="about-btn" class="link" data-i18n="about">How it protects you</button>
-      <a class="link" href="https://github.com/MPetovick/MnemoniQR/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
-      <a class="link" href="https://github.com/MPetovick/MnemoniQR" target="_blank" rel="noopener noreferrer" data-i18n-aria="link_source">GitHub</a>
-      <button type="button" id="install-link" class="link" hidden data-i18n="install">Install app</button>
-      <span class="version">v6.4.1</span>
+      <div class="footer-links">
+        <button type="button" id="about-btn" class="link" data-i18n="about">How it protects you</button>
+        <a class="link" href="https://github.com/MPetovick/MnemoniQR/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
+        <a class="link" href="https://github.com/MPetovick/MnemoniQR" target="_blank" rel="noopener noreferrer" data-i18n-aria="link_source">GitHub</a>
+        <button type="button" id="install-link" class="link" hidden data-i18n="install">Install app</button>
+      </div>
+      <div class="footer-meta">
+        <button type="button" id="support-link" class="support-link" hidden>
+          <svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>
+          <span><span data-i18n="support_free">Free, open source, no ads.</span> <span class="u" data-i18n="support_it">Support it</span></span>
+        </button>
+        <span class="version">v6.5.0</span>
+      </div>
     </footer>
   </main>
 
@@ -422,6 +439,7 @@
           <a class="link" href="https://github.com/MPetovick/MnemoniQR/blob/main/README.md" target="_blank" rel="noopener noreferrer" data-i18n="link_readme">Read the README</a>
           <a class="link" href="https://github.com/MPetovick/MnemoniQR" target="_blank" rel="noopener noreferrer" data-i18n="link_source">Source code</a>
         </div>
+        <p id="support-about" hidden><span data-i18n="support_about">It stays free and ad-free thanks to the people who support it.</span> <button type="button" class="link inline" id="support-about-go" data-i18n="support_project">Support the project</button></p>
       </div>
       <div class="build-fp">
         <span data-i18n="build_fp">Fingerprint of this version</span>
@@ -459,6 +477,38 @@
         <button type="button" id="install-go" class="btn btn-primary"></button>
       </div>
       <label class="checkbox-label small"><input type="checkbox" id="install-never"> <span data-i18n="install_never">Don’t show again</span></label>
+    </section>
+  </div>
+
+  <!-- ================= SHEET: SUPPORT ================= -->
+  <div id="support-sheet" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="h-support">
+      <span class="sheet-handle" aria-hidden="true"></span>
+      <div class="support-head">
+        <span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></span>
+        <div class="install-titles grow">
+          <h2 id="h-support" data-i18n="support_title">Support MnemoniQR</h2>
+          <span class="support-sub" data-i18n="support_sub">Free · open source · no ads</span>
+        </div>
+        <button type="button" class="btn-icon modal-close" id="support-x" data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </div>
+      <p class="install-lead" data-i18n="support_lead">No accounts and no tracking. Donations pay for security audits and new features, and keep it free for everyone.</p>
+      <div class="seg" role="tablist" id="support-tabs" data-i18n-aria="support_network"></div>
+      <div class="support-card" role="tabpanel" id="support-panel">
+        <div class="support-top">
+          <div class="support-qr-box"><canvas id="support-qr" class="support-qr" role="img"></canvas></div>
+          <div class="support-info">
+            <span class="chip-warn" id="support-chip"></span>
+            <span class="help" id="support-note"></span>
+          </div>
+        </div>
+        <p class="support-addr" id="support-addr"></p>
+      </div>
+      <div class="sheet-actions">
+        <button type="button" id="support-done" class="btn btn-secondary" data-i18n="support_done">Done</button>
+        <button type="button" id="support-copy" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="support-copy-t" data-i18n="support_copy">Copy address</span></button>
+      </div>
+      <p class="help center" data-i18n="support_check">After pasting, check the highlighted first and last characters. These addresses are part of the verified build and listed in HASHES.txt.</p>
     </section>
   </div>
 

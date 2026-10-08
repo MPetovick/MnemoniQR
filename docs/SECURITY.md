@@ -18,6 +18,15 @@ This document records the design decisions behind MnemoniQR and the findings of 
 
 **Out of scope:** a compromised operating system or browser, weak or reused passwords, and memory forensics (JavaScript strings cannot be reliably wiped).
 
+## v6.5.0: donation addresses
+
+Donation addresses are a target: a swapped address steals donations, and clipboard malware swaps addresses after copying.
+
+- Defined only in `src/js/donate.js`, loaded under SRI: changing an address changes the build fingerprint. Every release lists them in `HASHES.txt`.
+- The build refuses a malformed address (checksums for TRON, Ethereum EIP-55 and Bitcoin), so a typo can never be published.
+- The app shows the network for every address, generates the QR locally and highlights the first and last four characters to compare after pasting.
+- No network access, no tracking, no amounts: the support screens never appear during a flow or with a phrase on screen.
+
 ## v6.4.1 review
 
 | Severity | Finding | Fix |

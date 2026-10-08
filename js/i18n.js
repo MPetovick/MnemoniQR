@@ -1,4 +1,4 @@
-// MnemoniQR v6.4.1 · UI strings (English).
+// MnemoniQR v6.5.0 · UI strings (English).
 // Kept in one place so every message is easy to review and the HTML holds no hard-coded copy.
 'use strict';
 (function (G) {
@@ -213,6 +213,29 @@ const en = {
     build_dev: "development build",
     got_it: "Got it",
     install: "Install app",
+    support_free: "Free, open source, no ads.",
+    support_it: "Support it",
+    support_nudge: "Backup done. MnemoniQR is free and has no ads.",
+    support_dismiss: "Dismiss",
+    support_about: "It stays free and ad-free thanks to the people who support it.",
+    support_project: "Support the project",
+    support_title: "Support MnemoniQR",
+    support_sub: "Free · open source · no ads",
+    support_lead: "No accounts and no tracking. Donations pay for security audits and new features, and keep it free for everyone.",
+    support_network: "Network",
+    support_tron_asset: "USDT", support_tron_net: "TRON",
+    support_tron_chip: "TRC-20 only", support_tron_note: "Send only USDT on the TRON network. Lowest fees.",
+    support_evm_asset: "USDT · ETH", support_evm_net: "Ethereum",
+    support_evm_chip: "Ethereum mainnet", support_evm_note: "USDT, USDC or ETH on Ethereum. Check the network in your wallet.",
+    support_btc_asset: "BTC", support_btc_net: "Bitcoin",
+    support_btc_chip: "On-chain", support_btc_note: "Bitcoin on-chain. Any amount helps.",
+    support_qr_alt: "QR code of the {asset} address on {net}",
+    support_addr_label: "{asset} address on {net}: {addr}",
+    support_copy: "Copy address",
+    support_copied: "Copied",
+    support_copied_toast: "Address copied. After pasting, check the first and last characters.",
+    support_done: "Done",
+    support_check: "After pasting, check the highlighted first and last characters. These addresses are part of the verified build and listed in HASHES.txt.",
     clipboard_cleared: "Clipboard cleared.",
     clipboard_not_cleared: "The clipboard could not be cleared. Copy something else to overwrite the phrase.",
     update_pending: "A new version is installed. It will load when you return to the home screen.",

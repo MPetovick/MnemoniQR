@@ -1,5 +1,5 @@
 // ============================================================
-// MnemoniQR v6.4.1 · User interface
+// MnemoniQR v6.5.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.4.1';
+const APP_VERSION = '6.5.0';
 const CFG = Object.freeze({
     AUTO_HIDE: 60, CLIPBOARD_CLEAR: 30, BACKGROUND_WIPE: 120,
     MAX_IMAGE: 10 * 1024 * 1024, MAX_PIXELS: 40e6, MAX_KEYFILE: 100 * 1024 * 1024, MIN_PW: 12, MIN_BITS: 60, MIN_DECOY_PW: 8,
@@ -83,7 +83,7 @@ function goTo(step) {
     STEPS.forEach((s) => { $('step-' + s).hidden = s !== step; });
     $('home').hidden = step !== 'home';
     S.step = step;
-    if (step === 'home') { S.practice = false; Update.maybeShow(); }
+    if (step === 'home') { S.practice = false; Update.maybeShow(); } else Support.hideNudge();
     $('practice-banner').hidden = !(S.practice || (step === 'decrypted' && S.decrypted.practice) || (step === 'result' && S.result && S.result.practice));
     window.scrollTo(0, 0);
     const h = document.querySelector(step === 'home' ? '#encrypt-btn-main' : `#step-${step} h2`);
@@ -1527,6 +1527,107 @@ const Install = {
 
 
 // ============================================================
+// SUPPORT (donations)
+// ============================================================
+// Addresses come only from js/donate.js (SRI, build fingerprint, checked by tools/build.py).
+// Nothing is fetched and nothing is tracked: the app never knows whether anyone donated.
+// The support UI never appears during a flow: a footer link, one quiet line on the home screen
+// after the first verified backup (once per device), and a line in "How it protects you".
+const Support = {
+    KEY: 'mqr-support', KINDS: ['tron', 'evm', 'btc'], list: [], cur: null, copyTimer: null,
+    pref() { try { return JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch { return {}; } },
+    save(v) { try { localStorage.setItem(this.KEY, JSON.stringify({ ...this.pref(), ...v })); } catch { /* storage unavailable */ } },
+    init() {
+        const all = Array.isArray(self.MQR_DONATE) ? self.MQR_DONATE : [];
+        this.list = all.filter((d) => d && this.KINDS.includes(d.kind) && typeof d.address === 'string' && /^[0-9A-Za-z]{26,90}$/.test(d.address));
+        const on = this.list.length > 0;
+        $('support-link').hidden = !on;
+        $('support-about').hidden = !on;
+        if (!on) return;
+        $('support-link').addEventListener('click', () => this.open());
+        $('support-about-go').addEventListener('click', () => { closeModal('about-modal'); this.open(); });
+        $('support-nudge-go').addEventListener('click', () => { this.hideNudge(); this.open(); });
+        $('support-nudge-x').addEventListener('click', () => this.hideNudge());
+        $('support-x').addEventListener('click', () => this.close());
+        $('support-done').addEventListener('click', () => this.close());
+        $('support-copy').addEventListener('click', () => this.copy());
+        $('support-sheet').addEventListener('click', (e) => { if (e.target === $('support-sheet')) this.close(); });
+        $('support-tabs').addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            e.preventDefault();
+            const i = this.list.indexOf(this.cur);
+            const next = this.list[(i + (e.key === 'ArrowRight' ? 1 : this.list.length - 1)) % this.list.length];
+            this.select(next.id);
+            const b = $('support-tabs').querySelector(`[data-id="${next.id}"]`);
+            if (b) b.focus();
+        });
+    },
+    open() {
+        if (!this.list.length || S.step !== 'home' || !$('support-sheet').hidden) return;
+        const tabs = $('support-tabs');
+        tabs.replaceChildren(...this.list.map((d) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.id = d.id;
+            b.setAttribute('aria-controls', 'support-panel');
+            const a = document.createElement('strong'); a.textContent = t(`support_${d.kind}_asset`);
+            const n = document.createElement('span'); n.textContent = t(`support_${d.kind}_net`);
+            b.append(a, n);
+            b.addEventListener('click', () => this.select(d.id));
+            return b;
+        }));
+        tabs.hidden = this.list.length < 2;
+        this.select((this.cur && this.list.includes(this.cur) ? this.cur : this.list[0]).id);
+        openModal('support-sheet');
+    },
+    close() { if (!$('support-sheet').hidden) closeModal('support-sheet'); },
+    async select(id) {
+        const d = this.list.find((x) => x.id === id);
+        if (!d) return;
+        this.cur = d;
+        $('support-tabs').querySelectorAll('[role=tab]').forEach((b) => {
+            const on = b.dataset.id === id;
+            b.setAttribute('aria-selected', String(on));
+            b.tabIndex = on ? 0 : -1;
+        });
+        const asset = t(`support_${d.kind}_asset`), net = t(`support_${d.kind}_net`);
+        $('support-chip').textContent = t(`support_${d.kind}_chip`);
+        $('support-note').textContent = t(`support_${d.kind}_note`);
+        // First and last four characters highlighted (what people compare after pasting), the rest in groups of four
+        const a = d.address;
+        const parts = [a.slice(0, 4), ...(a.slice(4, -4).match(/.{1,4}/g) || []), a.slice(-4)];
+        const addr = $('support-addr');
+        addr.setAttribute('aria-label', t('support_addr_label', { asset, net, addr: d.address }));
+        addr.replaceChildren(...parts.map((g, i) => {
+            const sp = document.createElement('span');
+            sp.textContent = g;
+            if (i === 0 || i === parts.length - 1) sp.className = 'hl';
+            return sp;
+        }));
+        $('support-copy-t').textContent = t('support_copy');
+        const c = $('support-qr');
+        c.setAttribute('aria-label', t('support_qr_alt', { asset, net }));
+        try { await QR.renderSharp(c, d.address, 134, 'M'); } catch { c.width = 0; }
+    },
+    async copy() {
+        if (!this.cur) return;
+        try {
+            await navigator.clipboard.writeText(this.cur.address);
+            $('support-copy-t').textContent = t('support_copied');
+            toast(t('support_copied_toast'), 'info', { duration: 6000 });
+            clearTimeout(this.copyTimer);
+            this.copyTimer = setTimeout(() => { $('support-copy-t').textContent = t('support_copy'); }, 2500);
+        } catch { toast(t('copy_failed'), 'error'); }
+    },
+    // After the first verified, real backup only; never again on this device once shown
+    nudge() {
+        if (!this.list.length || this.pref().nudged) return;
+        this.save({ nudged: true });
+        $('support-nudge').hidden = false;
+    },
+    hideNudge() { $('support-nudge').hidden = true; }
+};
+
+// ============================================================
 // LANGUAGE
 // ============================================================
 function refreshTexts() {
@@ -1548,6 +1649,7 @@ function anyModalOpen() { return modalStack.length > 0; }
 async function init() {
     refreshTexts();
     setupPWA();
+    Support.init();
     const lists = await BIP39.init();
     window.addEventListener('online', updateNetPill);
     window.addEventListener('offline', updateNetPill);
@@ -1656,7 +1758,9 @@ async function init() {
     $('qr-share').addEventListener('click', shareQR);
     $('qr-done').addEventListener('click', () => {
         if (!S.result.verified && !S.result.practice && !confirm(t('confirm_unverified'))) return;
+        const thank = S.result.verified && !S.result.practice;
         wipeResult(); goTo('home');
+        if (thank) Support.nudge();
     });
 
     // --- decrypt ---

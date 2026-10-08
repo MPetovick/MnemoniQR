@@ -1,4 +1,4 @@
-/* MnemoniQR v6.4.1 · Styles ("Paper" design) */
+/* MnemoniQR v6.5.0 · Styles ("Paper" design) */
 
 /* ---------- Self-hosted fonts (OFL) ---------- */
 @font-face { font-family: 'Atkinson Hyperlegible'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/atkinson-hyperlegible-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
@@ -104,7 +104,14 @@ body {
 .notice.online .ic, .notice.online strong { color: #6B4A00; }
 @media (prefers-color-scheme: dark) { .notice.online { background: #2E2717; } .notice.online .ic, .notice.online strong { color: #E8C37A; } }
 
-.footer { margin-top: auto; display: flex; align-items: center; gap: 0 1rem; flex-wrap: wrap; font-size: .9rem; }
+.footer { margin-top: auto; display: flex; flex-direction: column; gap: .2rem; font-size: .9rem; }
+.footer-links { display: flex; align-items: center; gap: 0 1rem; flex-wrap: wrap; }
+.footer-meta { display: flex; align-items: center; gap: .5rem; border-top: 1px solid var(--line); padding-top: .35rem; min-height: 44px; }
+.support-link { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding: 0; background: none; border: 0; font: inherit; font-size: .88rem; color: var(--ink-2); text-align: left; cursor: pointer; }
+.support-link .ic { color: var(--accent); }
+.support-link .u { color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.support-link:hover .u { color: var(--accent-ink); }
+.link.inline { min-height: 0; padding: 0; display: inline; }
 .version { margin-left: auto; font-family: var(--mono); font-size: .76rem; color: var(--muted); }
 
 /* ---------- Steps ---------- */
@@ -273,6 +280,34 @@ fieldset { border: 0; }
 .about-list dd { color: var(--muted); font-size: .9rem; }
 .build-fp { display: grid; gap: .2rem; font-size: .86rem; color: var(--muted); border-top: 2px dashed var(--line); padding-top: .8rem; }
 .build-fp code { font-family: var(--mono); font-size: 1rem; color: var(--ink); letter-spacing: .05em; }
+
+/* ---------- Support: one quiet line after the first verified backup ---------- */
+.support-nudge { display: flex; align-items: center; gap: .6rem; padding: .2rem .25rem .2rem 1rem; font-size: .88rem; color: var(--ink-2); animation: fade .6s ease; }
+.support-nudge > .ic { color: var(--accent); }
+.support-nudge p { flex: 1; line-height: 1.45; }
+.support-nudge .nudge-x { width: 44px; height: 44px; color: var(--faint); }
+
+/* ---------- Support bottom sheet ---------- */
+.support-head { display: flex; gap: .8rem; align-items: center; }
+.support-head .modal-close { position: static; }
+.support-sub { font-size: .82rem; color: var(--muted); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: var(--ground); }
+.seg[hidden] { display: none; }
+.seg button { min-height: 48px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; cursor: pointer; }
+.seg button strong { font-size: .9rem; }
+.seg button span { font-size: .72rem; }
+.seg button[aria-selected=true] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(31, 42, 51, .18); }
+.support-card { border: 1px solid var(--line); border-radius: 16px; padding: 1rem; display: flex; flex-direction: column; gap: .85rem; }
+.support-top { display: flex; gap: .9rem; align-items: center; }
+.support-qr-box { width: 136px; height: 136px; padding: 0; overflow: hidden; border-radius: 10px; background: #fff; border: 1px solid var(--line-soft); flex: none; box-sizing: border-box; }
+.support-qr { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.support-info { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.chip-warn { align-self: flex-start; font-size: .76rem; font-weight: 700; color: #6B4A00; background: #F3EAD6; border-radius: 999px; padding: .2rem .65rem; }
+@media (prefers-color-scheme: dark) { .chip-warn { color: #E8C37A; background: #2E2717; } }
+.support-addr { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem .55rem; font-family: var(--mono); font-size: .95rem; letter-spacing: .02em; word-break: break-all; user-select: all; }
+.support-addr span { padding: 0 .15rem; }
+.support-addr .hl { font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border-radius: 5px; }
+.help.center { text-align: center; }
 
 /* ---------- Install bottom sheet ---------- */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 250; background: rgba(23, 32, 38, .55); display: flex; align-items: flex-end; justify-content: center; animation: fade .2s ease; }
