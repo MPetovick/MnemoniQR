@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — MPe Software seal
+
+- The footer shows the M_ seal next to the version: a plain link to MnemoniQR's page on <https://www.mpe.software/#mnemoniqr> (opens in a new tab, `noopener noreferrer`). Inline SVG and CSS from `src/`, so every build carries it; nothing is loaded until it is tapped, and it fits the CSP (`style-src 'self'`, trusted types). 44 px touch target.
+- `tests/e2e.py` checks it in the app and in the single offline file, and that nothing is requested from mpe.software.
+- No change to encryption, formats or behaviour. The build id changes, so installed copies update.
+
 ## 6.9.0 — license: GNU AGPL-3.0 and commercial licenses
 
 - **MnemoniQR is now licensed under the GNU Affero General Public License v3.0** (AGPL-3.0-only), and also offered under commercial licenses ([COMMERCIAL.md](COMMERCIAL.md)). It stays open source: anyone can use, read, audit, build and share it. Whoever distributes it, or offers a modified version as a website or service, must publish the source of their version under the same license; building it into a proprietary product requires a commercial license. Versions up to and including 6.8.0 remain available under Apache 2.0 as published.

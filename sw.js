@@ -3,7 +3,7 @@
 // MnemoniQR service worker v6.9.0
 // Precaches and serves the app's own files only. No push, no background sync, no third parties.
 'use strict';
-const CACHE = 'mnemoniqr-v6.9.0+181eb052ff';
+const CACHE = 'mnemoniqr-v6.9.0+59064a77b9';
 const FONTS = [
     'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
     'fonts/jetbrains-mono-latin-400-normal.woff2', 'fonts/jetbrains-mono-latin-500-normal.woff2'
@@ -19,7 +19,7 @@ const ASSETS = [
 ];
 const SCOPE = new URL('./', self.location).pathname;
 
-const VERSION = '6.9.0+181eb052ff';
+const VERSION = '6.9.0+59064a77b9';
 const ACK_WAIT = 2500;
 
 self.addEventListener('install', (e) => {

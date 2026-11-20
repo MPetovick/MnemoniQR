@@ -115,6 +115,15 @@ body {
 .support-link:hover .u { color: var(--accent-ink); }
 .link.inline { min-height: 0; padding: 0; display: inline; }
 .version { margin-left: auto; font-family: var(--mono); font-size: .76rem; color: var(--muted); }
+/* MPe Software seal, next to the version */
+.mpe-sello { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border-radius: 10px; opacity: .85; transition: opacity .2s; }
+.mpe-sello + .version { margin-left: 0; }
+.mpe-sello:hover, .mpe-sello:focus-visible { opacity: 1; }
+.mpe-sello svg { display: block; width: 30px; height: 21px; border-radius: 5px; }
+.mpe-sello .mpe-c { animation: mpe-cur 1.1s steps(1) infinite paused; }
+.mpe-sello:hover .mpe-c, .mpe-sello:focus-visible .mpe-c { animation-play-state: running; }
+@keyframes mpe-cur { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mpe-sello .mpe-c { animation: none; } }
 
 /* ---------- Steps ---------- */
 .step { position: fixed; inset: 0; background: var(--ground); z-index: 100; overflow-y: auto; animation: rise .2s ease; }

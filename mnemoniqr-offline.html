@@ -5,7 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Qa4NHaex4Gx2SPehJF1+7XQAmJAwLhxEcH3LUW0tnrU=' 'sha256-/GqbWwc1qvSvR0jgQz1zUdS3Jc+wKwMsUCpbaZ8+S50=' 'sha256-3Oxhei4bcA+hMtFYOhhstwYRETOV6Gny3WzIK0FdMJQ=' 'sha256-y+ipmPKF5axe/+dSlDCnUS/6l38+yyFOxCgzRULnbeM=' 'sha256-zK/fbWGSgvKK0HQZ/KtrIYmrUxvhYONyZt1psjRNQ1g=' 'sha256-640e7Dqv/E+LQ3CI9hahqLEd0V76rdTawOENUmzPLqk=' 'sha256-Krmg30WQS9qR1d6v8aHyuHYVOkpSRb4+qao/oH13HFc=' 'sha256-uRsjsFDL6KyNuLokIerqrkRCvG/ZkG9z/qt00VQhIJU=' 'sha256-49lQG/ZPjbNzddFbi1erLQO2J5Jz6TKIMouH0eP8LIs=' 'sha256-hlaCvqGN94KcoVsBqTihqz7M3ZjORMMaDGCdYRQ6pak=' 'sha256-9g+r49FIa3n2IMNZehGXopJ9ZkUpSI0DnAmtqoisGnQ=' 'sha256-xtHN39pBCfn5vu0FEQhNGfa5BSLVa3Pc+22+5GPtHTY=' 'sha256-xtDC0635u2R8fnZDvjLYjfqhxUG29ibxCvT7D5HjJV4=' 'sha256-lE6YtTtquvdrd8EoKie9ESiVvGvbfrjU8iGBRH1wqbA=' 'wasm-unsafe-eval'; style-src 'sha256-K1FHzxgZmWpyoRxtbLOc7yuP+7jhSuaoPKCyqgPpX1E='; font-src data:; img-src data:; connect-src 'none'; worker-src blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Qa4NHaex4Gx2SPehJF1+7XQAmJAwLhxEcH3LUW0tnrU=' 'sha256-/GqbWwc1qvSvR0jgQz1zUdS3Jc+wKwMsUCpbaZ8+S50=' 'sha256-3Oxhei4bcA+hMtFYOhhstwYRETOV6Gny3WzIK0FdMJQ=' 'sha256-y+ipmPKF5axe/+dSlDCnUS/6l38+yyFOxCgzRULnbeM=' 'sha256-zK/fbWGSgvKK0HQZ/KtrIYmrUxvhYONyZt1psjRNQ1g=' 'sha256-640e7Dqv/E+LQ3CI9hahqLEd0V76rdTawOENUmzPLqk=' 'sha256-Krmg30WQS9qR1d6v8aHyuHYVOkpSRb4+qao/oH13HFc=' 'sha256-uRsjsFDL6KyNuLokIerqrkRCvG/ZkG9z/qt00VQhIJU=' 'sha256-49lQG/ZPjbNzddFbi1erLQO2J5Jz6TKIMouH0eP8LIs=' 'sha256-hlaCvqGN94KcoVsBqTihqz7M3ZjORMMaDGCdYRQ6pak=' 'sha256-9g+r49FIa3n2IMNZehGXopJ9ZkUpSI0DnAmtqoisGnQ=' 'sha256-xtHN39pBCfn5vu0FEQhNGfa5BSLVa3Pc+22+5GPtHTY=' 'sha256-xtDC0635u2R8fnZDvjLYjfqhxUG29ibxCvT7D5HjJV4=' 'sha256-lE6YtTtquvdrd8EoKie9ESiVvGvbfrjU8iGBRH1wqbA=' 'wasm-unsafe-eval'; style-src 'sha256-UqUvevpC6Z1V29y3BZIBeJ7WK2kBWfrog9B/LuO1SC8='; font-src data:; img-src data:; connect-src 'none'; worker-src blob:; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types mqr">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light dark">
@@ -130,6 +130,15 @@ body {
 .support-link:hover .u { color: var(--accent-ink); }
 .link.inline { min-height: 0; padding: 0; display: inline; }
 .version { margin-left: auto; font-family: var(--mono); font-size: .76rem; color: var(--muted); }
+/* MPe Software seal, next to the version */
+.mpe-sello { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border-radius: 10px; opacity: .85; transition: opacity .2s; }
+.mpe-sello + .version { margin-left: 0; }
+.mpe-sello:hover, .mpe-sello:focus-visible { opacity: 1; }
+.mpe-sello svg { display: block; width: 30px; height: 21px; border-radius: 5px; }
+.mpe-sello .mpe-c { animation: mpe-cur 1.1s steps(1) infinite paused; }
+.mpe-sello:hover .mpe-c, .mpe-sello:focus-visible .mpe-c { animation-play-state: running; }
+@keyframes mpe-cur { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mpe-sello .mpe-c { animation: none; } }
 
 /* ---------- Steps ---------- */
 .step { position: fixed; inset: 0; background: var(--ground); z-index: 100; overflow-y: auto; animation: rise .2s ease; }
@@ -4086,6 +4095,8 @@ document.addEventListener('DOMContentLoaded', init);
           </span>
           <span class="goal-bar" id="goal-foot-bar" aria-hidden="true" hidden><span class="goal-fill" id="goal-foot-fill"></span></span>
         </button>
+        <!-- MPe Software seal: a plain link to MnemoniQR's page on mpe.software (no request is made until it is tapped) -->
+        <a class="mpe-sello" href="https://www.mpe.software/#mnemoniqr" target="_blank" rel="noopener noreferrer" title="Made by MPe Software" aria-label="Made by MPe Software"><svg viewBox="0 0 40 28" aria-hidden="true"><rect width="40" height="28" rx="6" fill="#0E0F0C"/><path d="M7.5 21V7h3.3l4.7 6.6L20.2 7h3.3v14h-3.2v-8.9l-4.8 6.6-4.8-6.6V21z" fill="#E8E6DF"/><rect class="mpe-c" x="26" y="18" width="7.5" height="3" fill="#C6F432"/></svg></a>
         <span class="version">v6.9.0</span>
       </div>
     </footer>

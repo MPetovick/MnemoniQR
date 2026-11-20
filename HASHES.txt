@@ -1,8 +1,8 @@
 MnemoniQR v6.9.0 · Release fingerprints
 
-PWA (index.html):                  73FA DB7F B79D 9EA3
-Single file (mnemoniqr-offline.html): DBAA ED29 C372 CF2B
-Build id (installed copies update when it changes): 6.9.0+181eb052ff
+PWA (index.html):                  30B4 D6B3 DD13 5EB8
+Single file (mnemoniqr-offline.html): 4EB0 DFA1 15ED 9EC3
+Build id (installed copies update when it changes): 6.9.0+59064a77b9
 
 These must match "Fingerprint of this version" in the app (How it protects you).
 
@@ -35,7 +35,7 @@ d64ba838ef5472bba248620ec4fd8b5aa7cf0db2908e0bb230600caf279ba7bc  fonts/atkinson
 140e2bd25a7315c8a062508391426b0d8c3297400c947b8d847be28f73a199f0  fonts/atkinson-hyperlegible-latin-700-normal.woff2
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  fonts/jetbrains-mono-latin-400-normal.woff2
 cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a  fonts/jetbrains-mono-latin-500-normal.woff2
-d90ef3cbf87845d4a5c4d5181d2ecabf5a8182fbdbccf7d6e3bfb22076e56984  index.html
+469b2c0b7e0544bbdda3d4776a436c6b7ed7cf9da9e66d99ecb7f7e42a68f024  index.html
 944e98b53b6abaf76b77c1282a27bd112895bc6bdb7eb8d4f22181447d70a9b0  js/app.js
 eb8d1eec3aaffc4f8b437088f616a1a8b11dd15efaadd4dac0e10d526ccf2ea9  js/core.js
 2ab9a0df45904bda91d5deaff1a1f2b876153a4a5245be3ea9aa3fa07d771c57  js/dicts.js
@@ -48,10 +48,10 @@ e3d9501bf64f8db37375d15b8b57ab2d03b6279273e93288328b87d1e3fc2c8b  js/strength.js
 ccafdf6d619282f28ad07419fcab6b2189ab531be160e37266dd69b2344d4358  js/wordlists.js
 d883e14391d8c67cacddd3c19f11b41d3028a40da990a79758b67e45621e026a  kdf-worker.js
 a1e76402ff67c29bfe3bf7b83eb3f539a9ab587714a487c4669e5703342679fb  manifest.json
-4022ed4fe933b26c39739479e8ab33ff32befdd67cbb925656976a682c1267ce  mnemoniqr-offline.html
+b14895a61d784082f2ad4af00752ce0efe7105ed985d07e4ff126a24011fc843  mnemoniqr-offline.html
 995fce68a1a37324abb41059a6512666fb4e9559d0c7ad743c44781adedcdf48  recover.py
-6363fe8fe2692b63a3768fe44c5f17caf5f7f9b380c5622683d1fc27440420c7  styles.css
-5cd58edea10c7bed72af31781a87855a66bb89e2a7017bc93cdd4c50a401167e  sw.js
+f5fbff2f9f12e6d5f9ca56010cb9b63f92b8e62e9b28afe08899f222f4a69796  styles.css
+84cdc754acc98a24fc4f269c27b4215bc71540b80d49f2ac02f4006abe05b0ff  sw.js
 4e6a821bb8a10da733b8405e4b504c9f6d2d06d7bb8ea60ae623f77d92b6bf2d  tests/tests.css
 2b2fb8ac60f31765f71215fcc5cdfc4ecd4fc267e4d17a816d7d63fce5b2fffa  tests/tests.html
 dd93dd9e42ca99d84aba4f63541f58f7f05568374e107c2b49a840e004618a70  tests/tests.js

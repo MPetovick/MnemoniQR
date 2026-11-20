@@ -40,6 +40,12 @@ FAKE_INSTALL = ("() => { const e = new Event('beforeinstallprompt', { cancelable
                 " e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); }")
 
 
+SEAL_URL = 'https://www.mpe.software/#mnemoniqr'
+SEAL = ("() => { const a = document.querySelector('.footer-meta .mpe-sello'); if (!a) return null; const r = a.getBoundingClientRect();"
+        " return { href: a.href, target: a.target, rel: a.rel, label: a.getAttribute('aria-label'), w: r.width, h: r.height,"
+        " svg: !!a.querySelector('svg path'), next: a.nextElementSibling && a.nextElementSibling.className }; }")
+
+
 class Checks:
     def __init__(self, browser):
         self.browser, self.failed = browser, 0
@@ -97,6 +103,8 @@ def run(pw, name, base):
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
+    requests = []
+    page.on('request', lambda r: requests.append(r.url))
     accepting = {'on': False}   # confirm() dialogs are accepted from the large-backup check on
     page.on('dialog', lambda d: d.accept() if accepting['on'] else d.dismiss())
 
@@ -118,6 +126,12 @@ def run(pw, name, base):
     page.wait_for_timeout(2600)
     c('install sheet appears', page.is_visible('#install-sheet'))
     page.click('#install-later')
+
+    # MPe Software seal: next to the version, a plain link (no request made), 44 px touch target
+    seal = page.evaluate(SEAL)
+    c('MPe seal next to the version', seal and seal['next'] == 'version' and seal['href'] == SEAL_URL and seal['target'] == '_blank'
+      and 'noopener' in seal['rel'] and seal['label'] == 'Made by MPe Software' and seal['w'] >= 44 and seal['h'] >= 44 and seal['svg'], str(seal))
+    c('MPe seal: nothing loaded from mpe.software', not [u for u in requests if 'mpe.software' in u])
 
     page.click('#encrypt-btn-main')
     for k in 'lega':
@@ -379,6 +393,8 @@ def run(pw, name, base):
     single.on('pageerror', lambda e: errors.append(str(e)))
     single.goto('file://' + os.path.join(DIST, 'mnemoniqr-offline.html'))
     single.wait_for_timeout(800)
+    seal = single.evaluate(SEAL)
+    c('offline single file: MPe seal next to the version', seal and seal['href'] == SEAL_URL and seal['next'] == 'version', str(seal))
     single.click('#practice-btn')
     single.click('#practice-start')
     single.click('#seed-next')
