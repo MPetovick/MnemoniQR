@@ -25,7 +25,6 @@
 
 **The project**
 - [Who makes MnemoniQR and how is it funded?](#who-makes-mnemoniqr-and-how-is-it-funded)
-- [What is the community goal?](#what-is-the-community-goal)
 - [How do I report a security problem?](#how-do-i-report-a-security-problem)
 - [What is the license? Can I use MnemoniQR in my product?](#what-is-the-license-can-i-use-mnemoniqr-in-my-product)
 
@@ -116,10 +115,6 @@ No. MnemoniQR splits the encrypted backup with Shamir's secret sharing, and the 
 ### Who makes MnemoniQR and how is it funded?
 
 MnemoniQR is developed as an open-source project ([GitHub](https://github.com/MPetovick/MnemoniQR)). It has no ads, no tracking and no paid features today. Donations pay for security audits and new features: see [DONATIONS.md](DONATIONS.md).
-
-### What is the community goal?
-
-A public funding goal of 210,000 USD: when the donation wallets reach it, multi-seed backups (up to 3 recovery phrases in one encrypted QR) are to ship in an update, free for everyone. Progress is shown in the app and live at <https://mnemoniqr.app/goal>, and every balance can be checked on public block explorers. See [DONATIONS.md](DONATIONS.md#community-goal).
 
 ### How do I report a security problem?
 

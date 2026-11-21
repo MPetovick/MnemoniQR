@@ -57,12 +57,19 @@ type (1) | lang (1) | data | passphrase length (1) | passphrase | note length (1
 
 - `type 1` — `data` = entropy length (1) + BIP39 entropy (16, 20, 24, 28 or 32 bytes).
 - `type 2` — `data` = text length (u16) + UTF-8 text. Used only when the user explicitly saves a phrase whose checksum does not validate.
+- `type 3` (7.0.0 and later) — several phrases in one backup. It replaces `lang | data | passphrase length | passphrase`:
+
+  ```
+  3 | count (1, 2 or 3) | count × ( kind (1) | lang (1) | data | passphrase length (1) | passphrase | label length (1) | label ) | note length (1) | note | created (u32)
+  ```
+
+  `kind` is 1 or 2 and `data` has the same layout as for type 1 or type 2. The label is an optional UTF-8 name of up to 32 bytes. New backups hold 2 or 3 phrases; readers refuse a count outside 2–3, a kind other than 1 or 2, or a label over 32 bytes. Type 3 sits inside the encryption, so the QR does not reveal how many phrases it holds. The largest one (three 24-word phrases, three 100-byte passphrases, three 32-byte labels, a 100-byte note and a decoy) is 2,385 characters of text, within a version 40 QR at error correction Q (2,420). Versions before 7.0.0 refuse type 3 as bad content.
 - `lang` — 0 = English word list. Value 1 (Spanish) was written by 4.0–5.1.0; current versions refuse it with `unsupported_lang` instead of showing different words.
 - The passphrase is NFKD-normalised (as BIP39 requires); the encryption password is NFKC-normalised.
 - New backups limit the passphrase and the note to 100 bytes each (UTF-8, after normalisation), so the largest backup still fits a QR at maximum error correction (version 29). Longer values are refused, never truncated. Readers accept up to 255 bytes, as written by 6.0–6.2.
 - Every length field is bounds-checked when reading: a field that would run past the end of the plaintext is an error, never a shorter value.
 
-Both plaintexts are zero-padded to the same length `L`, the smallest multiple of 64 bytes (minimum 64) that fits the longer one. This hides the number of words and the length of the note and passphrase.
+Both plaintexts are zero-padded to the same length `L`, the smallest multiple of 64 bytes (minimum 64) that fits the longer one. This hides the number of words, the number of phrases and the length of the note and passphrase.
 
 ## Share
 

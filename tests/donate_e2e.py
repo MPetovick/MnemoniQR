@@ -5,12 +5,12 @@
 MnemoniQR · support (donation) UI test (Chromium, Playwright).
 
   1. a build with no address configured shows no support UI at all;
-  2. a test build (`tools/build.py --donate-test`, public example addresses) shows the footer link,
-     the sheet with one tab per network, a QR that decodes to the exact address, grouped text with
+  2. a test build (`tools/build.py --donate-test`, a public example Bitcoin address) shows the Bitcoin
+     button in the footer, the sheet with a QR that decodes to the exact address, grouped text with
      the first and last groups highlighted, and a working Copy button;
   3. the quiet line on the home screen appears once, after the first verified real backup only
      (never after a practice backup) and never again on that device;
-  4. a malformed address makes the build fail.
+  4. a malformed address, or any network other than Bitcoin, makes the build fail.
 
 Usage: python3 tests/donate_e2e.py   (run python3 tools/build.py first)
 """
@@ -52,14 +52,16 @@ def main():
         print(f"  [{'ok' if ok else 'FAIL'}] {name}" + (f' · {detail}' if detail else ''))
         failed += 0 if ok else 1
 
-    # 4. malformed addresses never build
-    for kind, bad in (('evm', '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD'), ('tron', 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwc'),
-                      ('btc', 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5')):
+    # 4. malformed addresses and other networks never build (donations are Bitcoin only)
+    for kind, bad, what in (('btc', 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5', 'a mistyped Bitcoin address'),
+                            ('btc', 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', 'a testnet address'),
+                            ('evm', '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed', 'an Ethereum address'),
+                            ('tron', 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb', 'a TRON address')):
         try:
             build.donations(f"{{ id: 'x', kind: '{kind}', address: '{bad}' }}")
-            check(f'build refuses a mistyped {kind} address', False)
+            check(f'build refuses {what}', False)
         except SystemExit:
-            check(f'build refuses a mistyped {kind} address', True)
+            check(f'build refuses {what}', True)
 
     test_dist = tempfile.mkdtemp(prefix='mqr-donate-')
     subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build.py'), '--out', test_dist, '--donate-test'], check=True, capture_output=True)
@@ -109,12 +111,15 @@ def main():
         page.wait_for_timeout(600)
         check('the 6.5.x flag is deleted on start', page.evaluate("() => localStorage.getItem('mqr-support')") is None)
         check('addresses ship under SRI', page.evaluate("() => !!document.querySelector('script[src=\"js/donate.js\"][integrity]')"))
-        check('footer link shown', page.is_visible('#support-link'))
+        check('footer: the Bitcoin button, named for screen readers, 44 px', page.is_visible('#support-link')
+              and page.get_attribute('#support-link', 'aria-label') == 'Support MnemoniQR with Bitcoin'
+              and page.evaluate("() => { const r = document.getElementById('support-link').getBoundingClientRect(); return r.width >= 44 && r.height >= 44; }")
+              and page.evaluate("() => !!document.querySelector('#support-link use[href=\"#i-btc\"]')"))
+        check('no community goal anywhere', page.evaluate("() => !document.getElementById('goal-foot') && !document.getElementById('goal-box') && !document.querySelector('script[src*=goal]')"))
         check('nothing shown before any backup', page.is_hidden('#support-nudge'))
         page.click('#support-link')
         page.wait_for_selector('#support-sheet:not([hidden])')
-        tabs = page.evaluate("() => [...document.querySelectorAll('#support-tabs [role=tab]')].map((b) => b.textContent)")
-        check('tabs in the order BTC, ETH, TRON, GRAM', tabs == ['BTC', 'ETH', 'TRON', 'GRAM'], ' / '.join(tabs))
+        check('one network: no tabs', page.evaluate("() => !document.getElementById('support-tabs')"))
 
         def shown():
             return page.evaluate('''() => {
@@ -128,37 +133,16 @@ def main():
             }''')
         page.wait_for_timeout(300)
         s = shown()
-        check('opens on BTC: QR decodes to the exact address', s['qr'] == A['btc'] and s['text'] == A['btc'], str(s['qr']))
+        check('Bitcoin: QR decodes to the exact address', s['qr'] == A['btc'] and s['text'] == A['btc'], str(s['qr']))
         check('BTC: first and last groups highlighted, network chip', s['first'] and s['last'] and s['hl'] == 2 and 'On-chain' in s['chip'])
         page.click('#support-copy')
         page.wait_for_timeout(200)
         check('Copy puts the exact address in the clipboard', page.evaluate('() => navigator.clipboard.readText()') == A['btc'])
-        page.focus('#support-tabs [aria-selected=true]')
-        page.keyboard.press('ArrowRight')
-        page.wait_for_timeout(300)
-        s = shown()
-        check('arrow keys switch network (ETH)', s['qr'] == A['evm'] and s['text'] == A['evm'] and 'USDT, USDC or ETH' in page.inner_text('#support-note')
-              and page.evaluate("() => [...document.querySelectorAll('#support-chips-also .chip-also')].map((c) => c.textContent)") == ['BSC', 'Base'])
-        page.click('#support-tabs [data-id=tron]')
-        page.wait_for_timeout(300)
-        s = shown()
-        check('TRON tab', s['qr'] == A['tron'] and s['text'] == A['tron'] and 'USDT, BTT or TRX' in page.inner_text('#support-note')
-              and page.evaluate("() => document.querySelectorAll('#support-chips-also .chip-also').length") == 0)
-        page.click('#support-tabs [data-id=ton]')
-        page.wait_for_timeout(300)
-        s = shown()
-        check('GRAM tab (TON address with _ and -)', s['qr'] == A['ton'] and s['text'] == A['ton'] and 'GRAM (formerly Toncoin)' in page.inner_text('#support-note'))
-        for bad in ('UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKY', 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ'):
-            try:
-                build.donations(f"{{ id: 'x', kind: 'ton', address: '{bad}' }}")
-                check('build refuses a mistyped TON address', False, bad)
-            except SystemExit:
-                pass
         page.keyboard.press('Escape')
         check('Escape closes the sheet', page.is_hidden('#support-sheet'))
         page.click('#support-link')
         page.wait_for_timeout(300)
-        check('reopening focuses the tab of the network shown', page.evaluate("() => document.activeElement.dataset.id") == 'ton')
+        check('reopening keeps the focus inside the sheet', page.evaluate("() => document.getElementById('support-sheet').contains(document.activeElement)"))
         page.keyboard.press('Escape')
         page.click('#about-btn')
         check('"How it protects you" mentions support', page.is_visible('#support-about'))

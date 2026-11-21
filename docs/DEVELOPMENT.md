@@ -12,7 +12,6 @@
 
 - **Build:** Python 3.8+ (standard library only). No Node.js or npm is needed to build the app.
 - **Tests:** `pip install playwright argon2-cffi cryptography && python -m playwright install`; for the PDF/ZIP test also `pip install zxing-cpp opencv-python-headless pypdfium2`.
-- **Community goal:** Node.js 18+ to refresh the snapshot (`tools/goal.py`) and to test the goal function.
 
 ## Building
 
@@ -22,17 +21,16 @@ python3 tools/build.py --no-tests      # same, without the test page
 python3 tools/build.py --out DIR       # into another folder (empty, or a previous build)
 ```
 
-Test-only builds (never deploy them; `HASHES.txt` says so): `--donate-test` (public example donation addresses), `--donate-none` (no address, no support UI), `--goal-test` (made-up goal balances).
+Test-only builds (never deploy them; `HASHES.txt` says so): `--donate-test` (a public example Bitcoin address), `--donate-none` (no address, no support UI).
 
-The build checks that the BIP39 word list matches the hash pinned in `src/js/core.js`, that every file referenced by `index.html` and the service worker exists, that every version number agrees, that the donation addresses are well formed and that the goal snapshot adds up. Then it writes:
+The build checks that the BIP39 word list matches the hash pinned in `src/js/core.js`, that every file referenced by `index.html` and the service worker exists, that every version number agrees, and that the donation entry is exactly one well-formed Bitcoin address. Then it writes:
 
 | Output | Purpose |
 |---|---|
 | `dist/` | The PWA, with a strict CSP, Trusted Types and Subresource Integrity on every script and the stylesheet |
 | `dist/mnemoniqr-offline.html` | Everything in one file, for offline computers (open it directly, no server needed) |
-| `dist/HASHES.txt` | Build fingerprints, build id, donation addresses, goal snapshot and SHA-256 of every file |
-| `dist/vercel.json`, `dist/_headers` | HTTP security headers for Vercel, Netlify or Cloudflare Pages; on Vercel also the `/goal` route |
-| `dist/api/goal.js`, `dist/api/goal-config.json` | The live community goal (`/goal` page and `/api/goal` JSON), a Vercel function |
+| `dist/HASHES.txt` | Build fingerprints, build id, donation address and SHA-256 of every file |
+| `dist/vercel.json`, `dist/_headers` | HTTP security headers for Vercel, Netlify or Cloudflare Pages |
 | `dist/recover.py` | Standalone recovery tool |
 | `dist/LICENSE.txt`, `dist/NOTICE.txt` | The GNU AGPL-3.0 text and the notices, served with the app |
 | `dist/tests/tests.html` | In-browser test suite |
@@ -51,10 +49,7 @@ The build checks that the BIP39 word list matches the hash pinned in `src/js/cor
 | `tests/e2e.py` | The real app in Chromium, Firefox and WebKit: a full backup (keyboard entry, passphrase, decoy, keyfile, shares, diceware password), cancelling, the largest backup on two pages read back by `recover.py`, verification, the PDF, typed recovery, the install sheet, the single file | `python3 tests/e2e.py --browser all` |
 | `tests/update_e2e.py OLD_DIST` | An installed older version updates by itself, never in the middle of a flow | `python3 tests/update_e2e.py /path/to/old/dist` |
 | `tests/brand_e2e.py` | The PNG, the ZIP of shares and the printed PDF (100 and 150 dpi) read by ZXing, a decoder independent from the app | `python3 tests/brand_e2e.py` |
-| `tests/donate_e2e.py` | Support screens: QR decodes to the exact address, copy, the once-only line; mistyped addresses never build | `python3 tests/donate_e2e.py` |
-| `tests/goal_e2e.py` | Community goal in the app: footer bar, ring, balance and explorer links per network; snapshots that do not add up are not shown | `python3 tests/goal_e2e.py` |
-| `tests/test_goal.py` | Goal snapshot tool, build checks, what the build ships for `/goal` (routes, headers) | `python3 tests/test_goal.py` |
-| `tests/goal_api_test.js` | Live goal function with recorded answers: sums, unreadable wallets never counted as zero, the page's CSP and escaping | `node --test tests/goal_api_test.js` |
+| `tests/donate_e2e.py` | Bitcoin button and support sheet: QR decodes to the exact address, copy, the once-only line; mistyped, testnet and non-Bitcoin addresses never build | `python3 tests/donate_e2e.py` |
 | `tests/test_recover.py` | Fuzzes every parser in `recover.py`: only readable errors, never a traceback | `python3 tests/test_recover.py` |
 | `tools/addresses.py` | Self-test of the address checksums | `python3 tools/addresses.py` |
 
@@ -69,7 +64,6 @@ Publish the contents of `dist/` at <https://mnemoniqr.app>. On Vercel: a project
 - **Headers.** Keep the provided `vercel.json` (or `_headers` on Netlify / Cloudflare Pages). `frame-ancestors`, `Permissions-Policy`, HSTS and the cross-origin policies only work as HTTP headers.
 - **HTTPS** is required for the service worker, the camera and installation.
 - **Caching.** `index.html`, `sw.js` and `manifest.json` must not be cached (the provided headers do this), otherwise installed copies see new versions late.
-- **Community goal.** `/goal` needs Vercel, or any host that runs `api/goal.js` as a Node function. `vercel.json` sends `/goal` to the function and keeps the app's headers off `/goal` and `/api/`, which send their own (a page with no script and a hash-pinned stylesheet). It works without any key; in production set free `COINGECKO_API_KEY` (demo) and `TRONGRID_API_KEY` in the Vercel project, because keyless limits are shared by everyone on the same servers. The other optional variables (`MEMPOOL_URL`, `ETH_RPC_URL`, `BSC_RPC_URL`, `BASE_RPC_URL`, `TRONGRID_URL`, `TONCENTER_URL`, `TONCENTER_API_KEY`) are listed at the top of `web/api/goal.js`. On Netlify or Cloudflare Pages the app works the same, only `/goal` is missing.
 
 **Updates reach users by themselves.** Installed copies download a new version in the background the next time they are opened online, and reload as soon as they are on the home screen, never in the middle of a backup or a recovery.
 
@@ -77,10 +71,9 @@ Publish the contents of `dist/` at <https://mnemoniqr.app>. On Vercel: a project
 
 1. Raise the version in `tools/build.py`, `src/sw.js`, `src/js/app.js`, `src/index.html` and the file headers (the build refuses a mismatch).
 2. Update `CHANGELOG.md` and, for security-relevant changes, `docs/AUDIT.md`.
-3. Refresh the goal snapshot: `python3 tools/goal.py`.
-4. `python3 tools/build.py`, then run the tests.
-5. Tag the release (`vX.Y.Z`) and attach `HASHES.txt`, `mnemoniqr-offline.html`, `recover.py`, `LICENSE.txt` and `NOTICE.txt`. The tag is the "corresponding source" the AGPL refers to: every deployed version must have one.
-6. Deploy `dist/`. Check the fingerprint shown by the live app against `HASHES.txt`.
+3. `python3 tools/build.py`, then run the tests.
+4. Tag the release (`vX.Y.Z`) and attach `HASHES.txt`, `mnemoniqr-offline.html`, `recover.py`, `LICENSE.txt` and `NOTICE.txt`. The tag is the "corresponding source" the AGPL refers to: every deployed version must have one.
+5. Deploy `dist/`. Check the fingerprint shown by the live app against `HASHES.txt`.
 
 ## Project structure
 
@@ -98,18 +91,15 @@ src/
   js/eff-words.js     EFF diceware list without BIP39 words
   js/app.js           user interface
   js/i18n.js          all UI strings (English)
-  js/donate.js        donation addresses (the only place they are defined)
-  js/goal.js          community goal snapshot: target and balance of each address (written by tools/goal.py)
+  js/donate.js        Bitcoin donation address (the only place it is defined)
   js/wordlists.js     canonical BIP39 English word list
   vendor/             qrcode, jsQR, hash-wasm (Argon2), noble-secp256k1 + RIPEMD-160
   fonts/              Atkinson Hyperlegible and JetBrains Mono (OFL)
   tests/              in-browser test suite and official BIP39 vectors
-web/api/goal.js       live community goal for mnemoniqr.app/goal (Vercel function, no script on the page)
 tools/build.py        deterministic build
-tools/goal.py         refreshes the goal snapshot (uses tools/goal_collect.js)
-tools/addresses.py    donation address checksums (Bitcoin, Ethereum EIP-55, TRON, TON)
+tools/addresses.py    Bitcoin donation address checksums (Bech32/Bech32m, Base58Check)
 tools/recover.py      standalone recovery tool (Python)
-tests/                end-to-end, update, PDF/ZIP, support, goal and recovery-tool tests
+tests/                end-to-end, update, PDF/ZIP, support and recovery-tool tests
 .github/workflows/    continuous integration
 docs/                 user guide, recovery, FAQ, privacy, donations, format, security design, this file
 ```

@@ -98,6 +98,39 @@ class RecoverRobustness(unittest.TestCase):
             with self.assertRaises(rec.RecoveryError):
                 rec.unpack(good[:cut])
 
+    def multi_plaintext(self):
+        # type 3: 2 phrases. Phrase 1: entropy (16 zero bytes = abandon×11 about), passphrase "pp", name "Ledger".
+        # Phrase 2: free text "zoo wrong", no passphrase, no name. Then the note and the date.
+        p1 = bytes([1, 0, 16]) + bytes(16) + bytes([2]) + b'pp' + bytes([6]) + b'Ledger'
+        p2 = bytes([2, 0, 0, 9]) + b'zoo wrong' + bytes([0]) + bytes([0])
+        return bytes([3, 2]) + p1 + p2 + bytes([4]) + b'note' + struct.pack('>I', 1)
+
+    def test_multi_seed(self):
+        r = rec.unpack(self.multi_plaintext())
+        self.assertEqual(len(r['phrases']), 2)
+        self.assertEqual(r['phrases'][0]['words'], ['abandon'] * 11 + ['about'])
+        self.assertEqual((r['phrases'][0]['passphrase'], r['phrases'][0]['label'], r['phrases'][0]['checksum_valid']), ('pp', 'Ledger', True))
+        self.assertEqual((r['phrases'][1]['words'], r['phrases'][1]['label'], r['phrases'][1]['checksum_valid']), (['zoo', 'wrong'], '', False))
+        self.assertEqual((r['words'], r['passphrase'], r['note']), (r['phrases'][0]['words'], 'pp', 'note'))   # first phrase at the top level
+
+    def test_multi_seed_truncation_and_counts(self):
+        good = self.multi_plaintext()
+        for cut in range(len(good)):
+            with self.assertRaises(rec.RecoveryError):
+                rec.unpack(good[:cut])
+        for count in (0, 1, 4, 255):
+            with self.assertRaises(rec.RecoveryError):
+                rec.unpack(bytes([3, count]) + good[2:])
+
+    def test_fuzz_multi_seed_content(self):
+        inputs = []
+        for _ in range(5000):
+            b = bytearray(os.urandom(rng.randrange(400)))
+            if len(b) > 4:
+                b[0], b[1], b[2] = 3, rng.choice([2, 3, rng.randrange(256)]), rng.choice([1, 2, rng.randrange(256)])
+            inputs.append(bytes(b))
+        only_recovery_errors(self, rec.unpack, inputs)
+
     def test_shares_need_a_full_set(self):
         share = bytes([4]) + b'\x01\x02\x03\x04' + bytes([2, 3, 1]) + os.urandom(60)
         code = v5('MQS5:', share)

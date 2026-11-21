@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
-// MnemoniQR v6.9.0 · Automated tests (run in the browser, no tooling needed)
+// MnemoniQR v7.0.0 · Automated tests (run in the browser, no tooling needed)
 'use strict';
 (async () => {
     const M = self.MQR;
@@ -369,6 +369,59 @@
         if (i % 2 && b.length > 4) { b[0] = 1 + rnd(2); b[1] = rnd(2); b[2] = [16, 20, 24, 28, 32, rnd(256)][rnd(6)]; }
         return b;
     }, (b) => X.unpackPlaintext(b));
+
+    // ---------- 7.0 multi-seed (plaintext type 3) ----------
+    const P2 = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const P24 = 'abandon '.repeat(23) + 'art';
+    const entry = async (mnemonic, extra = {}) => {
+        const ent = await BIP39.toEntropy(mnemonic.split(' ').map((w) => BIP39.resolve('en', w)));
+        return { lang: 'en', entropy: ent, ...extra };
+    };
+    await test('multi-seed: 3 phrases with names and passphrases, one note, decrypted in order', async () => {
+        const pt = M.packMultiPlaintext({ note: 'Three wallets', phrases: [
+            await entry(REAL, { label: 'Ledger', passphrase: 'My pass 25' }), await entry(P2, { label: 'Trezor ñ' }), await entry(DECOY, { passphrase: 'z' })] });
+        assert(pt[0] === 3 && pt[1] === 3, 'type 3, count 3');
+        const r = await M.encryptV4({ real: { plaintext: pt, password: 'multi seed password 7' } });
+        const d = await M.decryptAny(r.text, 'multi seed password 7');
+        assert(d.multi === true && d.phrases.length === 3, 'three phrases');
+        assert(d.phrases.map((p) => p.words.join(' ')).join('|') === [REAL, P2, DECOY].join('|'), 'words');
+        assert(d.phrases.map((p) => p.label).join('|') === 'Ledger|Trezor ñ|', 'names');
+        assert(d.phrases.map((p) => p.passphrase).join('|') === 'My pass 25||z', 'passphrases');
+        assert(d.note === 'Three wallets' && d.words.join(' ') === REAL && d.passphrase === 'My pass 25', 'first phrase at the top level, as before 7.0');
+        return `${r.text.length} characters`;
+    });
+    await test('multi-seed: a single-phrase backup also lists its phrase', async () => {
+        const r = await M.encryptV4({ real: { plaintext: await pack('en', REAL, { passphrase: 'p' }), password: 'single phrase pass 1' } });
+        const d = await M.decryptAny(r.text, 'single phrase pass 1');
+        assert(d.multi === false && d.phrases.length === 1 && d.phrases[0].words.join(' ') === REAL && d.phrases[0].passphrase === 'p' && d.phrases[0].label === '');
+    });
+    await test('multi-seed: with a decoy, each password opens its own content', async () => {
+        const pt = M.packMultiPlaintext({ phrases: [await entry(REAL), await entry(P2)] });
+        const r = await M.encryptV4({ real: { plaintext: pt, password: 'real multi pass 9' }, decoy: { plaintext: await pack('en', DECOY), password: 'decoy pass 9' } });
+        const a = await M.decryptAny(r.text, 'real multi pass 9'), b = await M.decryptAny(r.text, 'decoy pass 9');
+        assert(a.phrases.length === 2 && b.phrases.length === 1 && b.words.join(' ') === DECOY);
+    });
+    await test('multi-seed: limits (2–3 phrases, 32-byte names, 100-byte passphrases), never truncated', async () => {
+        await throwsCode(async () => M.packMultiPlaintext({ phrases: [await entry(REAL)] }), 'multi_count');
+        await throwsCode(async () => M.packMultiPlaintext({ phrases: [await entry(REAL), await entry(P2), await entry(DECOY), await entry(P24)] }), 'multi_count');
+        await throwsCode(async () => M.packMultiPlaintext({ phrases: [await entry(REAL), await entry(P2, { label: 'é'.repeat(17) })] }), 'label_too_long');
+        await throwsCode(async () => M.packMultiPlaintext({ phrases: [await entry(REAL), await entry(P2, { passphrase: 'é'.repeat(100) })] }), 'pp_too_long');
+        await throwsCode(async () => M.packMultiPlaintext({ note: '€'.repeat(100), phrases: [await entry(REAL), await entry(P2)] }), 'note_too_long');
+    });
+    await test('multi-seed: the largest backup still fits a QR version 40 at error correction Q', async () => {
+        const pp = 'x'.repeat(100), label = 'y'.repeat(32);
+        const pt = M.packMultiPlaintext({ note: 'n'.repeat(100), phrases: [await entry(P24, { passphrase: pp, label }), await entry(P24, { passphrase: pp, label }), await entry(P24, { passphrase: pp, label })] });
+        const r = await M.encryptV4({ real: { plaintext: pt, password: 'largest backup pass 1' }, decoy: { plaintext: await pack('en', DECOY), password: 'largest decoy pass 1' } });
+        assert(r.text.length <= 2420, `${r.text.length} characters: more than a version 40-Q QR holds`);
+        return `${r.text.length} of 2420 characters`;
+    });
+    await test('multi-seed: malformed plaintexts are refused cleanly', async () => {
+        const good = M.packMultiPlaintext({ phrases: [await entry(REAL), await entry(P2)] });
+        for (const count of [0, 1, 4, 255]) { const b = good.slice(); b[1] = count; await throwsCode(() => M._test.unpackPlaintext(b), 'bad_content'); }
+        for (let cut = 2; cut < good.length; cut += 3) await throwsCode(() => M._test.unpackPlaintext(good.slice(0, cut)), 'bad_content');
+        const bad = good.slice(); bad[2] = 7; await throwsCode(() => M._test.unpackPlaintext(bad), 'bad_content');   // unknown phrase kind
+        const b4 = good.slice(); b4[0] = 4; await throwsCode(() => M._test.unpackPlaintext(b4), 'bad_content');   // unknown type
+    });
 
     // Mutations of a real backup, decrypted for real. A fast stand-in KDF keeps this quick;
     // the parsing and AES-GCM paths are the real ones.

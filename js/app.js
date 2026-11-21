@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // ============================================================
-// MnemoniQR v6.9.0 · User interface
+// MnemoniQR v7.0.0 · User interface
 // ============================================================
 'use strict';
 (() => {
@@ -14,7 +14,7 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
 
-const APP_VERSION = '6.9.0';
+const APP_VERSION = '7.0.0';
 // Version + content id stamped by tools/build.py; the service worker announces the same value
 const APP_BUILD = document.documentElement.dataset.build || APP_VERSION;
 const CFG = Object.freeze({
@@ -38,12 +38,18 @@ const ttPolicy = self.trustedTypes
 // STATE
 // ============================================================
 const newSeed = () => ({ count: 12, lang: 'en', words: Array(24).fill(''), cur: 0, reveal: false });
+// 7.0 multi-seed: phrases = 1 to 3 (the real phrase, then p2 and p3), each with a name; p2 and p3 have their own passphrase
+const newOpts = () => ({ note: '', ppOn: false, pp: '', decoy: false, n: 1, k: 1, kfOn: false, keyfile: null,
+    phrases: 1, labels: { real: '', p2: '', p3: '' }, extraPp: { p2: '', p3: '' } });
+const EXTRA = ['p2', 'p3'];
+// The phrases being encrypted, in order: real, then p2 and p3 when chosen
+const phraseTargets = () => ['real', ...EXTRA.slice(0, S.opts.phrases - 1)];
 const S = {
     step: 'home', practice: false, target: 'real',
-    seeds: { real: newSeed(), decoy: newSeed() },
-    opts: { note: '', ppOn: false, pp: '', decoy: false, n: 1, k: 1, kfOn: false, keyfile: null },
+    seeds: { real: newSeed(), p2: newSeed(), p3: newSeed(), decoy: newSeed() },
+    opts: newOpts(),
     lastGen: null,             // { password, bits } of the last generated password
-    rawAllowed: { real: false, decoy: false },
+    rawAllowed: { real: false, p2: false, p3: false, decoy: false },
     result: null,             // { texts, index, kind, setId, k, n, blobText, hashes, fp, verified, practice, kdf }
     modalMode: 'decrypt',
     collect: { backup: null, info: null, keyfile: null, shares: new Map(), setId: null, k: 0, n: 0 },
@@ -51,7 +57,7 @@ const S = {
     timer: null, timerLeft: 0, clipTimer: null,
     scanner: { active: false, starting: null, stream: null, raf: null, frame: 0, detector: null, canvas: null, cooldown: 0 },
     hiddenAt: 0, wasDecrypted: false, recoveredReal: false, busy: false, wipeAfterBusy: false, clipDirty: false,
-    decrypted: { words: [], pp: '' },
+    decrypted: { phrases: [], cur: 0 },
     cancelKdf: null, calib: null, fpToken: 0, statusToken: 0
 };
 
@@ -221,20 +227,24 @@ function updateNetPill() {
     $('net-body').textContent = on ? t('net_online_body') : t('net_offline_body');
 }
 function clearEntry() {
-    S.seeds.real = newSeed(); S.seeds.decoy = newSeed();
+    S.seeds = { real: newSeed(), p2: newSeed(), p3: newSeed(), decoy: newSeed() };
     if (S.opts.keyfile) util.wipe(S.opts.keyfile.hash);
-    S.opts = { note: '', ppOn: false, pp: '', decoy: false, n: 1, k: 1, kfOn: false, keyfile: null };
+    S.opts = newOpts();
     S.lastGen = null;
     $('kf-enable').checked = false; $('kf-box').hidden = true; $('kf-info').hidden = true;
-    S.rawAllowed = { real: false, decoy: false };
-    ['message-input', 'pp-input', 'pp-confirm', 'password-input', 'password-confirm', 'decoy-input', 'decoy-confirm', 'decrypt-password'].forEach((id) => { $(id).value = ''; });
+    S.rawAllowed = { real: false, p2: false, p3: false, decoy: false };
+    ['message-input', 'pp-input', 'pp-confirm', 'password-input', 'password-confirm', 'decoy-input', 'decoy-confirm', 'decrypt-password',
+        'label-1', 'extra-label', 'extra-pp', 'extra-pp-confirm'].forEach((id) => { $(id).value = ''; });
+    $('phrases-select').value = '1'; $('label-1-box').hidden = true;
+    $('extra-pp-enable').checked = false; $('extra-pp-box').hidden = true;
     $('pp-enable').checked = false; $('pp-box').hidden = true;
     $('decoy-enable').checked = false; $('split-select').value = '1'; $('split-custom').hidden = true;
 }
 function wipeDecrypted() {
     stopTimer();
-    S.decrypted.words.fill('');
-    S.decrypted = { words: [], pp: '' };
+    S.decrypted.phrases.forEach((p) => { p.words.fill(''); p.pp = ''; });
+    S.decrypted = { phrases: [], cur: 0 };
+    $('decrypted-tabs').replaceChildren(); $('decrypted-tabs').hidden = true;
     $('seed-grid').replaceChildren();
     $('decrypted-meta').replaceChildren();
     $('decrypted-pp').textContent = ''; $('decrypted-pp').hidden = true;
@@ -275,11 +285,11 @@ const typedAt = (i) => seed().words[i] || '';
 const resolvedAt = (i) => BIP39.resolve(seed().lang, typedAt(i));
 
 function stepPlan() {
-    return S.opts.decoy ? ['seed', 'options', 'decoy', 'password'] : ['seed', 'options', 'password'];
+    return ['seed', 'options', ...EXTRA.slice(0, S.opts.phrases - 1), ...(S.opts.decoy ? ['decoy'] : []), 'password'];
 }
 function renderStepper(current) {
     const plan = stepPlan();
-    const labels = { seed: 'step_phrase', options: 'step_options', decoy: 'step_decoy', password: 'step_key' };
+    const labels = { seed: 'step_phrase', options: 'step_options', p2: 'step_phrase_2', p3: 'step_phrase_3', decoy: 'step_decoy', password: 'step_key' };
     const idx = plan.indexOf(current);
     document.querySelectorAll(`#step-${S.step} [data-stepper]`).forEach((ol) => {
         const items = [];
@@ -299,14 +309,27 @@ function renderStepper(current) {
 
 function openSeedStep(target) {
     S.target = target;
+    S.extraFor = null;
     goTo('seed');
     renderSeedStep();
 }
 
 function renderSeedStep() {
     const s = seed();
-    $('h-seed').textContent = S.target === 'decoy' ? t('seed_title_decoy') : t('seed_title');
-    renderStepper(S.target === 'decoy' ? 'decoy' : 'seed');
+    const extra = EXTRA.includes(S.target);
+    $('h-seed').textContent = S.target === 'decoy' ? t('seed_title_decoy')
+        : extra ? t('seed_title_n', { n: EXTRA.indexOf(S.target) + 2, total: S.opts.phrases }) : t('seed_title');
+    renderStepper(S.target === 'real' ? 'seed' : S.target);
+    // Phrases 2 and 3: their own name and passphrase, below the words
+    $('seed-extra').hidden = !extra;
+    // Loaded once when the step opens: a later redraw (paste, language) never overwrites what is being typed
+    if (extra && S.extraFor !== S.target) {
+        S.extraFor = S.target;
+        $('extra-label').value = S.opts.labels[S.target];
+        const pp = S.opts.extraPp[S.target];
+        $('extra-pp-enable').checked = !!pp; $('extra-pp-box').hidden = !pp;
+        $('extra-pp').value = pp; $('extra-pp-confirm').value = pp;
+    }
     const eye = $('seed-eye');
     eye.setAttribute('aria-pressed', String(s.reveal));
     eye.querySelector('use').setAttribute('href', s.reveal ? '#i-eye-off' : '#i-eye');
@@ -532,11 +555,58 @@ async function pasteSeed() {
 }
 
 const phraseKey = (w) => Array.from({ length: S.seeds[w].count }, (_, i) => BIP39.resolve('en', S.seeds[w].words[i] || '')).join(',');
+// The next step after a phrase: options after the first; then phrases 2 and 3, the decoy and the password
+function afterPhrase(target) {
+    const plan = stepPlan();
+    const next = plan[plan.indexOf(target === 'real' ? 'seed' : target) + 1];
+    if (next === 'options') { goTo('options'); renderStepper('options'); }
+    else if (next === 'password') openPasswordStep();
+    else openPhraseStep(next);
+}
+// The step before one: what the back buttons open
+function beforeStep(name) {
+    const plan = stepPlan();
+    const prev = plan[plan.indexOf(name) - 1];
+    if (prev === 'options') { goTo('options'); renderStepper('options'); }
+    else if (prev === 'seed') openSeedStep('real');
+    else openPhraseStep(prev);
+}
+async function openPhraseStep(target) {
+    // Practice: the extra phrases and the decoy are filled with random test words
+    if (S.practice && !S.seeds[target].words.some(Boolean)) await prefillRandom(S.seeds[target], 12);
+    openSeedStep(target);
+}
+// Reads the name and passphrase of phrase 2 or 3; false (with a message) when something is wrong
+// Going back keeps what was typed for this phrase, without checking it yet
+function readExtraQuiet(target) {
+    S.opts.labels[target] = $('extra-label').value.trim();
+    S.opts.extraPp[target] = $('extra-pp-enable').checked ? $('extra-pp').value : '';
+}
+function readExtra(target) {
+    const label = $('extra-label').value.trim();
+    const on = $('extra-pp-enable').checked, pp = on ? $('extra-pp').value : '';
+    const bytes = (x) => new TextEncoder().encode(x).length;
+    if (bytes(label.normalize('NFC')) > C.LABEL_MAX_BYTES) { toast(t('err_label_too_long'), 'error'); $('extra-label').focus(); return false; }
+    if (on && !pp) { toast(t('pp_empty'), 'error'); $('extra-pp').focus(); return false; }
+    // A mistyped passphrase is a different wallet, and the field is masked: it must be typed twice
+    if (on && pp !== $('extra-pp-confirm').value) { toast(t('pp_mismatch'), 'error'); $('extra-pp-confirm').focus(); return false; }
+    if (bytes(pp.normalize('NFKD')) > C.PASSPHRASE_MAX_BYTES) { toast(t('err_pp_too_long'), 'error'); return false; }
+    if (on && pp !== pp.trim() && !confirm(t('pp_spaces_confirm'))) return false;
+    S.opts.labels[target] = label;
+    S.opts.extraPp[target] = pp;
+    return true;
+}
+// A phrase must not repeat another one of the same backup, nor the decoy
+function duplicateOf(target) {
+    const others = target === 'decoy' ? phraseTargets() : phraseTargets().filter((w) => w !== target);
+    return others.find((w) => phraseKey(w) === phraseKey(target)) || null;
+}
 async function seedContinue() {
-    if (S.target === 'decoy' && phraseKey('decoy') === phraseKey('real')) { toast(t('err_decoy_same_seed'), 'error'); return; }
+    if (S.target === 'decoy' && duplicateOf('decoy')) { toast(t('err_decoy_same_seed'), 'error'); return; }
+    if (EXTRA.includes(S.target) && duplicateOf(S.target)) { toast(t('err_phrase_repeated'), 'error'); return; }
     if (S.rawAllowed[S.target] && !confirm(t('checksum_confirm'))) return;
-    if (S.target === 'real') { goTo('options'); renderStepper('options'); }
-    else openPasswordStep();
+    if (EXTRA.includes(S.target) && !readExtra(S.target)) return;
+    afterPhrase(S.target);
 }
 
 // ============================================================
@@ -548,6 +618,8 @@ function readOptions() {
     S.opts.pp = S.opts.ppOn ? $('pp-input').value : '';
     S.opts.decoy = $('decoy-enable').checked;
     S.opts.kfOn = $('kf-enable').checked;
+    S.opts.phrases = Math.max(1, Math.min(C.MAX_PHRASES, parseInt($('phrases-select').value, 10) || 1));
+    S.opts.labels.real = S.opts.phrases > 1 ? $('label-1').value.trim() : '';
     const v = $('split-select').value;
     if (v === '1') { S.opts.n = 1; S.opts.k = 1; }
     else if (v === 'custom') {
@@ -566,10 +638,11 @@ async function optionsContinue() {
     const bytes = (x) => new TextEncoder().encode(x).length;
     if (bytes(S.opts.pp.normalize('NFKD')) > C.PASSPHRASE_MAX_BYTES) { toast(t('err_pp_too_long'), 'error'); return; }
     if (bytes(S.opts.note) > C.NOTE_MAX_BYTES) { toast(t('err_note_too_long'), 'error'); return; }
-    if (S.opts.decoy) {
-        if (S.practice && !S.seeds.decoy.words.some(Boolean)) await prefillRandom(S.seeds.decoy, 12);
-        openSeedStep('decoy');
-    } else openPasswordStep();
+    if (bytes(S.opts.labels.real.normalize('NFC')) > C.LABEL_MAX_BYTES) { toast(t('err_label_too_long'), 'error'); $('label-1').focus(); return; }
+    // Fewer phrases than before: the ones left out are forgotten, never encrypted by mistake
+    EXTRA.slice(S.opts.phrases - 1).forEach((w) => { S.seeds[w] = newSeed(); S.opts.labels[w] = ''; S.opts.extraPp[w] = ''; S.rawAllowed[w] = false; });
+    const plan = stepPlan(), next = plan[plan.indexOf('options') + 1];
+    if (next === 'password') openPasswordStep(); else openPhraseStep(next);
 }
 function openPasswordStep() {
     goTo('password');
@@ -583,15 +656,21 @@ function openPasswordStep() {
 // Words of the phrase(s) being encrypted: a password must never reuse them
 function phraseWords() {
     const out = [];
-    for (const w of (S.opts.decoy ? ['real', 'decoy'] : ['real'])) {
+    for (const w of [...phraseTargets(), ...(S.opts.decoy ? ['decoy'] : [])]) {
         const sd = S.seeds[w];
         for (let i = 0; i < sd.count; i++) { const r = BIP39.resolve('en', sd.words[i] || ''); if (r >= 0) out.push(BIP39.word('en', r)); }
     }
     return out;
 }
+// Every BIP39 passphrase of the backup (a password must never contain one)
+const allPassphrases = () => [S.opts.pp, ...EXTRA.slice(0, S.opts.phrases - 1).map((w) => S.opts.extraPp[w])].filter(Boolean);
+function pwConflict(pw, words) {
+    return Strength.conflicts(pw, words, '') || allPassphrases().map((pp) => Strength.conflicts(pw, [], pp)).find(Boolean) || null;
+}
 function strengthOf(pw, words) {
     if (!pw) return { bits: 0, warning: null };
-    const inputs = [...words, S.opts.pp, ...S.opts.note.split(/\s+/), 'mnemoniqr', 'bitcoin', 'wallet', 'seed', 'backup', 'crypto'];
+    const inputs = [...words, ...allPassphrases(), ...phraseTargets().map((w) => S.opts.labels[w]).filter(Boolean),
+        ...S.opts.note.split(/\s+/), 'mnemoniqr', 'bitcoin', 'wallet', 'seed', 'backup', 'crypto'];
     const est = Strength.estimate(pw, inputs);
     // A generated password is scored by how it was generated, not by how it looks
     if (S.lastGen && pw === S.lastGen.password) return { bits: S.lastGen.bits, warning: null };
@@ -600,7 +679,7 @@ function strengthOf(pw, words) {
 function updatePasswordUI() {
     const p = $('password-input').value, c = $('password-confirm').value;
     const words = phraseWords();
-    const conflict = p ? Strength.conflicts(p, words, S.opts.pp) : null;
+    const conflict = p ? pwConflict(p, words) : null;
     const { bits, warning } = strengthOf(p, words);
     const ok = { length: Array.from(p).length >= CFG.MIN_PW, entropy: bits >= CFG.MIN_BITS, match: !!p && p === c, phrase: !!p && !conflict };
     const d = $('decoy-input').value, dc = $('decoy-confirm').value;
@@ -608,7 +687,7 @@ function updatePasswordUI() {
         ok['d-length'] = Array.from(d).length >= CFG.MIN_DECOY_PW;
         ok['d-match'] = !!d && d === dc;
         ok['d-diff'] = !!d && d.normalize('NFKC') !== p.normalize('NFKC');
-        ok['d-phrase'] = !!d && !Strength.conflicts(d, words, S.opts.pp);
+        ok['d-phrase'] = !!d && !pwConflict(d, words);
     }
     document.querySelectorAll('.requirements li').forEach((li) => li.classList.toggle('met', !!ok[li.dataset.req]));
     const level = bits >= 90 ? ['pw_very_strong', 'great'] : bits >= 70 ? ['pw_strong', 'good'] : bits >= 50 ? ['pw_fair', 'fair'] : ['pw_weak', 'weak'];
@@ -663,21 +742,41 @@ async function prefillRandom(target, count) {
     idx.forEach((i, k) => { target.words[k] = BIP39.lists.en.stripped[i]; });
 }
 
-async function packSeed(which, withExtras) {
+// One phrase as entropy (or free text when its checksum was explicitly accepted)
+async function phraseEntry(which) {
     const s = S.seeds[which];
     const idx = Array.from({ length: s.count }, (_, i) => BIP39.resolve(s.lang, s.words[i] || ''));
     if (idx.some((i) => i < 0)) throw new MQRError('seed_incomplete');
     const entropy = await BIP39.toEntropy(idx);
     if (!entropy && !S.rawAllowed[which]) throw new MQRError('checksum');
     const mnemonic = BIP39.mnemonic(s.lang, idx);
-    const pt = M.packPlaintext({
-        lang: s.lang, entropy, rawText: entropy ? null : mnemonic,
-        passphrase: withExtras ? S.opts.pp : '', note: withExtras ? S.opts.note : ''
-    });
-    let fp = null;
-    if (entropy && withExtras) { try { fp = await M.fingerprint(mnemonic, S.opts.pp); } catch { fp = null; } }
-    util.wipe(entropy);
-    return { pt, fp };
+    return { lang: s.lang, entropy, rawText: entropy ? null : mnemonic, mnemonic };
+}
+const passphraseOf = (which) => (which === 'real' ? S.opts.pp : S.opts.extraPp[which] || '');
+// The real plaintext: one phrase (types 1/2) or, with several phrases, a multi-seed plaintext (type 3).
+// fps: the wallet fingerprint of each phrase, to compare with the wallets.
+async function packReal() {
+    const targets = phraseTargets();
+    const entries = [];
+    try {
+        for (const w of targets) entries.push(await phraseEntry(w));
+        const fps = [];
+        for (let i = 0; i < targets.length; i++) {
+            let fp = null;
+            if (entries[i].entropy) { try { fp = await M.fingerprint(entries[i].mnemonic, passphraseOf(targets[i])); } catch { fp = null; } }
+            fps.push({ fp, label: S.opts.labels[targets[i]] || '' });
+        }
+        const pt = targets.length === 1
+            ? M.packPlaintext({ lang: entries[0].lang, entropy: entries[0].entropy, rawText: entries[0].rawText, passphrase: S.opts.pp, note: S.opts.note })
+            : M.packMultiPlaintext({ note: S.opts.note, phrases: entries.map((e, i) => ({ lang: e.lang, entropy: e.entropy, rawText: e.rawText,
+                passphrase: passphraseOf(targets[i]), label: S.opts.labels[targets[i]] || '' })) });
+        return { pt, fps };
+    } finally { entries.forEach((e) => util.wipe(e.entropy)); }
+}
+// The decoy: one phrase, no passphrase and no note
+async function packDecoy() {
+    const e = await phraseEntry('decoy');
+    try { return { pt: M.packPlaintext({ lang: e.lang, entropy: e.entropy, rawText: e.rawText }) }; } finally { util.wipe(e.entropy); }
 }
 
 async function startEncryption() {
@@ -692,9 +791,10 @@ async function startEncryption() {
     try {
         spinner(true, t('preparing'));
         await nextPaint();
-        real = await packSeed('real', true);
-        if (o.decoy && phraseKey('decoy') === phraseKey('real')) throw new MQRError('decoy_same_seed');
-        decoy = o.decoy ? await packSeed('decoy', false) : null;
+        if (phraseTargets().some((w) => w !== 'real' && duplicateOf(w))) throw new MQRError('phrase_repeated');
+        if (o.decoy && duplicateOf('decoy')) throw new MQRError('decoy_same_seed');
+        real = await packReal();
+        decoy = o.decoy ? await packDecoy() : null;
         const total = decoy ? 2 : 1;
         spinner(true, t('kdf_running', { i: 1, n: total }), true);
         await nextPaint();
@@ -710,7 +810,7 @@ async function startEncryption() {
         util.wipe(r.blob);
         S.result = {
             texts, index: 0, kind: texts.length > 1 ? 'shares' : 'single', setId, k: o.k, n: o.n,
-            blobText: r.text, hashes: r.hashes, fp: real.fp, verified: false, practice: S.practice, kdf: r.kdf, hasDecoy: !!decoy,
+            blobText: r.text, hashes: r.hashes, fps: real.fps, verified: false, practice: S.practice, kdf: r.kdf, hasDecoy: !!decoy,
             keyfile: o.kfShort
         };
         if (r.kdf !== M.KDF.ARGON2ID) toast(t('pbkdf2_fallback'), 'warning', { duration: 8000 });
@@ -754,7 +854,11 @@ async function renderResult() {
     const cap = $('qr-caption');
     cap.textContent = (R.verified ? t('verified') + ' · ' : t('unverified') + ' · ') + shareCaption(R.index);
     cap.classList.toggle('ok', R.verified);
-    $('result-fp').textContent = R.fp ? t('fp_result', { fp: R.fp }) : '';
+    // One wallet fingerprint per phrase (only phrases with a valid checksum have one)
+    const fps = (R.fps || []).filter((f) => f.fp);
+    $('result-fp').textContent = R.fps && R.fps.length > 1
+        ? R.fps.map((f, i) => (f.fp ? t('fp_result_n', { n: i + 1, label: f.label ? ` · ${f.label}` : '', fp: f.fp }) : '')).filter(Boolean).join('\n')
+        : (fps.length ? t('fp_result', { fp: fps[0].fp }) : '');
     $('result-help').textContent = (R.kind === 'shares' ? t('result_help_shares') : t('result_help')) + (R.keyfile ? ' ' + t('result_help_kf', { fp: R.keyfile }) : '');
 }
 
@@ -1445,40 +1549,63 @@ async function decryptQR() {
 
 async function showDecrypted(res) {
     wipeDecrypted();
-    if (document.hidden) { res.words.fill(''); toast(t('wiped_leave'), 'info'); return; }
-    S.decrypted = { words: res.words.slice(), pp: res.passphrase || '', practice: res.practice };
-    res.words.fill('');
-    const items = S.decrypted.words.map((w, i) => {
+    const phrases = res.phrases || [{ words: res.words, passphrase: res.passphrase, lang: res.lang, indices: res.indices, label: '' }];
+    const wipeRes = () => phrases.forEach((p) => { p.words.fill(''); if (p.indices) p.indices.fill(0); });
+    if (document.hidden) { wipeRes(); toast(t('wiped_leave'), 'info'); return; }
+    S.decrypted = { phrases: phrases.map((p) => ({ words: p.words.slice(), pp: p.passphrase || '', label: p.label || '', fp: '' })), cur: 0, practice: res.practice };
+    // Wallet fingerprints, computed before anything is shown
+    for (let i = 0; i < phrases.length; i++) {
+        const p = phrases[i];
+        if (!p.indices) continue;
+        try { S.decrypted.phrases[i].fp = await M.fingerprint(BIP39.mnemonic(p.lang, p.indices), S.decrypted.phrases[i].pp); } catch { /* fingerprint unavailable */ }
+    }
+    wipeRes();
+    // The app may have gone to the background during the fingerprints: then the phrases are never shown
+    if (document.hidden) { wipeDecrypted(); toast(t('wiped_leave'), 'info'); return; }
+    const meta = $('decrypted-meta');
+    const add = (s) => { const p = document.createElement('p'); p.textContent = s; meta.appendChild(p); };
+    if (S.decrypted.phrases.length > 1) add(t('meta_multi', { n: S.decrypted.phrases.length }));
+    if (res.note) add(t('meta_note', { note: res.note }));
+    if (res.created) add(t('meta_created', { date: res.created.toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' }) }));
+    // Several phrases: one tab each (name, or "Phrase n")
+    const tabs = $('decrypted-tabs');
+    if (S.decrypted.phrases.length > 1) {
+        tabs.replaceChildren(...S.decrypted.phrases.map((p, i) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.i = String(i);
+            b.textContent = p.label ? `${i + 1} · ${p.label}` : t('phrase_n', { n: i + 1 });
+            b.addEventListener('click', () => showPhrase(i));
+            return b;
+        }));
+        tabs.hidden = false;
+    }
+    showPhrase(0);
+    setReveal(false);
+    S.wasDecrypted = true;
+    S.recoveredReal = !res.practice;
+    goTo('decrypted');
+    startTimer();
+}
+// Shows phrase i of the decrypted backup (its words, passphrase and fingerprint)
+function showPhrase(i) {
+    const p = S.decrypted.phrases[i];
+    if (!p) return;
+    S.decrypted.cur = i;
+    $('decrypted-tabs').querySelectorAll('[role=tab]').forEach((b) => { const on = b.dataset.i === String(i); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+    const items = p.words.map((w, k) => {
         const li = document.createElement('li');
         li.className = 'seed-word';
-        const n = document.createElement('span'); n.className = 'word-index'; n.textContent = i + 1;
+        const n = document.createElement('span'); n.className = 'word-index'; n.textContent = k + 1;
         const tx = document.createElement('span'); tx.textContent = w;
         li.append(n, tx);
         return li;
     });
     $('seed-grid').replaceChildren(...items);
     $('seed-grid').classList.toggle('cols-3', items.length >= 18);
-    $('decrypted-count').textContent = t('n_words', { n: S.decrypted.words.length });
-    const meta = $('decrypted-meta');
-    const add = (s) => { const p = document.createElement('p'); p.textContent = s; meta.appendChild(p); };
-    if (res.note) add(t('meta_note', { note: res.note }));
-    if (res.created) add(t('meta_created', { date: res.created.toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' }) }));
-    if (S.decrypted.pp) { $('decrypted-pp').textContent = t('meta_pp', { pp: S.decrypted.pp }); $('decrypted-pp').hidden = false; }
-    $('decrypted-fp').textContent = '';
-    if (res.indices) {
-        try {
-            const f = await M.fingerprint(BIP39.mnemonic(res.lang, res.indices), S.decrypted.pp);
-            $('decrypted-fp').textContent = t('fp_result', { fp: f });
-        } catch { /* fingerprint unavailable */ }
-        res.indices.fill(0);
-    }
-    // The app may have gone to the background during the fingerprint: then the phrase is never shown
-    if (document.hidden) { wipeDecrypted(); toast(t('wiped_leave'), 'info'); return; }
-    setReveal(false);
-    S.wasDecrypted = true;
-    S.recoveredReal = !res.practice;
-    goTo('decrypted');
-    startTimer();
+    $('decrypted-count').textContent = t('n_words', { n: p.words.length });
+    $('decrypted-pp').textContent = p.pp ? t('meta_pp', { pp: p.pp }) : '';
+    $('decrypted-pp').hidden = !p.pp;
+    $('decrypted-fp').textContent = p.fp ? t('fp_result', { fp: p.fp }) : '';
 }
 function setReveal(on) {
     $('seed-grid').classList.toggle('blurred', !on);
@@ -1503,7 +1630,9 @@ function stopTimer() { if (S.timer) clearInterval(S.timer); S.timer = null; }
 async function copySeed() {
     if (!confirm(t('copy_confirm', { s: CFG.CLIPBOARD_CLEAR }))) return;
     try {
-        await navigator.clipboard.writeText(S.decrypted.words.join(' '));
+        const p = S.decrypted.phrases[S.decrypted.cur];
+        if (!p) return;
+        await navigator.clipboard.writeText(p.words.join(' '));
         toast(t('copied', { s: CFG.CLIPBOARD_CLEAR }), 'warning');
         clearTimeout(S.clipTimer);
         S.clipTimer = setTimeout(() => clearClipboard(false), CFG.CLIPBOARD_CLEAR * 1000);
@@ -1679,130 +1808,6 @@ const Install = {
 
 
 // ============================================================
-// COMMUNITY GOAL (snapshot in js/goal.js)
-// ============================================================
-// Built into each version like the addresses (SRI, fingerprint, checked by tools/build.py): the app never asks
-// anyone for the live total. Shown only together with the support UI: a thin bar in the footer, a ring in the
-// sheet and, for the network on screen, the balance of its address with links to check it on an explorer.
-const Goal = {
-    EXPLORERS: {
-        btc: [['mempool.space', 'https://mempool.space/address/']],
-        evm: [['Etherscan', 'https://etherscan.io/address/'], ['BscScan', 'https://bscscan.com/address/'], ['Basescan', 'https://basescan.org/address/']],
-        tron: [['Tronscan', 'https://tronscan.org/#/address/']],
-        ton: [['Tonviewer', 'https://tonviewer.com/']]
-    },
-    on: false, target: 0, raised: 0, asOf: '', wallets: {},
-    // The same rules as tools/build.py: a snapshot that fails any of them is not shown at all
-    load(kinds) {
-        const g = self.MQR_GOAL;
-        const num = (x) => typeof x === 'number' && Number.isFinite(x) && x >= 0;
-        const date = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
-        const keys = (o, k) => o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).sort().join() === k;
-        this.on = false;
-        try {
-            if (!keys(g, 'as_of,start,target_usd,wallets')) throw new Error('keys');
-            if (!num(g.target_usd) || !(g.target_usd > 0) || g.target_usd > 1e9) throw new Error('target');
-            if (!date(g.as_of) || !date(g.start) || g.as_of < g.start) throw new Error('date');
-            const w = g.wallets;
-            const names = w && typeof w === 'object' ? Object.keys(w) : [];
-            if (!kinds.length || names.length !== kinds.length || !kinds.every((k) => names.includes(k))) throw new Error('networks');
-            const wallets = {};
-            let raised = 0;
-            for (const k of kinds) {
-                const x = w[k];
-                if (!keys(x, 'assets,usd') || !num(x.usd) || !Array.isArray(x.assets) || !x.assets.length || x.assets.length > 20) throw new Error(k);
-                let sum = 0;
-                const assets = x.assets.map((a) => {
-                    if (!keys(a, 'amount,chain,sym,usd') || !/^[A-Z]{2,6}$/.test(a.sym) || typeof a.chain !== 'string' || !/^[a-z]{2,12}$/.test(a.chain)
-                        || typeof a.amount !== 'string' || !/^\d{1,30}(\.\d{1,36})?$/.test(a.amount) || !num(a.usd)
-                        || (Number(a.amount) === 0 && a.usd !== 0)) throw new Error(k);
-                    sum += a.usd;
-                    return { sym: a.sym, amount: Number(a.amount) };
-                });
-                if (Math.abs(Math.round(sum * 100) / 100 - x.usd) > 0.011) throw new Error(k);
-                wallets[k] = { usd: x.usd, assets };
-                raised += x.usd;
-            }
-            Object.assign(this, { on: true, target: g.target_usd, raised: Math.round(raised * 100) / 100, asOf: g.as_of, wallets });
-        } catch { this.on = false; }
-        return this.on;
-    },
-    usd(v) {
-        const d = v >= 100 || v === 0 ? 0 : 2;
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
-    },
-    amount(n) {
-        if (n === 0) return '0';
-        return new Intl.NumberFormat('en-US', n >= 1 ? { maximumFractionDigits: n >= 1000 ? 0 : 4 } : { maximumSignificantDigits: 6 }).format(n);
-    },
-    date() { return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${this.asOf}T00:00:00Z`)); },
-    pct() {
-        const p = Math.min(100, (this.raised / this.target) * 100);
-        return { value: p, label: this.raised > 0 && p < 1 ? '<1%' : `${Math.floor(p)}%` };
-    },
-    reached() { return this.raised >= this.target; },
-    // Footer: one line and a thin bar under it
-    renderFooter() {
-        const link = $('support-link');
-        link.classList.toggle('has-goal', this.on);
-        link.parentElement.classList.toggle('has-goal', this.on);
-        $('support-plain').hidden = this.on;
-        ['goal-foot', 'goal-foot-pct', 'goal-foot-bar'].forEach((id) => { $(id).hidden = !this.on; });
-        if (!this.on) { link.removeAttribute('aria-label'); return; }
-        const p = this.pct();
-        const label = t(this.reached() ? 'goal_foot_done' : 'goal_foot');
-        $('goal-foot-t').textContent = label;
-        $('goal-foot-pct').textContent = p.label;
-        $('goal-foot-fill').style.width = `${p.value}%`;
-        link.setAttribute('aria-label', t('goal_foot_aria', { label, pct: p.label, target: this.usd(this.target), date: this.date() }));
-    },
-    // Support sheet: the progress ring, the total and the date of the snapshot
-    renderSheet() {
-        $('goal-box').hidden = !this.on;
-        $('goal-note').hidden = !this.on;
-        $('support-lead').hidden = this.on;
-        if (!this.on) return;
-        const p = this.pct();
-        const arc = $('goal-arc');
-        const C = 2 * Math.PI * 40;
-        arc.setAttribute('stroke-dasharray', `${(C * p.value / 100).toFixed(2)} ${C.toFixed(2)}`);
-        if (p.value > 0) arc.removeAttribute('hidden'); else arc.setAttribute('hidden', '');   // a round cap would draw a dot at 0
-        const ring = $('goal-ring');
-        ring.setAttribute('aria-valuenow', String(Math.floor(p.value)));   // the same figure as the label
-        ring.setAttribute('aria-valuetext', t('goal_ring_text', { pct: p.label, raised: this.usd(this.raised), target: this.usd(this.target) }));
-        $('goal-pct').textContent = p.label;
-        $('goal-title').textContent = t(this.reached() ? 'goal_title_done' : 'goal_title');
-        $('goal-raised').textContent = this.usd(this.raised);
-        $('goal-target').textContent = t('goal_of', { target: this.usd(this.target) });
-        $('goal-asof').textContent = t('goal_asof', { date: this.date() });
-    },
-    // The network on screen: balance of its address (by coin, non-zero only) and where anyone can check it
-    renderBalance(d) {
-        const w = this.on ? this.wallets[d.kind] : null;
-        $('support-bal').hidden = !w;
-        if (!w) return;
-        const by = new Map();
-        w.assets.forEach((a) => by.set(a.sym, (by.get(a.sym) || 0) + a.amount));
-        const held = [...by].filter(([, n]) => n > 0);
-        const text = held.length ? held.slice(0, 4).map(([sym, n]) => `${this.amount(n)} ${sym}`).join(' · ') : `0 ${w.assets[0].sym}`;
-        $('support-bal-l').textContent = t(d.kind === 'evm' ? 'goal_balance_evm' : 'goal_balance');
-        const approx = document.createElement('span');
-        approx.textContent = ` ≈ ${this.usd(w.usd)}`;
-        $('support-bal-v').replaceChildren(document.createTextNode(text), approx);
-        $('support-bal-links').replaceChildren(...(this.EXPLORERS[d.kind] || []).map(([name, base]) => {
-            const a = document.createElement('a');
-            a.className = 'link';
-            a.href = base + encodeURIComponent(d.address);
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            a.textContent = `${name} ↗`;
-            a.setAttribute('aria-label', t('goal_explorer', { name }));
-            return a;
-        }));
-    }
-};
-
-// ============================================================
 // SUPPORT (donations)
 // ============================================================
 // Addresses come only from js/donate.js (SRI, build fingerprint, checked by tools/build.py).
@@ -1810,17 +1815,18 @@ const Goal = {
 // The support UI never appears during a flow: a footer link, one quiet line on the home screen
 // after the first verified backup (once per device), and a line in "How it protects you".
 const Support = {
-    KINDS: ['btc', 'evm', 'tron', 'ton'], ALSO: { evm: ['BSC', 'Base'] }, list: [], cur: null, copyTimer: null, nudged: false,
+    list: [], cur: null, copyTimer: null, nudged: false,
     init() {
         try { localStorage.removeItem('mqr-support'); } catch { /* storage unavailable */ }   // flag stored by 6.5.x
         const all = Array.isArray(self.MQR_DONATE) ? self.MQR_DONATE : [];
-        this.list = all.filter((d) => d && this.KINDS.includes(d.kind) && typeof d.address === 'string' && /^[0-9A-Za-z_-]{26,90}$/.test(d.address));   // TON uses base64url
+        // Bitcoin only (tools/build.py refuses anything else): Bech32/Bech32m or Base58Check characters
+        this.list = all.filter((d) => d && d.kind === 'btc' && typeof d.address === 'string' && /^[0-9A-Za-z]{26,90}$/.test(d.address));
         const on = this.list.length > 0;
         $('support-link').hidden = !on;
         $('support-about').hidden = !on;
-        Goal.load(on ? this.list.map((d) => d.kind) : []);
-        Goal.renderFooter();
         if (!on) return;
+        this.cur = this.list[0];
+        $('support-link').title = t('support_btc_aria');
         $('support-link').addEventListener('click', () => this.open());
         $('support-about-go').addEventListener('click', () => { closeModal('about-modal'); this.open(); });
         $('support-nudge-go').addEventListener('click', () => { this.hideNudge(); this.open(); });
@@ -1829,55 +1835,18 @@ const Support = {
         $('support-done').addEventListener('click', () => this.close());
         $('support-copy').addEventListener('click', () => this.copy());
         $('support-sheet').addEventListener('click', (e) => { if (e.target === $('support-sheet')) this.close(); });
-        $('support-tabs').addEventListener('keydown', (e) => {
-            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-            e.preventDefault();
-            const i = this.list.indexOf(this.cur);
-            const next = this.list[(i + (e.key === 'ArrowRight' ? 1 : this.list.length - 1)) % this.list.length];
-            this.select(next.id);
-            const b = $('support-tabs').querySelector(`[data-id="${next.id}"]`);
-            if (b) b.focus();
-        });
     },
-    open() {
-        if (!this.list.length || S.step !== 'home' || !$('support-sheet').hidden) return;
-        const tabs = $('support-tabs');
-        tabs.replaceChildren(...this.list.map((d) => {
-            const b = document.createElement('button');
-            b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.id = d.id;
-            b.setAttribute('aria-controls', 'support-panel');
-            const a = document.createElement('strong'); a.textContent = t(`support_${d.kind}_tab`);
-            b.append(a);
-            b.addEventListener('click', () => this.select(d.id));
-            return b;
-        }));
-        tabs.hidden = this.list.length < 2;
-        Goal.renderSheet();
-        this.select((this.cur && this.list.includes(this.cur) ? this.cur : this.list[0]).id);
+    async open() {
+        if (!this.cur || S.step !== 'home' || !$('support-sheet').hidden) return;
+        await this.render();
         openModal('support-sheet');
-        // Focus the selected tab (the sheet reopens on the network shown last), not simply the first one
-        setTimeout(() => { const sel = tabs.querySelector('[aria-selected=true]'); if (sel && !tabs.hidden) sel.focus(); }, 60);
     },
     close() { if (!$('support-sheet').hidden) closeModal('support-sheet'); },
-    async select(id) {
-        const d = this.list.find((x) => x.id === id);
-        if (!d) return;
-        this.cur = d;
-        $('support-tabs').querySelectorAll('[role=tab]').forEach((b) => {
-            const on = b.dataset.id === id;
-            b.setAttribute('aria-selected', String(on));
-            b.tabIndex = on ? 0 : -1;
-        });
-        const net = t(`support_${d.kind}_net`);
-        $('support-chip').textContent = t(`support_${d.kind}_chip`);
-        // Other networks where the same address works (EVM chains), in a second colour
-        $('support-chips-also').replaceChildren(...(this.ALSO[d.kind] || []).map((name) => {
-            const c = document.createElement('span');
-            c.className = 'chip-also';
-            c.textContent = name;
-            return c;
-        }));
-        $('support-note').textContent = t(`support_${d.kind}_note`);
+    async render() {
+        const d = this.cur;
+        const net = t('support_btc_net');
+        $('support-chip').textContent = t('support_btc_chip');
+        $('support-note').textContent = t('support_btc_note');
         // First and last four characters highlighted (what people compare after pasting), the rest in groups of four
         const a = d.address;
         const parts = [a.slice(0, 4), ...(a.slice(4, -4).match(/.{1,4}/g) || []), a.slice(-4)];
@@ -1890,7 +1859,6 @@ const Support = {
             return sp;
         }));
         $('support-copy-t').textContent = t('support_copy');
-        Goal.renderBalance(d);
         const c = $('support-qr');
         c.setAttribute('aria-label', t('support_qr_alt', { net }));
         try { await QR.renderSharp(c, d.address, 134, 'M'); } catch { c.width = 0; }
@@ -1971,7 +1939,7 @@ async function init() {
         toast(t('practice_started'), 'info', { duration: 7000 });
     });
     $('seed-back').addEventListener('click', () => {
-        if (S.target === 'decoy') { goTo('options'); renderStepper('options'); return; }
+        if (S.target !== 'real') { if (EXTRA.includes(S.target)) readExtraQuiet(S.target); beforeStep(S.target); return; }
         if (S.seeds.real.words.some(Boolean) && !S.practice && !confirm(t('confirm_leave'))) return;
         clearEntry(); goTo('home');
     });
@@ -2023,7 +1991,23 @@ async function init() {
     }));
 
     // --- password ---
-    $('password-back').addEventListener('click', () => { if (S.opts.decoy) openSeedStep('decoy'); else { goTo('options'); renderStepper('options'); } });
+    $('password-back').addEventListener('click', () => beforeStep('password'));
+    // Multi-seed: how many phrases, the name of the first; on phrases 2 and 3, their passphrase
+    // The stepper follows the choices as they are made (extra phrases, decoy)
+    $('phrases-select').addEventListener('change', () => {
+        $('label-1-box').hidden = $('phrases-select').value === '1';
+        S.opts.phrases = parseInt($('phrases-select').value, 10) || 1;
+        renderStepper('options');
+    });
+    $('decoy-enable').addEventListener('change', () => { S.opts.decoy = $('decoy-enable').checked; renderStepper('options'); });
+    $('extra-pp-enable').addEventListener('change', () => { $('extra-pp-box').hidden = !$('extra-pp-enable').checked; if ($('extra-pp-enable').checked) $('extra-pp').focus(); });
+    $('decrypted-tabs').addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault();
+        const n = S.decrypted.phrases.length, i = (S.decrypted.cur + (e.key === 'ArrowRight' ? 1 : n - 1)) % n;
+        showPhrase(i);
+        const b = $('decrypted-tabs').querySelector(`[data-i="${i}"]`); if (b) b.focus();
+    });
     ['password-input', 'password-confirm', 'decoy-input', 'decoy-confirm'].forEach((id) => {
         $(id).addEventListener('input', updatePasswordUI);
         $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('password-next').disabled) startEncryption(); });

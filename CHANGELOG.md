@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased — MPe Software seal
+## 7.0.0 — multi-seed, Bitcoin-only donations
 
-- The footer shows the M_ seal next to the version: a plain link to MnemoniQR's page on <https://www.mpe.software/#mnemoniqr> (opens in a new tab, `noopener noreferrer`). Inline SVG and CSS from `src/`, so every build carries it; nothing is loaded until it is tapped, and it fits the CSP (`style-src 'self'`, trusted types). 44 px touch target.
-- `tests/e2e.py` checks it in the app and in the single offline file, and that nothing is requested from mpe.software.
-- No change to encryption, formats or behaviour. The build id changes, so installed copies update.
+- **Multi-seed backups: up to 3 recovery phrases in one encrypted QR.** A new option, *Recovery phrases in this backup* (1, 2 or 3), adds a step for each further phrase. Each phrase can have a name (up to 32 bytes) and its own BIP39 passphrase; the note is shared. All of them open with the same password, and nobody can tell from the QR how many it holds. The result screen shows a wallet fingerprint per phrase, and recovery shows one tab per phrase. The same phrase cannot be entered twice; the password may not reuse a word of any phrase or name. Free for everyone.
+- New plaintext type 3, described in [FORMAT.md](docs/FORMAT.md). The largest backup (three 24-word phrases with passphrases, names, a note and a decoy) still fits one QR. `recover.py` reads it and prints every phrase (`phrases` in `--json`). **Backups with several phrases do not open in 6.9.0 or earlier** (they report a bad content); single-phrase backups are unchanged and open everywhere.
+- **Donations: Bitcoin only.** The Ethereum/BSC/Base, TRON and TON addresses were removed; the build refuses anything but exactly one Bitcoin address.
+- **The "Support it" footer link is now a Bitcoin button** (orange, 44 px, with an accessible name) that opens the sheet with the address, its QR and *Copy address*.
+- **The community goal was removed**: no footer bar, ring or balances in the app, no `/goal` page or `/api/goal` function, no `tools/goal.py` and no goal tests.
+- **MPe Software seal**: the footer shows the M_ seal next to the version, a plain link to MnemoniQR's page on <https://www.mpe.software/#mnemoniqr> (opens in a new tab, `noopener noreferrer`). Inline SVG and CSS, nothing loaded until it is tapped; fits the CSP. 44 px touch target.
+- Tests: multi-seed in the unit suite (round trip, decoy, limits, the largest backup, malformed input), in `tests/e2e.py` (full flow, paste, fingerprints, tabs, `recover.py`) and in `tests/test_recover.py` (fuzzing); `tests/donate_e2e.py` covers the Bitcoin button and refuses non-Bitcoin addresses; `tests/e2e.py` checks the seal and that nothing is requested from mpe.software.
 
 ## 6.9.0 — license: GNU AGPL-3.0 and commercial licenses
 

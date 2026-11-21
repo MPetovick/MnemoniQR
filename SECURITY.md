@@ -32,8 +32,8 @@ Only the latest release is supported: installed copies update themselves. Backup
 - The app (`src/`), the build (`tools/build.py`) and its integrity guarantees (SRI, fingerprints, reproducibility, Content Security Policy, Trusted Types).
 - The backup formats and their implementation in the app and in `tools/recover.py`.
 - The service worker and the update mechanism.
-- The community goal function (`web/api/goal.js`) and the site configuration (`vercel.json`, `_headers`).
-- The donation addresses and how they are shown.
+- The site configuration (`vercel.json`, `_headers`).
+- The donation address and how it is shown.
 
 ## Out of scope
 
@@ -42,7 +42,6 @@ Only the latest release is supported: installed copies update themselves. Backup
 - Memory forensics: JavaScript cannot guarantee that strings are wiped (documented limit).
 - Attacks that need the user to install a modified build whose fingerprint does not match `HASHES.txt`.
 - Social engineering, physical attacks on people, and denial of service against the hosting provider.
-- Third-party block explorers and price services linked or used by the goal page.
 
 ## Learn more
 

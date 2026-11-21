@@ -57,7 +57,7 @@ MnemoniQR works with any wallet that uses a standard **BIP39 English** recovery 
 
 ## Making a backup
 
-On the home screen, choose **Encrypt a seed**. The progress bar at the top shows the steps: *Phrase*, *Options*, *Password*, and *Decoy* before the password if you add a decoy wallet.
+On the home screen, choose **Encrypt a seed**. The progress bar at the top shows the steps: *Phrase*, *Options*, *Password*; with several phrases, *Phrase 2* and *Phrase 3* after the options, and *Decoy* before the password if you add a decoy wallet.
 
 ### 1. Enter the recovery phrase
 
@@ -76,6 +76,7 @@ Pasting is possible but discouraged: the clipboard can be read by other apps and
 
 All options are optional. They are explained in detail in [Choosing the options](#choosing-the-options).
 
+- **Recovery phrases in this backup**: 1 (the default), 2 or 3. With more than one, give phrase 1 an optional name (up to 32 bytes, such as "savings"); a step for each further phrase follows, where you type it, name it and, if its wallet uses one, add its own BIP39 passphrase.
 - **Encrypted note**: a short label such as "main wallet", stored inside the encryption. Up to 100 bytes. Never write the password here.
 - **BIP39 passphrase** (the "25th word"): if your wallet uses one, tick the option and type it twice. It is stored encrypted with the phrase. Case and spaces matter. Up to 100 bytes (accented letters take more than one); a longer one is refused, never shortened.
 - **Decoy wallet**: a second phrase that opens with a second password. If you tick it, a *Decoy* step asks for the decoy phrase. The decoy holds only the phrase (no passphrase, no note).
@@ -116,6 +117,8 @@ The result screen shows the QR (or the shares), the wallet fingerprint and wheth
 Every printout includes the **backup text** under the QR: the same content as letters and digits in groups of four. If the QR is ever damaged, it can be typed back in.
 
 ## Choosing the options
+
+**Several phrases in one QR (multi-seed).** Up to 3 recovery phrases can go into the same backup, for example a savings wallet, a spending wallet and an inheritance wallet. They are all encrypted together and open with the same password (and keyfile, if any); nobody can tell from the QR how many phrases it holds. Each phrase can have a name and its own passphrase; the note is shared. The same phrase cannot be entered twice. On the result screen and after recovery, each phrase shows its own wallet fingerprint. Keep in mind that one password then protects all of them, and that backups with several phrases open only in MnemoniQR 7.0.0 or later and in the `recover.py` of 7.0.0 or later.
 
 **Should I add a note?** A note helps you know which wallet a QR belongs to, without revealing anything to others (it is encrypted). Keep it vague: "savings", "2026 Ledger".
 
@@ -162,7 +165,7 @@ Practical advice:
    - With shares: scan, upload or type them **one after another**, in any order, until the required number is reached.
 3. If the backup needs a keyfile, choose it.
 4. Type the password and tap **Decrypt**.
-5. The phrase appears hidden: tap the grid to show it. The note, the creation date, the passphrase and the wallet fingerprint are shown too. Compare the fingerprint with the one you noted.
+5. The phrase appears hidden: tap the grid to show it. A backup with several phrases shows a tab for each one, with its name, passphrase and fingerprint. The note, the creation date, the passphrase and the wallet fingerprint are shown too. Compare the fingerprint with the one you noted.
 6. Enter the words in your wallet. Then tap **Erase and exit**. The phrase is erased after 60 seconds anyway, and immediately if you leave the app.
 
 From the third wrong password on, the app makes you wait before the next attempt (2 seconds, then 4, 8, 16, up to 30). If the backup opens a different phrase than you expected, you may have typed the decoy password.

@@ -39,19 +39,9 @@ The site is static and hosted on Vercel. As with any website, the hosting provid
 
 Responses are sent with strict security headers: no referrer is sent to other sites, the page cannot be framed, and HTTPS is enforced.
 
-## The community goal page (mnemoniqr.app/goal)
-
-The page shows the balance of the public donation addresses. Its figures are computed **on the server**: the server asks public block explorers (mempool.space, public Ethereum, BSC and Base nodes, TronGrid, Toncenter) and CoinGecko for the balances and prices of the donation addresses, and caches the result for up to 10 minutes. Your browser does not contact those services, and they never learn who looks at the page. The page itself has no script.
-
-The app itself never fetches the goal: it shows a snapshot built into each version.
-
 ## Link to mpe.software
 
 The M_ seal next to the version in the footer links to MnemoniQR's page on <https://www.mpe.software/#mnemoniqr>. Nothing is loaded from that site until you tap it; tapping opens it in a new tab with no referrer, and that site sees your IP address like any other you visit.
-
-## Links to block explorers
-
-The Support sheet and the goal page link to block explorers so that anyone can check the donation balances. Opening one leaves MnemoniQR: that site sees your IP address and applies its own privacy policy. Links open in a new tab and send no referrer. Nothing is opened unless you tap a link.
 
 ## Donations
 

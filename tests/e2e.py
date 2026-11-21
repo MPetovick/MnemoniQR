@@ -35,6 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = os.path.join(ROOT, 'dist')
 REAL = 'legal winner thank year wave sausage worth useful legal winner thank yellow'
 DECOY = 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong'
+MULTI2 = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 KEYFILE = os.path.join(DIST, 'MQR_logo.webp')
 FAKE_INSTALL = ("() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__prompted = true; };"
                 " e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); }")
@@ -387,6 +388,77 @@ def run(pw, name, base):
         page.wait_for_timeout(1500)
         c('camera: restarts after being stopped while starting', page.evaluate("() => !document.getElementById('scanner').hidden && window.__streams.some((s) => s.getTracks().some((t) => t.readyState === 'live'))"))
         page.click('#decrypt-cancel')
+
+    # 4b. 7.0 multi-seed: three phrases in one QR (names, a passphrase on phrase 2), verified, recovered phrase by phrase
+    page.goto(base + '/index.html')
+    page.wait_for_timeout(800)
+    page.click('#encrypt-btn-main')
+    type_phrase(page, REAL)
+    page.click('#seed-next')
+    page.select_option('#phrases-select', '3')
+    page.fill('#label-1', 'Ledger')
+    page.fill('#message-input', 'Three wallets')
+    c('multi-seed: the stepper shows the two extra phrases', page.locator('#step-options [data-stepper] li:not(.sep)').count() == 5)
+    page.click('#options-next')
+    c('multi-seed: phrase 2 of 3 asks for its name and passphrase', page.inner_text('#h-seed') == 'Recovery phrase 2 of 3' and page.is_visible('#seed-extra'))
+    type_phrase(page, REAL)
+    page.wait_for_timeout(300)
+    page.click('#seed-next')
+    c('multi-seed: a repeated phrase is refused', page.inner_text('#h-seed') == 'Recovery phrase 2 of 3')
+    if name == 'chromium':   # Firefox and WebKit ignore clipboardData on a synthetic ClipboardEvent
+        page.evaluate("(t) => { const d = new DataTransfer(); d.setData('text/plain', t); document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: d, bubbles: true, cancelable: true })); }", MULTI2)
+    else:
+        for _ in range(80):   # clear the refused phrase, then type the second one
+            page.keyboard.press('Backspace')
+        type_phrase(page, MULTI2)
+    page.wait_for_timeout(300)
+    page.fill('#extra-label', 'Trezor')
+    page.check('#extra-pp-enable')
+    page.fill('#extra-pp', 'tree pass')
+    page.fill('#extra-pp-confirm', 'tree pass')
+    page.click('#seed-next')
+    type_phrase(page, DECOY)
+    page.wait_for_timeout(300)
+    page.click('#seed-next')
+    page.click('#gen-words')
+    multi_pw = page.input_value('#password-input')
+    page.click('#password-next')
+    page.wait_for_selector('#step-result:not([hidden])', timeout=120000)
+    fp = page.inner_text('#result-fp')
+    c('multi-seed: one wallet fingerprint per phrase, with its name', fp.count('wallet fingerprint') == 3 and 'Ledger' in fp and 'Trezor' in fp and 'b8688df1' in fp, fp)
+    page.click('#qr-print')
+    with page.expect_download() as d:
+        page.click('#print-go')
+    mpdf = os.path.join(tempfile.mkdtemp(), 'multi.pdf')
+    d.value.save_as(mpdf)
+    multi_code = pdf_codes(mpdf)[0]
+    page.click('#qr-done')
+    page.click('#recover-btn')
+    page.click('#src-type')
+    page.fill('#type-input', multi_code)
+    page.click('#type-use')
+    page.fill('#decrypt-password', multi_pw)
+    page.click('#decrypt-confirm')
+    page.wait_for_selector('#step-decrypted:not([hidden])', timeout=120000)
+    tabs = page.locator('#decrypted-tabs [role=tab]').all_inner_texts()
+    words = lambda: ' '.join(page.locator('#seed-grid .seed-word span:last-child').all_inner_texts())
+    c('multi-seed: one tab per phrase', tabs == ['1 · Ledger', '2 · Trezor', 'Phrase 3'], str(tabs))
+    first = words()
+    page.click('#decrypted-tabs [data-i="1"]')
+    second, pp2 = words(), page.inner_text('#decrypted-pp')
+    page.keyboard.press('ArrowRight')
+    third = words()
+    c('multi-seed: every phrase, its passphrase and the note come back', first == REAL and second == MULTI2 and 'tree pass' in pp2 and third == DECOY
+      and 'Three wallets' in page.inner_text('#decrypted-meta'))
+    page.click('#decrypted-done')
+    out = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'recover.py'), '--password-stdin', '--json', multi_code],
+                         input=multi_pw + '\n', capture_output=True, text=True)
+    try:
+        ph = json.loads(out.stdout)['phrases']
+        ok_rec = [' '.join(x['words']) for x in ph] == [REAL, MULTI2, DECOY] and [x['label'] for x in ph] == ['Ledger', 'Trezor', ''] and ph[1]['passphrase'] == 'tree pass'
+    except (ValueError, KeyError):
+        ok_rec = 'Missing dependencies' in out.stderr   # recover.py needs argon2-cffi and cryptography
+    c('multi-seed: recover.py reads it too', ok_rec, out.stderr.strip()[:80])
 
     # 5. single offline file
     single = ctx.new_page()

@@ -5,7 +5,6 @@
 MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print and store on paper. Someone who finds the paper sees a code that is useless without your password. Encryption, decryption, QR generation and scanning all happen locally in your browser. The app loads nothing from third parties, works offline once installed, and is also available as a single HTML file for computers that never go online.
 
 - **App:** <https://mnemoniqr.app>
-- **Community goal:** <https://mnemoniqr.app/goal>
 - **Source code:** <https://github.com/MPetovick/MnemoniQR>
 - **License:** [GNU AGPL-3.0](LICENSE) · [commercial license](COMMERCIAL.md) · [NOTICE](NOTICE)
 
@@ -25,7 +24,7 @@ MnemoniQR turns a wallet recovery phrase into an encrypted QR code you can print
 | Know what the app stores and sends | [Privacy](docs/PRIVACY.md) |
 | Understand the security and the cryptography | [Security design and audit history](docs/AUDIT.md) |
 | Read the byte layout of a backup | [Format](docs/FORMAT.md) |
-| Donate, or follow the community goal | [Donations](docs/DONATIONS.md) |
+| Donate | [Donations](docs/DONATIONS.md) |
 | Report a vulnerability | [Security policy](SECURITY.md) |
 | Build, test, deploy or contribute | [Development](docs/DEVELOPMENT.md) · [Contributing](CONTRIBUTING.md) · [CLA](CLA.md) |
 | Use MnemoniQR in a product or service | [License](#license) · [Commercial license](COMMERCIAL.md) |
@@ -133,7 +132,7 @@ Every release has a **fingerprint**, shown in *How it protects you* in the app a
 
 ## Support the project
 
-MnemoniQR is free, open source and has no ads, accounts or tracking. Donations pay for security audits and new features. The current community goal is **210,000 USD to unlock multi-seed backups for everyone** (up to 3 recovery phrases in one QR), and every balance can be checked on public block explorers. Addresses, how to donate safely and how the goal is counted: [docs/DONATIONS.md](docs/DONATIONS.md).
+MnemoniQR is free, open source and has no ads, accounts or tracking. Donations pay for security audits and new features. Donations are accepted in Bitcoin only; the address and how to donate safely: [docs/DONATIONS.md](docs/DONATIONS.md).
 
 ## Contributing
 

@@ -40,7 +40,7 @@ python3 recover.py share1.txt share3.txt   # shares, in any order, any k of them
 python3 recover.py --keyfile photo.jpg backup.txt
 ```
 
-It prints the words, numbered, and, when present, the passphrase, the note and the wallet fingerprint (`--json` also gives the creation date). Practice backups are labelled as such. If the decoy password is typed, it prints the decoy phrase.
+It prints the words, numbered, and, when present, the passphrase, the note and the wallet fingerprint (`--json` also gives the creation date). A backup with several phrases (7.0.0 and later) prints each phrase in turn, with its name, passphrase and fingerprint; with `--json` they are in the `phrases` list. Use the `recover.py` of 7.0.0 or later for such a backup: older copies report a bad content. Practice backups are labelled as such. If the decoy password is typed, it prints the decoy phrase.
 
 Other options: `--json` prints the result as JSON, `--no-fingerprint` skips the fingerprint, `--password-stdin` reads the password from the first line of standard input (for scripts), `--version`.
 

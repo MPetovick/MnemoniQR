@@ -1,17 +1,7 @@
 {
-  "rewrites": [
-    {
-      "source": "/goal",
-      "destination": "/api/goal?view=html"
-    },
-    {
-      "source": "/goal/",
-      "destination": "/api/goal?view=html"
-    }
-  ],
   "headers": [
     {
-      "source": "/((?!api/|goal/?$).*)",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "Content-Security-Policy",
@@ -44,27 +34,6 @@
         {
           "key": "Cross-Origin-Resource-Policy",
           "value": "same-origin"
-        },
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=63072000; includeSubDomains; preload"
-        }
-      ]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "no-referrer"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
         },
         {
           "key": "Strict-Transport-Security",

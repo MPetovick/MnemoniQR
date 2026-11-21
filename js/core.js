@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
 // ============================================================
-// MnemoniQR v6.9.0 · Core (no DOM). Used by the app and by tests/tests.html.
+// MnemoniQR v7.0.0 · Core (no DOM). Used by the app and by tests/tests.html.
 // ============================================================
 'use strict';
 (function (G) {
@@ -25,6 +25,11 @@
         // error correction. Decoding still accepts up to 255 bytes, as written by 6.0–6.2.
         PASSPHRASE_MAX_BYTES: 100,
         NOTE_MAX_BYTES: 100,
+        // Multi-seed backups (plaintext type 3): up to 3 phrases, each with its own passphrase and a short name.
+        // The largest one (three 24-word phrases, three 100-byte passphrases and names, a 100-byte note) still fits
+        // a QR version 40 at error correction Q.
+        MAX_PHRASES: 3,
+        LABEL_MAX_BYTES: 32,
         LEVELS: Object.freeze({
             standard: { m: 65536, t: 3, p: 1 },
             high: { m: 131072, t: 4, p: 1 },
@@ -372,29 +377,60 @@
 
     // ============================================================
     // v4 plaintext
-    // [type][lang][data][passphrase len][passphrase][note len][note][created u32]
-    // type 1 = BIP39 entropy, type 2 = free text (invalid checksum)
+    // type 1/2: [type][lang][data][passphrase len][passphrase][note len][note][created u32]
+    //   type 1 = BIP39 entropy, type 2 = free text (invalid checksum)
+    // type 3 (multi-seed, 7.0): [3][count 2–3] then count × [kind 1|2][lang][data][passphrase len][passphrase]
+    //   [name len][name], then [note len][note][created u32]. Everything stays inside the encryption: the QR does
+    //   not reveal how many phrases it holds.
     // ============================================================
-    function packPlaintext({ lang, entropy, rawText, passphrase = '', note = '' }) {
-        // Never truncate: a shortened passphrase is a different wallet, and cutting UTF-8 mid-character
-        // would make the backup impossible to decode
-        const pp = enc.encode(passphrase.normalize('NFKD'));
-        const nt = enc.encode(note);
+    // [kind][lang][data] of one phrase (kind 1 = entropy, kind 2 = free text)
+    function packPhrase({ lang, entropy, rawText }) {
+        if (entropy) return concat(Uint8Array.of(1, C.LANG_IDS[lang] || 0, entropy.length), entropy);
+        const t = enc.encode(rawText);
+        if (t.length > 65535) throw new MQRError('seed_incomplete');
+        return concat(Uint8Array.of(2, C.LANG_IDS[lang] || 0, t.length >> 8, t.length & 255), t);
+    }
+    // Never truncate: a shortened passphrase is a different wallet, and cutting UTF-8 mid-character
+    // would make the backup impossible to decode
+    function ppBytes(passphrase) {
+        const pp = enc.encode((passphrase || '').normalize('NFKD'));
         if (pp.length > C.PASSPHRASE_MAX_BYTES) { wipe(pp); throw new MQRError('pp_too_long'); }
+        return pp;
+    }
+    function noteBytes(note) {
+        const nt = enc.encode(note || '');
         if (nt.length > C.NOTE_MAX_BYTES) throw new MQRError('note_too_long');
-        const created = Math.floor(Date.now() / 1000);
-        let body;
-        if (entropy) body = concat(Uint8Array.of(1, C.LANG_IDS[lang] || 0, entropy.length), entropy);
-        else {
-            const t = enc.encode(rawText);
-            if (t.length > 65535) throw new MQRError('seed_incomplete');
-            body = concat(Uint8Array.of(2, C.LANG_IDS[lang] || 0, t.length >> 8, t.length & 255), t);
-        }
+        return nt;
+    }
+    function createdBytes() {
         const ts = new Uint8Array(4);
-        new DataView(ts.buffer).setUint32(0, created, false);
-        const out = concat(body, Uint8Array.of(pp.length), pp, Uint8Array.of(nt.length), nt, ts);
+        new DataView(ts.buffer).setUint32(0, Math.floor(Date.now() / 1000), false);
+        return ts;
+    }
+    function packPlaintext({ lang, entropy, rawText, passphrase = '', note = '' }) {
+        const pp = ppBytes(passphrase);
+        let nt;
+        try { nt = noteBytes(note); } catch (e) { wipe(pp); throw e; }
+        const body = packPhrase({ lang, entropy, rawText });
+        const out = concat(body, Uint8Array.of(pp.length), pp, Uint8Array.of(nt.length), nt, createdBytes());
         wipe(body, pp);
         return out;
+    }
+    // Multi-seed: 2 to 3 phrases, each { lang, entropy | rawText, passphrase, label }, and one note for all
+    function packMultiPlaintext({ phrases, note = '' }) {
+        if (!Array.isArray(phrases) || phrases.length < 2 || phrases.length > C.MAX_PHRASES) throw new MQRError('multi_count');
+        const nt = noteBytes(note);
+        const parts = [Uint8Array.of(3, phrases.length)];
+        try {
+            for (const p of phrases) {
+                const lb = enc.encode((p.label || '').normalize('NFC'));
+                if (lb.length > C.LABEL_MAX_BYTES) throw new MQRError('label_too_long');
+                const pp = ppBytes(p.passphrase);
+                parts.push(packPhrase(p), Uint8Array.of(pp.length), pp, Uint8Array.of(lb.length), lb);
+            }
+            parts.push(Uint8Array.of(nt.length), nt, createdBytes());
+            return concat(...parts);
+        } finally { wipe(...parts); }
     }
     function padTo(bytes, len) {
         const out = new Uint8Array(len);
@@ -420,25 +456,47 @@
         try { return await unpackPlaintextRaw(pt); }
         catch (e) { if (e instanceof MQRError) throw e; throw new FormatError('bad_content'); }
     }
-    async function unpackPlaintextRaw(pt) {
-        const r = reader(pt);
-        const type = r.u8();
+    // One phrase: [kind][lang][data] (kind 1 = BIP39 entropy, kind 2 = free text)
+    async function readPhrase(r, kind) {
         const lang = LANG_BY_ID[r.u8()];
         // Never show the entropy as English words when it was written in another list: it would be a different wallet
         if (!lang) throw new MQRError('unsupported_lang');
         let indices = null, rawText = null;
-        if (type === 1) {
+        if (kind === 1) {
             const ent = r.bytes(r.u8());
             indices = await BIP39.fromEntropy(ent);
             wipe(ent);
-        } else if (type === 2) {
+        } else if (kind === 2) {
             rawText = r.text(r.u16());
         } else throw new FormatError('bad_content');
-        const passphrase = r.text(r.u8());
+        const words = indices ? indices.map((i) => BIP39.word(lang, i)) : rawText.split(' ');
+        return { lang, words, indices };
+    }
+    // Always returns `phrases` (one or more); the first phrase is also given at the top level, as before 7.0
+    async function unpackPlaintextRaw(pt) {
+        const r = reader(pt);
+        const type = r.u8();
+        const phrases = [];
+        if (type === 1 || type === 2) {
+            const p = await readPhrase(r, type);
+            p.passphrase = r.text(r.u8());
+            p.label = '';
+            phrases.push(p);
+        } else if (type === 3) {
+            const count = r.u8();
+            if (count < 2 || count > C.MAX_PHRASES) throw new FormatError('bad_content');
+            for (let i = 0; i < count; i++) {
+                const p = await readPhrase(r, r.u8());
+                p.passphrase = r.text(r.u8());
+                p.label = r.text(r.u8());
+                phrases.push(p);
+            }
+        } else throw new FormatError('bad_content');
         const note = r.text(r.u8());
         const created = r.u32();
-        const words = indices ? indices.map((i) => BIP39.word(lang, i)) : rawText.split(' ');
-        return { lang, words, indices, passphrase, note, created: created ? new Date(created * 1000) : null };
+        const first = phrases[0];
+        return { lang: first.lang, words: first.words, indices: first.indices, passphrase: first.passphrase, phrases, multi: type === 3,
+            note, created: created ? new Date(created * 1000) : null };
     }
 
     // ============================================================
@@ -651,7 +709,7 @@
 
     G.MQR = Object.freeze({
         C, KDF, BIP39, Shamir, fingerprint, masterKey, setArgonImpl,
-        packPlaintext, encryptV4, bucket, decryptAny, splitBackup, joinShares, kindOf, inspect, parseV4,
+        packPlaintext, packMultiPlaintext, encryptV4, bucket, decryptAny, splitBackup, joinShares, kindOf, inspect, parseV4,
         generatePassword,
         util: { wipe, rand, hex, fromHex, concat, b64urlEncode, b64urlDecode, sha256, sha256Hex, strip, ctEqual },
         errors: { MQRError, FormatError, WrongPassword },
