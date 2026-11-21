@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) MPetovick and the MnemoniQR contributors. Commercial licenses: see COMMERCIAL.md
-// MnemoniQR service worker v6.9.0
+// MnemoniQR service worker v7.0.0
 // Precaches and serves the app's own files only. No push, no background sync, no third parties.
 'use strict';
-const CACHE = 'mnemoniqr-v6.9.0';
+const CACHE = 'mnemoniqr-v7.0.0';
 const FONTS = [
     'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
     'fonts/jetbrains-mono-latin-400-normal.woff2', 'fonts/jetbrains-mono-latin-500-normal.woff2'
 ];
 const ASSETS = [
     './', 'index.html', 'styles.css', 'manifest.json', 'js/kdf-src.js',
-    'js/wordlists.js', 'js/core.js', 'js/dicts.js', 'js/eff-words.js', 'js/strength.js', 'js/i18n.js', 'js/donate.js', 'js/goal.js', 'js/app.js',
+    'js/wordlists.js', 'js/core.js', 'js/dicts.js', 'js/eff-words.js', 'js/strength.js', 'js/i18n.js', 'js/donate.js', 'js/app.js',
     'vendor/qrcode.min.js', 'vendor/jsqr.min.js', 'vendor/argon2.min.js', 'vendor/noble.min.js',
     ...FONTS,
     'MQR_logo.webp', 'favicon.png', 'assets/shield.png',
@@ -19,7 +19,7 @@ const ASSETS = [
 ];
 const SCOPE = new URL('./', self.location).pathname;
 
-const VERSION = '6.9.0';
+const VERSION = '7.0.0';
 const ACK_WAIT = 2500;
 
 self.addEventListener('install', (e) => {
@@ -68,7 +68,7 @@ self.addEventListener('activate', (e) => {
     ready.then(takeOver).catch(() => {});
 });
 
-// Only app windows: other pages of the site (the community goal at /goal, the tests) are not the app and are left alone
+// Only app windows: other pages of the site (the tests) are not the app and are left alone
 const isApp = (c) => { const p = new URL(c.url).pathname; return p === SCOPE || p === SCOPE + 'index.html'; };
 async function takeOver() {
     const wins = (await self.clients.matchAll({ type: 'window' })).filter(isApp);

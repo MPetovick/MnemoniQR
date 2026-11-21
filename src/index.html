@@ -30,7 +30,6 @@
 <script src="js/strength.js" defer></script>
 <script src="js/i18n.js" defer></script>
 <script src="js/donate.js" defer></script>
-<script src="js/goal.js" defer></script>
 <script src="js/kdf-src.js" defer></script>
 <script src="js/app.js" defer></script>
 </head>
@@ -61,6 +60,7 @@
   <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="3.5"/><path d="M10 13l9-9M16 7l2 2M14 9l2 2"/></symbol>
   <symbol id="i-type" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+  <symbol id="i-btc" viewBox="0 0 24 24"><path d="M9 6h5a2.5 2.5 0 0 1 0 5H9zM9 11h6a2.5 2.5 0 0 1 0 5H9zM9 6v10M8 6h1M8 16h1M11 4v2M11 16v2M13 4v2M13 16v2"/></symbol>
   <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
   <symbol id="i-practice" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
 </svg>
@@ -124,19 +124,11 @@
         <button type="button" id="install-link" class="link" hidden data-i18n="install">Install app</button>
       </div>
       <div class="footer-meta">
-        <button type="button" id="support-link" class="support-link" hidden>
-          <span class="support-row">
-            <svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>
-            <span class="grow" id="support-plain"><span data-i18n="support_free">Free, open source, no ads.</span> <span class="u" data-i18n="support_it">Support it</span></span>
-            <!-- Community goal (js/goal.js): a thin progress bar under the line -->
-            <span class="grow" id="goal-foot" hidden><span id="goal-foot-t">Unlock multi-seed for everyone</span> · <span class="u" data-i18n="support_it">Support it</span></span>
-            <span class="goal-foot-pct" id="goal-foot-pct" hidden></span>
-          </span>
-          <span class="goal-bar" id="goal-foot-bar" aria-hidden="true" hidden><span class="goal-fill" id="goal-foot-fill"></span></span>
-        </button>
+        <!-- Donations (Bitcoin only): opens the sheet with the address; hidden when no address is configured -->
+        <button type="button" id="support-link" class="support-btc" hidden data-i18n-aria="support_btc_aria" aria-label="Support MnemoniQR with Bitcoin" title="Support MnemoniQR with Bitcoin"><svg class="ic" aria-hidden="true"><use href="#i-btc"/></svg></button>
         <!-- MPe Software seal: a plain link to MnemoniQR's page on mpe.software (no request is made until it is tapped) -->
         <a class="mpe-sello" href="https://www.mpe.software/#mnemoniqr" target="_blank" rel="noopener noreferrer" title="Made by MPe Software" aria-label="Made by MPe Software"><svg viewBox="0 0 40 28" aria-hidden="true"><rect width="40" height="28" rx="6" fill="#0E0F0C"/><path d="M7.5 21V7h3.3l4.7 6.6L20.2 7h3.3v14h-3.2v-8.9l-4.8 6.6-4.8-6.6V21z" fill="#E8E6DF"/><rect class="mpe-c" x="26" y="18" width="7.5" height="3" fill="#C6F432"/></svg></a>
-        <span class="version">v6.9.0</span>
+        <span class="version">v7.0.0</span>
       </div>
     </footer>
   </main>
@@ -164,6 +156,18 @@
         </div>
       </section>
 
+      <!-- Phrases 2 and 3 of a multi-seed backup: a name and their own BIP39 passphrase -->
+      <section id="seed-extra" class="paper opt" hidden>
+        <label for="extra-label" class="opt-label" data-i18n="label_n">Name of this phrase (optional)</label>
+        <input type="text" id="extra-label" maxlength="32" autocomplete="off" data-i18n-ph="label_ph">
+        <label class="switch-row"><input type="checkbox" id="extra-pp-enable"> <span class="opt-label" data-i18n="pp_label_n">This wallet uses a BIP39 passphrase</span></label>
+        <div id="extra-pp-box" class="stack" hidden>
+          <div class="field-group"><input type="password" id="extra-pp" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pp_ph" data-i18n-aria="pp_ph"></div>
+          <div class="field-group"><input type="password" id="extra-pp-confirm" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="pp_repeat" data-i18n-aria="pp_repeat"></div>
+          <p class="help warn" data-i18n="pp_help">Stored encrypted with the seed. It must match your wallet exactly: case and spaces matter.</p>
+        </div>
+      </section>
+
       <p id="seed-status" class="status" aria-live="polite"></p>
       <p id="seed-fp" class="fp" hidden></p>
       <button type="button" id="seed-next" class="btn btn-primary" disabled><span data-i18n="continue">Continue</span> <svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
@@ -187,6 +191,21 @@
         <ol class="stepper" data-stepper data-i18n-aria="progress"></ol>
       </header>
       <h2 id="h-opt" class="step-title" data-i18n="options_title">Options</h2>
+
+      <!-- 7.0 multi-seed: up to 3 recovery phrases in one encrypted QR, all opened by the same password -->
+      <section class="paper opt">
+        <label for="phrases-select" class="opt-label" data-i18n="phrases_label">Recovery phrases in this backup</label>
+        <select id="phrases-select">
+          <option value="1" data-i18n="phrases_1">Just this one</option>
+          <option value="2" data-i18n="phrases_2">2 phrases in one QR</option>
+          <option value="3" data-i18n="phrases_3">3 phrases in one QR</option>
+        </select>
+        <div id="label-1-box" class="stack" hidden>
+          <label for="label-1" class="opt-label small" data-i18n="label_1">Name of phrase 1 (optional)</label>
+          <input type="text" id="label-1" maxlength="32" autocomplete="off" data-i18n-ph="label_ph">
+        </div>
+        <p class="help" data-i18n="phrases_help">Every phrase goes inside the same encryption and opens with the same password. Nobody can tell from the QR how many it holds.</p>
+      </section>
 
       <section class="paper opt">
         <label for="message-input" class="opt-label" data-i18n="note_label">Encrypted note (optional)</label>
@@ -337,6 +356,7 @@
         <h2 id="h-dec" class="step-title flush"><svg class="ic ok" aria-hidden="true"><use href="#i-check"/></svg> <span data-i18n="decrypted_title">Seed decrypted</span></h2>
         <span class="count" id="decrypted-count"></span>
       </header>
+      <div class="phrase-tabs" role="tablist" id="decrypted-tabs" data-i18n-aria="phrases_tabs" hidden></div>
       <section class="paper">
         <div id="decrypted-meta" class="meta"></div>
         <p class="fp" id="decrypted-fp"></p>
@@ -498,7 +518,7 @@
     <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="h-support">
       <span class="sheet-handle" aria-hidden="true"></span>
       <div class="support-head">
-        <span class="benefit-icon"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></span>
+        <span class="benefit-icon btc"><svg class="ic" aria-hidden="true"><use href="#i-btc"/></svg></span>
         <div class="install-titles grow">
           <h2 id="h-support" data-i18n="support_title">Support MnemoniQR</h2>
           <span class="support-sub" data-i18n="support_sub">Free · open source · no ads</span>
@@ -506,39 +526,21 @@
         <button type="button" class="btn-icon modal-close" id="support-x" data-i18n-aria="close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </div>
       <p class="install-lead" id="support-lead" data-i18n="support_lead">No accounts and no tracking. Donations pay for security audits and new features, and keep it free for everyone.</p>
-      <!-- Community goal: a snapshot built into this version (js/goal.js); the live total is on mnemoniqr.app/goal -->
-      <div class="goal" id="goal-box" hidden>
-        <div class="goal-ring" id="goal-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-i18n-aria="goal_ring">
-          <svg viewBox="0 0 96 96" aria-hidden="true"><circle class="goal-track" cx="48" cy="48" r="40"/><circle class="goal-arc" id="goal-arc" cx="48" cy="48" r="40"/></svg>
-          <span class="goal-ring-t" aria-hidden="true"><strong id="goal-pct"></strong><span data-i18n="goal_of_goal">of goal</span></span>
-        </div>
-        <div class="goal-info">
-          <strong id="goal-title">Unlock multi-seed backups for everyone</strong>
-          <span class="goal-sum"><b id="goal-raised"></b> <span id="goal-target"></span></span>
-          <span class="goal-asof"><span id="goal-asof"></span> · <a class="link inline" href="https://mnemoniqr.app/goal" target="_blank" rel="noopener noreferrer" data-i18n="goal_live">Live total</a></span>
-        </div>
-      </div>
-      <div class="seg" role="tablist" id="support-tabs" data-i18n-aria="support_network"></div>
-      <div class="support-card" role="tabpanel" id="support-panel">
+      <div class="support-card" id="support-panel">
         <div class="support-top">
           <div class="support-qr-box"><canvas id="support-qr" class="support-qr" role="img"></canvas></div>
           <div class="support-info">
-            <span class="chips"><span class="chip-warn" id="support-chip"></span><span class="chips" id="support-chips-also"></span></span>
+            <span class="chips"><span class="chip-warn" id="support-chip"></span></span>
             <span class="help" id="support-note"></span>
           </div>
         </div>
         <p class="support-addr" id="support-addr"></p>
-        <div class="support-bal" id="support-bal" hidden>
-          <span class="support-bal-t"><span class="support-bal-l" id="support-bal-l" data-i18n="goal_balance">Balance of this address</span><strong id="support-bal-v"></strong></span>
-          <span class="support-bal-links" id="support-bal-links"></span>
-        </div>
       </div>
       <div class="sheet-actions">
         <button type="button" id="support-done" class="btn btn-secondary" data-i18n="support_done">Done</button>
         <button type="button" id="support-copy" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> <span id="support-copy-t" data-i18n="support_copy">Copy address</span></button>
       </div>
-      <p class="help center" id="goal-note" hidden data-i18n="goal_note">The wallets are not moved until the goal is reached, so anyone can check them. Explorers are outside sites and see your IP address.</p>
-      <p class="help center" data-i18n="support_check">After pasting, check the highlighted first and last characters. These addresses are part of the verified build and listed in HASHES.txt.</p>
+      <p class="help center" data-i18n="support_check">After pasting, check the highlighted first and last characters. This address is part of the verified build and listed in HASHES.txt.</p>
     </section>
   </div>
 
